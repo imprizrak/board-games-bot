@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Бібліотека настільних ігор</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--tg-theme-bg-color, #f4f4f7);
+    color: var(--tg-theme-text-color, #111);
+  }
+  header {
+    padding: 16px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer;
+  }
+  .card img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    background: #ddd;
+  }
+  .card .placeholder {
+    width: 100%;
+    height: 130px;
+    background: linear-gradient(135deg, #cfd9ff, #e6e6ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+  }
+  .card-title {
+    padding: 8px 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .fab {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--tg-theme-button-color, #3b82f6);
+    color: var(--tg-theme-button-text-color, #fff);
+    font-size: 28px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  .modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 10;
+  }
+  .modal.open { display: flex; }
+  .sheet {
+    background: var(--tg-theme-bg-color, #fff);
+    width: 100%;
+    max-width: 480px;
+    border-radius: 18px 18px 0 0;
+    padding: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .sheet h2 { margin-top: 0; }
+  .sheet label {
+    display: block;
+    margin: 12px 0 4px;
+    font-size: 13px;
+    color: #888;
+  }
+  .sheet input[type=text], .sheet textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 15px;
+  }
+  .sheet input[type=file] {
+    width: 100%;
+  }
+  .btn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: var(--tg-theme-button-color, #3b82f6);
+    color: var(--tg-theme-button-text-color, #fff);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .close-btn {
+    float: right;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+  }
+  .rules-link {
+    display: inline-block;
+    margin-top: 10px;
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .empty {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+    grid-column: 1 / -1;
+  }
+</style>
+</head>
+<body>
+
+<header>Бібліотека настільних ігор</header>
+
+<div class="grid" id="gamesGrid"></div>
+
+<button class="fab" onclick="openAddModal()">+</button>
+
+<!-- Модалка перегляду гри -->
+<div class="modal" id="viewModal">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('viewModal')">✕</button>
+    <h2 id="viewName"></h2>
+    <p id="viewDescription"></p>
+    <a id="viewRules" class="rules-link" href="#" target="_blank">Відкрити правила (PDF)</a>
+    <p id="viewNoRules" style="color:#999;"></p>
+    <button class="btn" style="background:#e5e7eb; color:#111; margin-top:20px;" onclick="openEditModal()">✏️ Редагувати</button>
+    <button class="btn" style="background:#fee2e2; color:#b91c1c; margin-top:10px;" onclick="deleteCurrentGame()">🗑 Видалити гру</button>
+  </div>
+</div>
+
+<!-- Модалка редагування гри -->
+<div class="modal" id="editModal">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('editModal')">✕</button>
+    <h2>Редагувати гру</h2>
+
+    <label>Назва гри</label>
+    <input type="text" id="editName">
+
+    <label>Опис (необов'язково)</label>
+    <textarea id="editDescription" rows="3"></textarea>
+
+    <label>Нова обкладинка (залиш порожнім, щоб не змінювати)</label>
+    <input type="file" id="editCover" accept="image/*">
+
+    <label>Новий файл з правилами (PDF, необов'язково)</label>
+    <input type="file" id="editRules" accept="application/pdf">
+
+    <button class="btn" onclick="submitEdit()">Зберегти зміни</button>
+  </div>
+</div>
+
+<!-- Модалка додавання гри -->
+<div class="modal" id="addModal">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('addModal')">✕</button>
+    <h2>Додати гру</h2>
+
+    <label>Назва гри</label>
+    <input type="text" id="inputName" placeholder="Наприклад, Каркассон">
+
+    <label>Опис (необов'язково)</label>
+    <textarea id="inputDescription" rows="3" placeholder="Коротко про гру"></textarea>
+
+    <label>Обкладинка (картинка)</label>
+    <input type="file" id="inputCover" accept="image/*">
+
+    <label>Файл з правилами (PDF)</label>
+    <input type="file" id="inputRules" accept="application/pdf">
+
+    <button class="btn" onclick="submitGame()">Зберегти гру</button>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const username = tg.initDataUnsafe?.user?.username
+  || tg.initDataUnsafe?.user?.first_name
+  || "гість";
+
+async function loadGames() {
+  const res = await fetch("/api/games");
+  const games = await res.json();
+  const grid = document.getElementById("gamesGrid");
+  grid.innerHTML = "";
+
+  if (games.length === 0) {
+    grid.innerHTML = '<div class="empty">Ще немає жодної гри.<br>Натисни "+", щоб додати першу!</div>';
+    return;
+  }
+
+  games.forEach(game => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.onclick = () => openViewModal(game);
+
+    const img = game.cover_url
+      ? `<img src="${game.cover_url}">`
+      : `<div class="placeholder">🎲</div>`;
+
+    card.innerHTML = `
+      ${img}
+      <div class="card-title">${game.name}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+let currentGame = null;
+
+function openViewModal(game) {
+  currentGame = game;
+  document.getElementById("viewName").textContent = game.name;
+  document.getElementById("viewDescription").textContent = game.description || "";
+
+  const rulesLink = document.getElementById("viewRules");
+  const noRules = document.getElementById("viewNoRules");
+
+  if (game.rules_url) {
+    rulesLink.href = game.rules_url;
+    rulesLink.style.display = "inline-block";
+    noRules.textContent = "";
+  } else {
+    rulesLink.style.display = "none";
+    noRules.textContent = "Правила ще не додані.";
+  }
+
+  document.getElementById("viewModal").classList.add("open");
+}
+
+function openAddModal() {
+  document.getElementById("addModal").classList.add("open");
+}
+
+function openEditModal() {
+  if (!currentGame) return;
+  document.getElementById("editName").value = currentGame.name || "";
+  document.getElementById("editDescription").value = currentGame.description || "";
+  document.getElementById("editCover").value = "";
+  document.getElementById("editRules").value = "";
+  closeModal("viewModal");
+  document.getElementById("editModal").classList.add("open");
+}
+
+async function submitEdit() {
+  if (!currentGame) return;
+  const name = document.getElementById("editName").value.trim();
+  if (!name) {
+    tg.showAlert("Введи назву гри");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("description", document.getElementById("editDescription").value);
+
+  const coverFile = document.getElementById("editCover").files[0];
+  const rulesFile = document.getElementById("editRules").files[0];
+  if (coverFile) formData.append("cover", coverFile);
+  if (rulesFile) formData.append("rules", rulesFile);
+
+  await fetch(`/api/games/${currentGame.id}`, {
+    method: "PUT",
+    body: formData,
+  });
+
+  closeModal("editModal");
+  loadGames();
+}
+
+async function deleteCurrentGame() {
+  if (!currentGame) return;
+  tg.showConfirm(`Видалити гру "${currentGame.name}"?`, async (confirmed) => {
+    if (!confirmed) return;
+    await fetch(`/api/games/${currentGame.id}`, { method: "DELETE" });
+    closeModal("viewModal");
+    loadGames();
+  });
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+async function submitGame() {
+  const name = document.getElementById("inputName").value.trim();
+  if (!name) {
+    tg.showAlert("Введи назву гри");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("description", document.getElementById("inputDescription").value);
+  formData.append("added_by", username);
+
+  const coverFile = document.getElementById("inputCover").files[0];
+  const rulesFile = document.getElementById("inputRules").files[0];
+
+  if (coverFile) formData.append("cover", coverFile);
+  if (rulesFile) formData.append("rules", rulesFile);
+
+  await fetch("/api/games", {
+    method: "POST",
+    body: formData,
+  });
+
+  closeModal("addModal");
+  document.getElementById("inputName").value = "";
+  document.getElementById("inputDescription").value = "";
+  document.getElementById("inputCover").value = "";
+  document.getElementById("inputRules").value = "";
+
+  loadGames();
+}
+
+loadGames();
+</script>
+
+</body>
+</html>
