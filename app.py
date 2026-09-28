@@ -1,10 +1,11 @@
-
 import os
+import uuid
 import asyncio
-import sqlite3
 import logging
 from threading import Thread
+from urllib.parse import quote
 
+import requests
 from flask import Flask, request, jsonify, send_from_directory
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart
@@ -13,39 +14,59 @@ from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeybo
 logging.basicConfig(level=logging.INFO)
 
 # ==== НАЛАШТУВАННЯ (беруться зі змінних середовища на Render) ====
-API_TOKEN = os.environ.get("BOT_TOKEN", "ВАШ_ТОКЕН_ВІД_BOTFATHER")
-WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://ВАША-АДРЕСА.onrender.com")
+API_TOKEN = os.environ.get("BOT_TOKEN", "")
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+BUCKET = "files"
 
-DB_NAME = "games.db"
-COVERS_DIR = os.path.join("static", "covers")
-RULES_DIR = os.path.join("static", "rules")
-os.makedirs(COVERS_DIR, exist_ok=True)
-os.makedirs(RULES_DIR, exist_ok=True)
+HEADERS = {"apikey": SUPABASE_KEY}
+# Старі ключі (JWT) потребують ще й заголовка Authorization
+if SUPABASE_KEY.startswith("eyJ"):
+    HEADERS["Authorization"] = f"Bearer {SUPABASE_KEY}"
+
+REST = f"{SUPABASE_URL}/rest/v1/games"
+STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS games (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            cover_url TEXT,
-            rules_url TEXT,
-            added_by TEXT
-        )
-        """
+# ==================== Робота зі сховищем Supabase ====================
+def upload_file(file_storage, folder):
+    """Завантажує файл у Supabase Storage, повертає публічне посилання."""
+    ext = os.path.splitext(file_storage.filename or "")[1].lower()
+    path = f"{folder}/{uuid.uuid4().hex}{ext}"
+    content_type = file_storage.mimetype or "application/octet-stream"
+    resp = requests.post(
+        f"{STORAGE}/{BUCKET}/{path}",
+        headers={**HEADERS, "Content-Type": content_type, "x-upsert": "true"},
+        data=file_storage.read(),
+        timeout=60,
     )
-    conn.commit()
-    conn.close()
+    resp.raise_for_status()
+    return f"{STORAGE}/public/{BUCKET}/{quote(path)}"
 
 
-init_db()
+def delete_file(url):
+    """Видаляє файл зі сховища (якщо не вдалось - просто ігноруємо)."""
+    if not url:
+        return
+    marker = f"/public/{BUCKET}/"
+    if marker not in url:
+        return
+    path = url.split(marker, 1)[1]
+    try:
+        requests.delete(
+            f"{STORAGE}/{BUCKET}",
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={"prefixes": [path]},
+            timeout=30,
+        )
+    except Exception:
+        logging.exception("Не вдалось видалити файл")
+
 
 # ==================== FLASK (веб-сторінка + API) ====================
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 МБ
 
 
 @app.route("/")
@@ -53,23 +74,16 @@ def index():
     return send_from_directory(".", "index.html")
 
 
-@app.route("/static/<path:path>")
-def static_files(path):
-    return send_from_directory("static", path)
-
-
 @app.route("/api/games", methods=["GET"])
 def get_games():
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute("SELECT id, name, description, cover_url, rules_url, added_by FROM games ORDER BY name")
-    rows = cur.fetchall()
-    conn.close()
-    games = [
-        {"id": r[0], "name": r[1], "description": r[2], "cover_url": r[3], "rules_url": r[4], "added_by": r[5]}
-        for r in rows
-    ]
-    return jsonify(games)
+    resp = requests.get(
+        REST,
+        headers=HEADERS,
+        params={"select": "*", "order": "name.asc"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return jsonify(resp.json())
 
 
 @app.route("/api/games", methods=["POST"])
@@ -81,27 +95,22 @@ def add_game():
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
 
-    cover_url = None
-    rules_url = None
+    cover_url = upload_file(cover_file, "covers") if cover_file else None
+    rules_url = upload_file(rules_file, "rules") if rules_file else None
 
-    if cover_file:
-        cover_path = os.path.join(COVERS_DIR, cover_file.filename)
-        cover_file.save(cover_path)
-        cover_url = f"/static/covers/{cover_file.filename}"
-
-    if rules_file:
-        rules_path = os.path.join(RULES_DIR, rules_file.filename)
-        rules_file.save(rules_path)
-        rules_url = f"/static/rules/{rules_file.filename}"
-
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO games (name, description, cover_url, rules_url, added_by) VALUES (?, ?, ?, ?, ?)",
-        (name, description, cover_url, rules_url, added_by),
+    resp = requests.post(
+        REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        json={
+            "name": name,
+            "description": description,
+            "cover_url": cover_url,
+            "rules_url": rules_url,
+            "added_by": added_by,
+        },
+        timeout=30,
     )
-    conn.commit()
-    conn.close()
+    resp.raise_for_status()
     return jsonify({"status": "ok"})
 
 
@@ -113,42 +122,57 @@ def update_game(game_id):
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
 
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute("SELECT cover_url, rules_url FROM games WHERE id = ?", (game_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
+    current = requests.get(
+        REST,
+        headers=HEADERS,
+        params={"id": f"eq.{game_id}", "select": "cover_url,rules_url"},
+        timeout=30,
+    )
+    current.raise_for_status()
+    rows = current.json()
+    if not rows:
         return jsonify({"status": "not_found"}), 404
 
-    cover_url, rules_url = row
+    cover_url = rows[0].get("cover_url")
+    rules_url = rows[0].get("rules_url")
 
     if cover_file:
-        cover_path = os.path.join(COVERS_DIR, cover_file.filename)
-        cover_file.save(cover_path)
-        cover_url = f"/static/covers/{cover_file.filename}"
-
+        delete_file(cover_url)
+        cover_url = upload_file(cover_file, "covers")
     if rules_file:
-        rules_path = os.path.join(RULES_DIR, rules_file.filename)
-        rules_file.save(rules_path)
-        rules_url = f"/static/rules/{rules_file.filename}"
+        delete_file(rules_url)
+        rules_url = upload_file(rules_file, "rules")
 
-    cur.execute(
-        "UPDATE games SET name = ?, description = ?, cover_url = ?, rules_url = ? WHERE id = ?",
-        (name, description, cover_url, rules_url, game_id),
+    resp = requests.patch(
+        REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        params={"id": f"eq.{game_id}"},
+        json={
+            "name": name,
+            "description": description,
+            "cover_url": cover_url,
+            "rules_url": rules_url,
+        },
+        timeout=30,
     )
-    conn.commit()
-    conn.close()
+    resp.raise_for_status()
     return jsonify({"status": "updated"})
 
 
 @app.route("/api/games/<int:game_id>", methods=["DELETE"])
 def delete_game(game_id):
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute("DELETE FROM games WHERE id = ?", (game_id,))
-    conn.commit()
-    conn.close()
+    current = requests.get(
+        REST,
+        headers=HEADERS,
+        params={"id": f"eq.{game_id}", "select": "cover_url,rules_url"},
+        timeout=30,
+    )
+    if current.ok and current.json():
+        delete_file(current.json()[0].get("cover_url"))
+        delete_file(current.json()[0].get("rules_url"))
+
+    resp = requests.delete(REST, headers=HEADERS, params={"id": f"eq.{game_id}"}, timeout=30)
+    resp.raise_for_status()
     return jsonify({"status": "deleted"})
 
 
@@ -172,6 +196,7 @@ async def cmd_start(message: Message):
 
 def run_bot_polling():
     asyncio.run(dp.start_polling(bot, handle_signals=False))
+
 
 # Запускаємо бота у фоновому потоці, а Flask - в основному
 Thread(target=run_bot_polling, daemon=True).start()
