@@ -171,8 +171,7 @@ async def cmd_start(message: Message):
 
 
 def run_bot_polling():
-    asyncio.run(dp.start_polling(bot))
-
+    asyncio.run(dp.start_polling(bot, handle_signals=False))
 
 # Запускаємо бота у фоновому потоці, а Flask - в основному
 Thread(target=run_bot_polling, daemon=True).start()
