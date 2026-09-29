@@ -4,18 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Бібліотека настільних ігор</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --bg: #f3efe6;
-    --card-bg: #ffffff;
-    --text: #1f2430;
-    --muted: #8a8478;
-    --accent: #b5762c;
-    --accent-dark: #93591c;
-    --border: #e4ddcf;
-    --danger-bg: #fbe4e0;
-    --danger-text: #a4301f;
+    --bg: #17130f;
+    --bg-texture: radial-gradient(circle at 20% 10%, #241d15 0%, #17130f 55%), radial-gradient(circle at 85% 80%, #201911 0%, #17130f 60%);
+    --card-bg: #241d15;
+    --text: #ecdfc0;
+    --muted: #a4937a;
+    --accent: #c9a227;
+    --accent-dark: #8a6d1a;
+    --border: #4a3c22;
+    --danger-bg: #3a1c17;
+    --danger-text: #e0a08f;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -23,19 +27,23 @@
   }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    font-family: 'EB Garamond', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-texture), var(--bg);
     color: var(--text);
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
   header {
-    padding: 16px;
+    padding: 18px 16px;
     text-align: center;
-    font-size: 20px;
-    font-weight: 700;
+    font-family: 'Cinzel', serif;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--accent);
     border-bottom: 1px solid var(--border);
-    background: var(--bg);
+    background: transparent;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
   }
   .view { display: none; }
   .view.active { display: block; }
@@ -49,22 +57,23 @@
   }
   .card {
     background: var(--card-bg);
+    border: 1px solid var(--border);
     border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
     cursor: pointer;
   }
   .card img {
     width: 100%;
     aspect-ratio: 1 / 1;
     object-fit: contain;
-    background: #ffffff;
+    background: #2c2419;
     display: block;
   }
   .card .placeholder {
     width: 100%;
     aspect-ratio: 1 / 1;
-    background: linear-gradient(135deg, #f0e2c8, #f7ede0);
+    background: linear-gradient(135deg, #3a2f1c, #241d15);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -236,10 +245,21 @@
   .roll-result {
     font-size: 56px;
     font-weight: 800;
-    color: var(--accent-dark);
+    color: var(--accent);
     transition: transform 0.15s ease;
+    display: inline-block;
   }
   .roll-result.bounce { transform: scale(1.2); }
+  @keyframes diceShake {
+    0%   { transform: rotate(0deg) scale(1); }
+    20%  { transform: rotate(-18deg) scale(1.08); }
+    40%  { transform: rotate(14deg) scale(0.92); }
+    60%  { transform: rotate(-10deg) scale(1.06); }
+    80%  { transform: rotate(8deg) scale(0.96); }
+    100% { transform: rotate(0deg) scale(1); }
+  }
+  .roll-result.rolling { animation: diceShake 0.22s ease-in-out infinite; color: var(--muted); }
+  .roll-area.rolling { box-shadow: 0 0 0 3px var(--accent-dark) inset; }
   .roll-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .roll-history {
     margin-top: 14px;
@@ -388,7 +408,7 @@
       <button class="die-btn" data-sides="20">d20</button>
       <button class="die-btn" data-sides="100">d100</button>
     </div>
-    <div class="roll-area" onclick="rollDice()">
+    <div class="roll-area" id="roll-area" onclick="rollDice()">
       <div class="roll-result" id="diceResult">—</div>
       <div class="roll-sub" id="diceSub">Обраний кубик: d4. Тисни, щоб кинути.</div>
     </div>
@@ -664,21 +684,46 @@ document.querySelectorAll(".die-btn").forEach(btn => {
   });
 });
 
+let isRolling = false;
+
 function rollDice() {
-  const result = Math.floor(Math.random() * selectedSides) + 1;
+  if (isRolling) return;
+  isRolling = true;
+
   const resultEl = document.getElementById("diceResult");
-  resultEl.textContent = result;
+  const areaEl = document.getElementById("roll-area") || document.querySelector(".roll-area");
+  const subEl = document.getElementById("diceSub");
+
   resultEl.classList.remove("bounce");
-  void resultEl.offsetWidth;
-  resultEl.classList.add("bounce");
+  resultEl.classList.add("rolling");
+  areaEl.classList.add("rolling");
+  subEl.textContent = `Кидаємо d${selectedSides}...`;
 
-  document.getElementById("diceSub").textContent = `d${selectedSides} · результат ${result}`;
+  const shakeDuration = 650;
+  const tickEvery = 60;
+  let elapsed = 0;
 
-  diceHistory.unshift(`d${selectedSides}: ${result}`);
-  if (diceHistory.length > 8) diceHistory.pop();
-  document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
+  const ticker = setInterval(() => {
+    resultEl.textContent = Math.floor(Math.random() * selectedSides) + 1;
+    elapsed += tickEvery;
+    if (elapsed >= shakeDuration) {
+      clearInterval(ticker);
+      const finalResult = Math.floor(Math.random() * selectedSides) + 1;
+      resultEl.classList.remove("rolling");
+      areaEl.classList.remove("rolling");
+      resultEl.textContent = finalResult;
+      void resultEl.offsetWidth;
+      resultEl.classList.add("bounce");
 
-  if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+      subEl.textContent = `d${selectedSides} · результат ${finalResult}`;
+      diceHistory.unshift(`d${selectedSides}: ${finalResult}`);
+      if (diceHistory.length > 8) diceHistory.pop();
+      document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
+
+      if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
+      isRolling = false;
+    }
+  }, tickEvery);
 }
 
 /* ==================== ВИБІР ГРАВЦЯ ДОТИКОМ ==================== */
