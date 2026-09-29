@@ -286,12 +286,13 @@
     position: relative;
     height: calc(100vh - 260px);
     min-height: 320px;
-    background: var(--card-bg);
+    background: radial-gradient(circle at 50% 50%, #2a2115 0%, #17130f 75%);
+    border: 1px solid var(--border);
     border-radius: 18px;
     margin: 0 16px;
     overflow: hidden;
     touch-action: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   }
   .picker-hint {
     position: absolute;
@@ -305,24 +306,68 @@
   }
   .touch-dot {
     position: absolute;
-    width: 64px; height: 64px;
-    margin-left: -32px; margin-top: -32px;
+    width: 72px; height: 72px;
+    margin-left: -36px; margin-top: -36px;
     border-radius: 50%;
-    background: rgba(181, 118, 44, 0.25);
-    border: 3px solid var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    color: var(--accent-dark);
+    color: #fff;
     pointer-events: none;
+    transition: box-shadow 0.15s ease;
+  }
+  .touch-dot .dot-fill {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--dot-color, var(--accent));
+    opacity: 0.28;
+    border: 3px solid var(--dot-color, var(--accent));
+    box-sizing: border-box;
+  }
+  .touch-dot .dot-core {
+    position: absolute;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--dot-color, var(--accent));
+  }
+  @keyframes dotPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+  }
+  .touch-dot.pulsing .dot-fill { animation: dotPulse 1.1s ease-in-out infinite; }
+
+  .touch-dot.spin-highlight .dot-fill {
+    opacity: 0.9;
+    transform: scale(1.15);
+    transition: transform 0.08s ease, opacity 0.08s ease;
+  }
+  .touch-dot.spin-highlight .dot-core {
+    transform: scale(1.4);
+    transition: transform 0.08s ease;
+  }
+
+  @keyframes winnerBurst {
+    0%   { box-shadow: 0 0 0 0 var(--dot-color, var(--accent)); }
+    70%  { box-shadow: 0 0 0 26px transparent; }
+    100% { box-shadow: 0 0 0 26px transparent; }
   }
   .touch-dot.winner {
-    background: var(--accent);
-    color: #fff;
-    box-shadow: 0 0 0 8px rgba(181, 118, 44, 0.25);
+    animation: winnerBurst 0.9s ease-out;
   }
-  .touch-dot.fading { opacity: 0.15; }
+  .touch-dot.winner .dot-fill {
+    opacity: 0.95;
+    transform: scale(1.25);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .touch-dot.winner .dot-core {
+    background: #fff;
+    transform: scale(1.3);
+  }
+  .touch-dot.fading {
+    opacity: 0.12;
+    transition: opacity 0.4s ease;
+  }
   .picker-status {
     text-align: center;
     padding: 12px 16px 0;
@@ -393,6 +438,119 @@
     color: var(--text);
     border: 1px solid var(--border);
   }
+
+  /* ---------- Підвкладки лічильників ---------- */
+  .counters-subtabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .counters-subtab-btn {
+    flex: 1;
+    padding: 9px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .counters-subtab-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .counters-mode { display: none; }
+  .counters-mode.active { display: block; }
+
+  /* ---------- Flip Seven ---------- */
+  .flip7-player {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .flip7-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .flip7-header input.counter-name { font-family: 'Cinzel', serif; font-size: 15px; }
+  .flip7-total {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .flip7-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .flip7-row .row-label {
+    font-size: 11px;
+    color: var(--muted);
+    width: 100%;
+    margin-bottom: 2px;
+  }
+  .flip7-sum-input {
+    width: 64px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 4px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .chip {
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .chip.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .flip7-preview {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .flip7-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .flip7-actions button {
+    flex: 1;
+    padding: 9px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .flip7-actions .bust-btn { background: var(--danger-bg); color: var(--danger-text); }
+  .flip7-actions .add-btn { background: var(--accent); color: #fff; }
+  .flip7-remove {
+    border: none;
+    background: none;
+    color: var(--muted);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+  }
+  .flip7-remove svg { width: 14px; height: 14px; }
 
   /* ---------- Чарник персонажа ---------- */
   .char-list { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
@@ -520,10 +678,25 @@
 
   <!-- Лічильники -->
   <div class="tool-panel" id="panel-counters">
-    <div class="counters-list" id="countersList"></div>
-    <div class="counters-actions">
-      <button class="btn secondary" onclick="addCounterPlayer()">+ Гравець</button>
-      <button class="btn secondary" onclick="resetCounters()">Скинути очки</button>
+    <div class="counters-subtabs">
+      <button class="counters-subtab-btn active" data-mode="simple">Прості лічильники</button>
+      <button class="counters-subtab-btn" data-mode="flip7">Flip Seven</button>
+    </div>
+
+    <div class="counters-mode active" id="mode-simple">
+      <div class="counters-list" id="countersList"></div>
+      <div class="counters-actions">
+        <button class="btn secondary" onclick="addCounterPlayer()">+ Гравець</button>
+        <button class="btn secondary" onclick="resetCounters()">Скинути очки</button>
+      </div>
+    </div>
+
+    <div class="counters-mode" id="mode-flip7">
+      <div class="flip7-list" id="flip7List"></div>
+      <div class="counters-actions">
+        <button class="btn secondary" onclick="addFlip7Player()">+ Гравець</button>
+        <button class="btn secondary" onclick="resetFlip7Game()">Скинути гру</button>
+      </div>
     </div>
   </div>
 </div>
@@ -913,14 +1086,18 @@ function rollDice() {
   }, tickEvery);
 }
 
-/* ==================== ВИБІР ГРАВЦЯ ДОТИКОМ ==================== */
+/* ==================== ВИБІР ГРАВЦЯ ДОТИКОМ (у стилі Chwazi) ==================== */
 const pickerArea = document.getElementById("pickerArea");
 const pickerHint = document.getElementById("pickerHint");
 const pickerStatus = document.getElementById("pickerStatus");
 
+const pickerColors = ["#e0533d", "#3f8fd1", "#5cb85c", "#c9a227", "#a259c4", "#e08fc4", "#4fbfa8", "#e0904d"];
+
 let activeTouches = {};
 let pickerTimer = null;
 let pickerLocked = false;
+let pickerSpinning = false;
+let colorCursor = 0;
 
 function renderTouches() {
   pickerArea.querySelectorAll(".touch-dot").forEach(el => el.remove());
@@ -928,18 +1105,20 @@ function renderTouches() {
   ids.forEach(id => {
     const t = activeTouches[id];
     const dot = document.createElement("div");
-    dot.className = "touch-dot";
+    dot.className = "touch-dot" + (pickerLocked || pickerSpinning ? "" : " pulsing");
     dot.style.left = t.x + "px";
     dot.style.top = t.y + "px";
+    dot.style.setProperty("--dot-color", t.color);
     dot.dataset.id = id;
+    dot.innerHTML = '<div class="dot-fill"></div><div class="dot-core"></div>';
     pickerArea.appendChild(dot);
   });
   pickerHint.style.display = ids.length === 0 ? "block" : "none";
 }
 
 function updateStatus() {
+  if (pickerLocked || pickerSpinning) return;
   const count = Object.keys(activeTouches).length;
-  if (pickerLocked) return;
   if (count === 0) {
     pickerStatus.textContent = "";
   } else if (count === 1) {
@@ -952,23 +1131,70 @@ function updateStatus() {
 function scheduleDecision() {
   clearTimeout(pickerTimer);
   const count = Object.keys(activeTouches).length;
-  if (count < 2 || pickerLocked) return;
+  if (count < 2 || pickerLocked || pickerSpinning) return;
   pickerTimer = setTimeout(() => {
     if (Object.keys(activeTouches).length < 2) return;
-    pickWinner();
-  }, 1800);
+    spinAndPickWinner();
+  }, 1400);
 }
 
-function pickWinner() {
+function spinAndPickWinner() {
   const ids = Object.keys(activeTouches);
   if (ids.length < 2) return;
-  pickerLocked = true;
+  pickerSpinning = true;
+  clearTimeout(pickerTimer);
+
   const winnerId = ids[Math.floor(Math.random() * ids.length)];
+  pickerStatus.textContent = "Обираємо...";
+
+  // Будуємо послідовність кроків "рулетки": кілька повних кіл по всіх пальцях,
+  // що сповільнюється і завершується рівно на переможцеві.
+  const rounds = 3;
+  const sequence = [];
+  for (let r = 0; r < rounds; r++) {
+    ids.forEach(id => sequence.push(id));
+  }
+  // Дописуємо фінальний відрізок до переможця, щоб останній крок точно був на ньому
+  const winnerIndex = ids.indexOf(winnerId);
+  for (let i = 0; i <= winnerIndex; i++) {
+    sequence.push(ids[i]);
+  }
+
+  const totalSteps = sequence.length;
+  const minDelay = 60;
+  const maxDelay = 260;
+
+  let step = 0;
+  function highlightStep() {
+    pickerArea.querySelectorAll(".touch-dot").forEach(el => el.classList.remove("spin-highlight"));
+    const id = sequence[step];
+    const dot = pickerArea.querySelector(`.touch-dot[data-id="${id}"]`);
+    if (dot) dot.classList.add("spin-highlight");
+    if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+
+    step++;
+    if (step < totalSteps) {
+      // Прогрес від 0 до 1, з уповільненням ближче до кінця (ease-out)
+      const progress = step / totalSteps;
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const delay = minDelay + (maxDelay - minDelay) * eased;
+      pickerTimer = setTimeout(highlightStep, delay);
+    } else {
+      finishPick(winnerId);
+    }
+  }
+  highlightStep();
+}
+
+function finishPick(winnerId) {
+  pickerLocked = true;
+  pickerSpinning = false;
 
   pickerArea.querySelectorAll(".touch-dot").forEach(el => {
+    el.classList.remove("spin-highlight", "pulsing");
     if (el.dataset.id === winnerId) {
       el.classList.add("winner");
-      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 5H5a3 3 0 0 0 3 4M16 5h3a3 3 0 0 1-3 4"/><path d="M12 12v3M9 19h6M10 15h4v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-2Z"/></svg>';
+      el.innerHTML = '<div class="dot-fill"></div><div class="dot-core"></div><svg style="position:absolute;" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 5H5a3 3 0 0 0 3 4M16 5h3a3 3 0 0 1-3 4"/><path d="M12 12v3M9 19h6M10 15h4v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-2Z"/></svg>';
     } else {
       el.classList.add("fading");
     }
@@ -981,6 +1207,8 @@ function pickWinner() {
 function resetPicker() {
   activeTouches = {};
   pickerLocked = false;
+  pickerSpinning = false;
+  colorCursor = 0;
   clearTimeout(pickerTimer);
   renderTouches();
   pickerStatus.textContent = "";
@@ -992,10 +1220,12 @@ function getRelativePos(touch) {
 }
 
 pickerArea.addEventListener("touchstart", (e) => {
-  if (pickerLocked) return;
+  if (pickerLocked || pickerSpinning) return;
   e.preventDefault();
   for (const t of e.changedTouches) {
     const pos = getRelativePos(t);
+    pos.color = pickerColors[colorCursor % pickerColors.length];
+    colorCursor++;
     activeTouches[t.identifier] = pos;
   }
   renderTouches();
@@ -1004,18 +1234,20 @@ pickerArea.addEventListener("touchstart", (e) => {
 }, { passive: false });
 
 pickerArea.addEventListener("touchmove", (e) => {
-  if (pickerLocked) return;
+  if (pickerLocked || pickerSpinning) return;
   e.preventDefault();
   for (const t of e.changedTouches) {
     if (activeTouches[t.identifier]) {
-      activeTouches[t.identifier] = getRelativePos(t);
+      const pos = getRelativePos(t);
+      pos.color = activeTouches[t.identifier].color;
+      activeTouches[t.identifier] = pos;
     }
   }
   renderTouches();
 }, { passive: false });
 
 function handleTouchEnd(e) {
-  if (pickerLocked) return;
+  if (pickerLocked || pickerSpinning) return;
   for (const t of e.changedTouches) {
     delete activeTouches[t.identifier];
   }
@@ -1028,14 +1260,17 @@ pickerArea.addEventListener("touchcancel", handleTouchEnd);
 
 /* Підтримка миші для тесту на комп'ютері (одна точка) */
 pickerArea.addEventListener("mousedown", (e) => {
-  if (pickerLocked) return;
+  if (pickerLocked || pickerSpinning) return;
   const rect = pickerArea.getBoundingClientRect();
-  activeTouches["mouse"] = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  pos.color = pickerColors[colorCursor % pickerColors.length];
+  colorCursor++;
+  activeTouches["mouse"] = pos;
   renderTouches();
   updateStatus();
 });
 pickerArea.addEventListener("mouseup", () => {
-  if (pickerLocked) return;
+  if (pickerLocked || pickerSpinning) return;
   delete activeTouches["mouse"];
   renderTouches();
   updateStatus();
@@ -1103,7 +1338,174 @@ function resetCounters() {
 
 renderCounters();
 
-/* ==================== ЧАРНИК ПЕРСОНАЖА ==================== */
+/* ==================== ПЕРЕМИКАННЯ ПІДВКЛАДОК ЛІЧИЛЬНИКІВ ==================== */
+document.querySelectorAll(".counters-subtab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".counters-subtab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".counters-mode").forEach(m => m.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("mode-" + btn.dataset.mode).classList.add("active");
+  });
+});
+
+/* ==================== FLIP SEVEN: КАЛЬКУЛЯТОР БАЛІВ ==================== */
+let flip7Players = [
+  { id: 1, name: "Гравець 1", total: 0 },
+  { id: 2, name: "Гравець 2", total: 0 },
+];
+let nextFlip7Id = 3;
+
+const flip7Modifiers = [2, 4, 6, 8, 10];
+
+// Тимчасовий стан поточного раунду для кожного гравця (не зберігається в загальний рахунок, поки не натиснути "Додати раунд")
+let flip7Round = {};
+
+function getFlip7Round(id) {
+  if (!flip7Round[id]) {
+    flip7Round[id] = { sum: "", x2: false, mods: {}, flip7: false };
+  }
+  return flip7Round[id];
+}
+
+function computeFlip7Score(round) {
+  const sum = parseInt(round.sum, 10) || 0;
+  let score = round.x2 ? sum * 2 : sum;
+  flip7Modifiers.forEach(v => {
+    if (round.mods[v]) score += v;
+  });
+  if (round.flip7) score += 15;
+  return score;
+}
+
+function renderFlip7() {
+  const list = document.getElementById("flip7List");
+  list.innerHTML = "";
+
+  flip7Players.forEach(p => {
+    const round = getFlip7Round(p.id);
+    const previewScore = computeFlip7Score(round);
+
+    const card = document.createElement("div");
+    card.className = "flip7-player";
+    card.innerHTML = `
+      <div class="flip7-header">
+        <input class="counter-name" value="${p.name}" data-id="${p.id}" style="flex:1;">
+        <div class="flip7-total">${p.total}</div>
+        <button class="flip7-remove" data-id="${p.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+      </div>
+
+      <div class="flip7-row">
+        <span class="row-label">Сума номерних карт</span>
+        <input type="text" inputmode="numeric" class="flip7-sum-input" data-id="${p.id}" value="${round.sum}" placeholder="0">
+        <button class="chip x2-chip ${round.x2 ? 'active' : ''}" data-id="${p.id}">x2</button>
+      </div>
+
+      <div class="flip7-row">
+        <span class="row-label">Модифікатори</span>
+        ${flip7Modifiers.map(v => `<button class="chip mod-chip ${round.mods[v] ? 'active' : ''}" data-id="${p.id}" data-value="${v}">+${v}</button>`).join("")}
+        <button class="chip flip7bonus-chip ${round.flip7 ? 'active' : ''}" data-id="${p.id}">Flip 7 (+15)</button>
+      </div>
+
+      <div class="flip7-preview">Раунд буде додано: <strong>${previewScore}</strong> ${round.flip7 ? '(зібрано 7 унікальних карт)' : ''}</div>
+
+      <div class="flip7-actions">
+        <button class="bust-btn" data-id="${p.id}">Баст (0)</button>
+        <button class="add-btn" data-id="${p.id}">Додати раунд</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  // Ім'я гравця
+  list.querySelectorAll(".flip7-header .counter-name").forEach(input => {
+    input.addEventListener("input", () => {
+      const p = flip7Players.find(pl => pl.id == input.dataset.id);
+      if (p) p.name = input.value;
+    });
+  });
+
+  // Видалення гравця
+  list.querySelectorAll(".flip7-remove").forEach(btn => {
+    btn.addEventListener("click", () => {
+      flip7Players = flip7Players.filter(p => p.id != btn.dataset.id);
+      delete flip7Round[btn.dataset.id];
+      renderFlip7();
+    });
+  });
+
+  // Сума карт
+  list.querySelectorAll(".flip7-sum-input").forEach(input => {
+    input.addEventListener("input", () => {
+      const round = getFlip7Round(input.dataset.id);
+      round.sum = input.value.replace(/[^0-9]/g, "");
+      renderFlip7();
+    });
+  });
+
+  // x2
+  list.querySelectorAll(".x2-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const round = getFlip7Round(btn.dataset.id);
+      round.x2 = !round.x2;
+      renderFlip7();
+    });
+  });
+
+  // Модифікатори
+  list.querySelectorAll(".mod-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const round = getFlip7Round(btn.dataset.id);
+      const v = btn.dataset.value;
+      round.mods[v] = !round.mods[v];
+      renderFlip7();
+    });
+  });
+
+  // Flip 7 бонус
+  list.querySelectorAll(".flip7bonus-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const round = getFlip7Round(btn.dataset.id);
+      round.flip7 = !round.flip7;
+      renderFlip7();
+    });
+  });
+
+  // Баст
+  list.querySelectorAll(".bust-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      flip7Round[btn.dataset.id] = { sum: "", x2: false, mods: {}, flip7: false };
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
+      renderFlip7();
+    });
+  });
+
+  // Додати раунд
+  list.querySelectorAll(".add-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = flip7Players.find(pl => pl.id == btn.dataset.id);
+      const round = getFlip7Round(btn.dataset.id);
+      const score = computeFlip7Score(round);
+      if (p) p.total += score;
+      flip7Round[btn.dataset.id] = { sum: "", x2: false, mods: {}, flip7: false };
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+      renderFlip7();
+    });
+  });
+}
+
+function addFlip7Player() {
+  flip7Players.push({ id: nextFlip7Id, name: `Гравець ${nextFlip7Id}`, total: 0 });
+  nextFlip7Id++;
+  renderFlip7();
+}
+
+function resetFlip7Game() {
+  flip7Players.forEach(p => p.total = 0);
+  flip7Round = {};
+  renderFlip7();
+}
+
+renderFlip7();
 function loadCharacters() {
   try {
     return JSON.parse(localStorage.getItem("dndCharacters") || "[]");
