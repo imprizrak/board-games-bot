@@ -10,16 +10,19 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --bg: #17130f;
-    --bg-texture: radial-gradient(circle at 20% 10%, #241d15 0%, #17130f 55%), radial-gradient(circle at 85% 80%, #201911 0%, #17130f 60%);
-    --card-bg: #241d15;
-    --text: #ecdfc0;
-    --muted: #a4937a;
-    --accent: #c9a227;
-    --accent-dark: #8a6d1a;
-    --border: #4a3c22;
-    --danger-bg: #3a1c17;
-    --danger-text: #e0a08f;
+    --bg: #140a22;
+    --bg-texture: radial-gradient(circle at 50% -10%, rgba(157, 97, 255, 0.35) 0%, transparent 55%), radial-gradient(circle at 90% 15%, rgba(212, 175, 55, 0.14) 0%, transparent 45%), radial-gradient(circle at 8% 90%, rgba(122, 58, 201, 0.28) 0%, transparent 50%), linear-gradient(180deg, #170c29 0%, #0d0716 100%);
+    --card-bg: #241333;
+    --text: #f0e6d2;
+    --muted: #a595bd;
+    --accent: #d4af37;
+    --accent-dark: #a9852a;
+    --border: #4d3468;
+    --danger-bg: #3a1c2c;
+    --danger-text: #e8a3c0;
+    --parchment: #f2e6c8;
+    --parchment-text: #2c2010;
+    --parchment-border: #b98f2f;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -34,16 +37,25 @@
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
   header {
-    padding: 18px 16px;
+    position: relative;
+    padding: 18px 16px 22px;
     text-align: center;
     font-family: 'Cinzel', serif;
     font-size: 19px;
     font-weight: 800;
     letter-spacing: 0.5px;
     color: var(--accent);
-    border-bottom: 1px solid var(--border);
     background: transparent;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    text-shadow: 0 0 14px rgba(212, 175, 55, 0.35), 0 1px 3px rgba(0,0,0,0.6);
+  }
+  header::after {
+    content: "";
+    display: block;
+    width: 140px;
+    height: 2px;
+    margin: 10px auto 0;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
   }
   .view { display: none; }
   .view.active { display: block; }
@@ -56,24 +68,25 @@
     padding: 12px;
   }
   .card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    background: var(--parchment);
+    border: 2px solid var(--parchment-border);
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.25), 0 4px 14px rgba(0,0,0,0.45);
     cursor: pointer;
   }
   .card img {
     width: 100%;
     aspect-ratio: 1 / 1;
     object-fit: contain;
-    background: #2c2419;
+    background: var(--parchment);
     display: block;
   }
   .card .placeholder {
     width: 100%;
     aspect-ratio: 1 / 1;
-    background: linear-gradient(135deg, #3a2f1c, #241d15);
+    background: linear-gradient(135deg, #e8d8ae, #f2e6c8);
+    color: var(--parchment-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -81,8 +94,9 @@
   .card-title {
     padding: 8px 10px;
     font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
+    font-weight: 700;
+    color: var(--parchment-text);
+    border-top: 1px solid rgba(185, 143, 47, 0.35);
   }
   .fab {
     position: fixed;
@@ -115,12 +129,14 @@
     width: 100%;
     max-width: 480px;
     border-radius: 18px 18px 0 0;
+    border-top: 3px double var(--accent);
+    box-shadow: 0 -4px 24px rgba(157, 97, 255, 0.15);
     padding: 20px;
     max-height: 85vh;
     overflow-y: auto;
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
-  .sheet h2 { margin-top: 0; }
+  .sheet h2 { margin-top: 0; font-family: 'Cinzel', serif; color: var(--accent); font-size: 18px; }
   .sheet label {
     display: block;
     margin: 12px 0 4px;
@@ -172,7 +188,7 @@
   .close-btn svg { width: 16px; height: 16px; }
   .icon-inline { display: inline-flex; align-items: center; gap: 6px; }
   .icon-inline svg { width: 16px; height: 16px; flex-shrink: 0; }
-  .placeholder svg, .card-placeholder-icon { width: 34px; height: 34px; color: var(--muted); }
+  .placeholder svg, .card-placeholder-icon { width: 34px; height: 34px; color: var(--parchment-border); }
   .touch-dot svg { width: 26px; height: 26px; }
   .empty {
     text-align: center;
@@ -286,7 +302,7 @@
     position: relative;
     height: calc(100vh - 260px);
     min-height: 320px;
-    background: radial-gradient(circle at 50% 50%, #2a2115 0%, #17130f 75%);
+    background: radial-gradient(circle at 50% 50%, #2f1d47 0%, #140a22 75%);
     border: 1px solid var(--border);
     border-radius: 18px;
     margin: 0 16px;
