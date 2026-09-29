@@ -2,24 +2,45 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Бібліотека настільних ігор</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  * { box-sizing: border-box; }
+  :root {
+    --bg: #f3efe6;
+    --card-bg: #ffffff;
+    --text: #1f2430;
+    --muted: #8a8478;
+    --accent: #b5762c;
+    --accent-dark: #93591c;
+    --border: #e4ddcf;
+    --danger-bg: #fbe4e0;
+    --danger-text: #a4301f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+  }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--tg-theme-bg-color, #f4f4f7);
-    color: var(--tg-theme-text-color, #111);
+    background: var(--bg);
+    color: var(--text);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
   header {
     padding: 16px;
     text-align: center;
     font-size: 20px;
     font-weight: 700;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
   }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---------- Бібліотека ---------- */
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -27,7 +48,7 @@
     padding: 12px;
   }
   .card {
-    background: #fff;
+    background: var(--card-bg);
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -43,7 +64,7 @@
   .card .placeholder {
     width: 100%;
     aspect-ratio: 1 / 1;
-    background: linear-gradient(135deg, #cfd9ff, #e6e6ff);
+    background: linear-gradient(135deg, #f0e2c8, #f7ede0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -53,20 +74,21 @@
     padding: 8px 10px;
     font-size: 14px;
     font-weight: 600;
-    color: #111;
+    color: var(--text);
   }
   .fab {
     position: fixed;
-    bottom: 20px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     right: 20px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: var(--tg-theme-button-color, #3b82f6);
-    color: var(--tg-theme-button-text-color, #fff);
+    background: var(--accent);
+    color: #fff;
     font-size: 28px;
     border: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    z-index: 5;
   }
   .modal {
     position: fixed;
@@ -75,43 +97,44 @@
     display: none;
     align-items: flex-end;
     justify-content: center;
-    z-index: 10;
+    z-index: 20;
   }
   .modal.open { display: flex; }
   .sheet {
-    background: var(--tg-theme-bg-color, #fff);
+    background: var(--card-bg);
     width: 100%;
     max-width: 480px;
     border-radius: 18px 18px 0 0;
     padding: 20px;
     max-height: 85vh;
     overflow-y: auto;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
   .sheet h2 { margin-top: 0; }
   .sheet label {
     display: block;
     margin: 12px 0 4px;
     font-size: 13px;
-    color: #888;
+    color: var(--muted);
   }
   .sheet input[type=text], .sheet textarea {
     width: 100%;
     padding: 10px;
     border-radius: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     font-size: 15px;
+    background: #fff;
+    color: var(--text);
   }
-  .sheet input[type=file] {
-    width: 100%;
-  }
+  .sheet input[type=file] { width: 100%; }
   .btn {
     margin-top: 18px;
     width: 100%;
     padding: 12px;
     border: none;
     border-radius: 12px;
-    background: var(--tg-theme-button-color, #3b82f6);
-    color: var(--tg-theme-button-text-color, #fff);
+    background: var(--accent);
+    color: #fff;
     font-size: 16px;
     font-weight: 600;
   }
@@ -120,30 +143,289 @@
     background: none;
     border: none;
     font-size: 20px;
-    color: #999;
+    color: var(--muted);
   }
   .rules-link {
     display: inline-block;
     margin-top: 10px;
-    color: #3b82f6;
+    color: var(--accent-dark);
     text-decoration: none;
     font-weight: 600;
   }
   .empty {
     text-align: center;
-    color: #999;
+    color: var(--muted);
     padding: 40px 20px;
     grid-column: 1 / -1;
+  }
+
+  /* ---------- Нижнє меню ---------- */
+  .bottom-nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    display: flex;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 15;
+  }
+  .bottom-nav button {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 10px 4px 8px;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .bottom-nav button .icon { font-size: 20px; }
+  .bottom-nav button.active { color: var(--accent-dark); font-weight: 700; }
+
+  /* ---------- Ігрові додатки ---------- */
+  .tools-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    overflow-x: auto;
+  }
+  .tools-tabs button {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .tools-tabs button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .tool-panel { display: none; padding: 0 16px 16px; }
+  .tool-panel.active { display: block; }
+
+  /* Кубики */
+  .dice-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .die-btn {
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .die-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .roll-area {
+    background: var(--card-bg);
+    border-radius: 18px;
+    padding: 28px 16px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .roll-result {
+    font-size: 56px;
+    font-weight: 800;
+    color: var(--accent-dark);
+    transition: transform 0.15s ease;
+  }
+  .roll-result.bounce { transform: scale(1.2); }
+  .roll-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .roll-history {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--muted);
+    word-break: break-word;
+  }
+
+  /* Вибір гравця */
+  .picker-area {
+    position: relative;
+    height: calc(100vh - 260px);
+    min-height: 320px;
+    background: var(--card-bg);
+    border-radius: 18px;
+    margin: 0 16px;
+    overflow: hidden;
+    touch-action: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .picker-hint {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 0 30px;
+    pointer-events: none;
+  }
+  .touch-dot {
+    position: absolute;
+    width: 64px; height: 64px;
+    margin-left: -32px; margin-top: -32px;
+    border-radius: 50%;
+    background: rgba(181, 118, 44, 0.25);
+    border: 3px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--accent-dark);
+    pointer-events: none;
+  }
+  .touch-dot.winner {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 8px rgba(181, 118, 44, 0.25);
+  }
+  .touch-dot.fading { opacity: 0.15; }
+  .picker-status {
+    text-align: center;
+    padding: 12px 16px 0;
+    color: var(--muted);
+    font-size: 14px;
+    min-height: 20px;
+  }
+  .picker-reset {
+    margin: 14px 16px 0;
+  }
+
+  /* Лічильники */
+  .counters-list { display: flex; flex-direction: column; gap: 10px; }
+  .counter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .counter-name {
+    flex: 1;
+    border: none;
+    background: none;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 0;
+  }
+  .counter-score {
+    font-size: 20px;
+    font-weight: 800;
+    min-width: 34px;
+    text-align: center;
+    color: var(--accent-dark);
+  }
+  .round-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .round-btn.plus { background: var(--accent); color: #fff; }
+  .counter-remove {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 16px;
+    padding: 4px;
+  }
+  .counters-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .counters-actions .btn { margin-top: 0; }
+  .btn.secondary {
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
   }
 </style>
 </head>
 <body>
 
-<header>Бібліотека настільних ігор</header>
+<!-- ==================== ВКЛАДКА: БІБЛІОТЕКА ==================== -->
+<div class="view active" id="view-library">
+  <header>Бібліотека настільних ігор</header>
+  <div class="grid" id="gamesGrid"></div>
+  <button class="fab" onclick="openAddModal()">+</button>
+</div>
 
-<div class="grid" id="gamesGrid"></div>
+<!-- ==================== ВКЛАДКА: ІГРОВІ ДОДАТКИ ==================== -->
+<div class="view" id="view-tools">
+  <header>Ігрові додатки</header>
 
-<button class="fab" onclick="openAddModal()">+</button>
+  <div class="tools-tabs">
+    <button class="tool-tab-btn active" data-tool="dice">🎲 Кубики</button>
+    <button class="tool-tab-btn" data-tool="picker">👆 Вибір гравця</button>
+    <button class="tool-tab-btn" data-tool="counters">🧮 Лічильники</button>
+  </div>
+
+  <!-- Кубики -->
+  <div class="tool-panel active" id="panel-dice">
+    <div class="dice-buttons">
+      <button class="die-btn active" data-sides="4">d4</button>
+      <button class="die-btn" data-sides="6">d6</button>
+      <button class="die-btn" data-sides="8">d8</button>
+      <button class="die-btn" data-sides="10">d10</button>
+      <button class="die-btn" data-sides="12">d12</button>
+      <button class="die-btn" data-sides="20">d20</button>
+      <button class="die-btn" data-sides="100">d100</button>
+    </div>
+    <div class="roll-area" onclick="rollDice()">
+      <div class="roll-result" id="diceResult">—</div>
+      <div class="roll-sub" id="diceSub">Обраний кубик: d4. Тисни, щоб кинути.</div>
+    </div>
+    <div class="roll-history" id="diceHistory"></div>
+  </div>
+
+  <!-- Вибір гравця -->
+  <div class="tool-panel" id="panel-picker">
+    <p class="roll-sub" style="padding:0 16px; margin-top:0;">Кожен гравець тримає палець на екрані одночасно, поки не з'явиться переможець.</p>
+    <div class="picker-area" id="pickerArea">
+      <div class="picker-hint" id="pickerHint">Покладіть пальці сюди<br>(мінімум 2)</div>
+    </div>
+    <div class="picker-status" id="pickerStatus"></div>
+    <button class="btn secondary picker-reset" onclick="resetPicker()">Скинути</button>
+  </div>
+
+  <!-- Лічильники -->
+  <div class="tool-panel" id="panel-counters">
+    <div class="counters-list" id="countersList"></div>
+    <div class="counters-actions">
+      <button class="btn secondary" onclick="addCounterPlayer()">+ Гравець</button>
+      <button class="btn secondary" onclick="resetCounters()">Скинути очки</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== НИЖНЄ МЕНЮ ==================== -->
+<div class="bottom-nav">
+  <button class="nav-btn active" data-view="view-library">
+    <span class="icon">📚</span>
+    <span>Бібліотека</span>
+  </button>
+  <button class="nav-btn" data-view="view-tools">
+    <span class="icon">🎲</span>
+    <span>Ігрові додатки</span>
+  </button>
+</div>
 
 <!-- Модалка перегляду гри -->
 <div class="modal" id="viewModal">
@@ -152,9 +434,9 @@
     <h2 id="viewName"></h2>
     <p id="viewDescription"></p>
     <a id="viewRules" class="rules-link" href="#" target="_blank">Відкрити правила (PDF)</a>
-    <p id="viewNoRules" style="color:#999;"></p>
-    <button class="btn" style="background:#e5e7eb; color:#111; margin-top:20px;" onclick="openEditModal()">✏️ Редагувати</button>
-    <button class="btn" style="background:#fee2e2; color:#b91c1c; margin-top:10px;" onclick="deleteCurrentGame()">🗑 Видалити гру</button>
+    <p id="viewNoRules" style="color:var(--muted);"></p>
+    <button class="btn secondary" style="margin-top:20px;" onclick="openEditModal()">✏️ Редагувати</button>
+    <button class="btn" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px;" onclick="deleteCurrentGame()">🗑 Видалити гру</button>
   </div>
 </div>
 
@@ -211,6 +493,26 @@ const username = tg.initDataUnsafe?.user?.username
   || tg.initDataUnsafe?.user?.first_name
   || "гість";
 
+/* ==================== НАВІГАЦІЯ ВКЛАДКАМИ ==================== */
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.view).classList.add("active");
+  });
+});
+
+document.querySelectorAll(".tool-tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tool-tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tool-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tool).classList.add("active");
+  });
+});
+
+/* ==================== БІБЛІОТЕКА ІГОР ==================== */
 async function loadGames() {
   const res = await fetch("/api/games");
   const games = await res.json();
@@ -348,6 +650,226 @@ async function submitGame() {
 }
 
 loadGames();
+
+/* ==================== КУБИКИ ==================== */
+let selectedSides = 4;
+const diceHistory = [];
+
+document.querySelectorAll(".die-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".die-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedSides = parseInt(btn.dataset.sides, 10);
+    document.getElementById("diceSub").textContent = `Обраний кубик: d${selectedSides}. Тисни, щоб кинути.`;
+  });
+});
+
+function rollDice() {
+  const result = Math.floor(Math.random() * selectedSides) + 1;
+  const resultEl = document.getElementById("diceResult");
+  resultEl.textContent = result;
+  resultEl.classList.remove("bounce");
+  void resultEl.offsetWidth;
+  resultEl.classList.add("bounce");
+
+  document.getElementById("diceSub").textContent = `d${selectedSides} · результат ${result}`;
+
+  diceHistory.unshift(`d${selectedSides}: ${result}`);
+  if (diceHistory.length > 8) diceHistory.pop();
+  document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
+
+  if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+}
+
+/* ==================== ВИБІР ГРАВЦЯ ДОТИКОМ ==================== */
+const pickerArea = document.getElementById("pickerArea");
+const pickerHint = document.getElementById("pickerHint");
+const pickerStatus = document.getElementById("pickerStatus");
+
+let activeTouches = {};
+let pickerTimer = null;
+let pickerLocked = false;
+
+function renderTouches() {
+  pickerArea.querySelectorAll(".touch-dot").forEach(el => el.remove());
+  const ids = Object.keys(activeTouches);
+  ids.forEach(id => {
+    const t = activeTouches[id];
+    const dot = document.createElement("div");
+    dot.className = "touch-dot";
+    dot.style.left = t.x + "px";
+    dot.style.top = t.y + "px";
+    dot.dataset.id = id;
+    pickerArea.appendChild(dot);
+  });
+  pickerHint.style.display = ids.length === 0 ? "block" : "none";
+}
+
+function updateStatus() {
+  const count = Object.keys(activeTouches).length;
+  if (pickerLocked) return;
+  if (count === 0) {
+    pickerStatus.textContent = "";
+  } else if (count === 1) {
+    pickerStatus.textContent = "Потрібно ще мінімум 2 пальці";
+  } else {
+    pickerStatus.textContent = `Тримайте... (${count} гравців)`;
+  }
+}
+
+function scheduleDecision() {
+  clearTimeout(pickerTimer);
+  const count = Object.keys(activeTouches).length;
+  if (count < 2 || pickerLocked) return;
+  pickerTimer = setTimeout(() => {
+    if (Object.keys(activeTouches).length < 2) return;
+    pickWinner();
+  }, 1800);
+}
+
+function pickWinner() {
+  const ids = Object.keys(activeTouches);
+  if (ids.length < 2) return;
+  pickerLocked = true;
+  const winnerId = ids[Math.floor(Math.random() * ids.length)];
+
+  pickerArea.querySelectorAll(".touch-dot").forEach(el => {
+    if (el.dataset.id === winnerId) {
+      el.classList.add("winner");
+      el.textContent = "🏆";
+    } else {
+      el.classList.add("fading");
+    }
+  });
+
+  pickerStatus.textContent = "Хід має цей гравець!";
+  if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+}
+
+function resetPicker() {
+  activeTouches = {};
+  pickerLocked = false;
+  clearTimeout(pickerTimer);
+  renderTouches();
+  pickerStatus.textContent = "";
+}
+
+function getRelativePos(touch) {
+  const rect = pickerArea.getBoundingClientRect();
+  return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+}
+
+pickerArea.addEventListener("touchstart", (e) => {
+  if (pickerLocked) return;
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const pos = getRelativePos(t);
+    activeTouches[t.identifier] = pos;
+  }
+  renderTouches();
+  updateStatus();
+  scheduleDecision();
+}, { passive: false });
+
+pickerArea.addEventListener("touchmove", (e) => {
+  if (pickerLocked) return;
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (activeTouches[t.identifier]) {
+      activeTouches[t.identifier] = getRelativePos(t);
+    }
+  }
+  renderTouches();
+}, { passive: false });
+
+function handleTouchEnd(e) {
+  if (pickerLocked) return;
+  for (const t of e.changedTouches) {
+    delete activeTouches[t.identifier];
+  }
+  renderTouches();
+  updateStatus();
+  scheduleDecision();
+}
+pickerArea.addEventListener("touchend", handleTouchEnd);
+pickerArea.addEventListener("touchcancel", handleTouchEnd);
+
+/* Підтримка миші для тесту на комп'ютері (одна точка) */
+pickerArea.addEventListener("mousedown", (e) => {
+  if (pickerLocked) return;
+  const rect = pickerArea.getBoundingClientRect();
+  activeTouches["mouse"] = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  renderTouches();
+  updateStatus();
+});
+pickerArea.addEventListener("mouseup", () => {
+  if (pickerLocked) return;
+  delete activeTouches["mouse"];
+  renderTouches();
+  updateStatus();
+});
+
+/* ==================== ЛІЧИЛЬНИКИ ОЧОК ==================== */
+let counterPlayers = [
+  { id: 1, name: "Гравець 1", score: 0 },
+  { id: 2, name: "Гравець 2", score: 0 },
+];
+let nextCounterId = 3;
+
+function renderCounters() {
+  const list = document.getElementById("countersList");
+  list.innerHTML = "";
+  counterPlayers.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "counter-row";
+    row.innerHTML = `
+      <input class="counter-name" value="${p.name}" data-id="${p.id}">
+      <button class="round-btn minus" data-id="${p.id}">−</button>
+      <div class="counter-score">${p.score}</div>
+      <button class="round-btn plus" data-id="${p.id}">+</button>
+      <button class="counter-remove" data-id="${p.id}">✕</button>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll(".counter-name").forEach(input => {
+    input.addEventListener("input", () => {
+      const p = counterPlayers.find(pl => pl.id == input.dataset.id);
+      if (p) p.name = input.value;
+    });
+  });
+  list.querySelectorAll(".round-btn.minus").forEach(btn => {
+    btn.addEventListener("click", () => changeScore(btn.dataset.id, -1));
+  });
+  list.querySelectorAll(".round-btn.plus").forEach(btn => {
+    btn.addEventListener("click", () => changeScore(btn.dataset.id, 1));
+  });
+  list.querySelectorAll(".counter-remove").forEach(btn => {
+    btn.addEventListener("click", () => {
+      counterPlayers = counterPlayers.filter(p => p.id != btn.dataset.id);
+      renderCounters();
+    });
+  });
+}
+
+function changeScore(id, delta) {
+  const p = counterPlayers.find(pl => pl.id == id);
+  if (p) p.score += delta;
+  renderCounters();
+}
+
+function addCounterPlayer() {
+  counterPlayers.push({ id: nextCounterId, name: `Гравець ${nextCounterId}`, score: 0 });
+  nextCounterId++;
+  renderCounters();
+}
+
+function resetCounters() {
+  counterPlayers.forEach(p => p.score = 0);
+  renderCounters();
+}
+
+renderCounters();
 </script>
 
 </body>
