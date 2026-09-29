@@ -1560,162 +1560,271 @@ document.querySelectorAll(".counters-subtab-btn").forEach(btn => {
 });
 
 /* ==================== FLIP SEVEN: КАЛЬКУЛЯТОР БАЛІВ ==================== */
-let flip7Players = [
-  { id: 1, name: "Гравець 1", total: 0 },
-  { id: 2, name: "Гравець 2", total: 0 },
-];
-let nextFlip7Id = 3;
-
+const flip7Colors = ["#e2a63a", "#4b3f8f", "#6a3f9e", "#2f4f8f", "#2c3d63", "#4a4030", "#5e3f8f", "#2f6e6a"];
 const flip7Modifiers = [2, 4, 6, 8, 10];
 
-// Тимчасовий стан поточного раунду для кожного гравця (не зберігається в загальний рахунок, поки не натиснути "Додати раунд")
-let flip7Round = {};
+let flip7Players = [
+  { id: 1, name: "Гравець 1", total: 0, pendingDelta: null },
+  { id: 2, name: "Гравець 2", total: 0, pendingDelta: null },
+];
+let nextFlip7Id = 3;
+let flip7Round = 1;
+let flip7ActiveId = 1;
+let flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
 
-function getFlip7Round(id) {
-  if (!flip7Round[id]) {
-    flip7Round[id] = { sum: "", x2: false, mods: {}, flip7: false };
-  }
-  return flip7Round[id];
+let flip7History = [];
+let flip7HistoryIndex = -1;
+
+function flip7Snapshot() {
+  return JSON.stringify({ players: flip7Players, round: flip7Round, nextId: nextFlip7Id });
 }
 
-function computeFlip7Score(round) {
-  const sum = parseInt(round.sum, 10) || 0;
-  let score = round.x2 ? sum * 2 : sum;
+function flip7PushHistory() {
+  flip7History = flip7History.slice(0, flip7HistoryIndex + 1);
+  flip7History.push(flip7Snapshot());
+  flip7HistoryIndex = flip7History.length - 1;
+  if (flip7History.length > 20) {
+    flip7History.shift();
+    flip7HistoryIndex--;
+  }
+}
+
+function flip7RestoreSnapshot(snap) {
+  const data = JSON.parse(snap);
+  flip7Players = data.players;
+  flip7Round = data.round;
+  nextFlip7Id = data.nextId;
+  flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
+  if (!flip7Players.find(p => p.id === flip7ActiveId)) {
+    flip7ActiveId = flip7Players.length ? flip7Players[0].id : null;
+  }
+  renderFlip7();
+}
+
+function undoFlip7() {
+  if (flip7HistoryIndex <= 0) return;
+  flip7HistoryIndex--;
+  flip7RestoreSnapshot(flip7History[flip7HistoryIndex]);
+}
+
+function redoFlip7() {
+  if (flip7HistoryIndex >= flip7History.length - 1) return;
+  flip7HistoryIndex++;
+  flip7RestoreSnapshot(flip7History[flip7HistoryIndex]);
+}
+
+function flip7BuilderSum() {
+  return flip7Builder.numbers.reduce((a, b) => a + b, 0);
+}
+
+function computeFlip7Score() {
+  const sum = flip7BuilderSum();
+  let score = flip7Builder.x2 ? sum * 2 : sum;
   flip7Modifiers.forEach(v => {
-    if (round.mods[v]) score += v;
+    if (flip7Builder.mods[v]) score += v;
   });
-  if (round.flip7) score += 15;
+  if (flip7Builder.flip7) score += 15;
   return score;
 }
 
+function selectFlip7Player(id) {
+  flip7ActiveId = id;
+  flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
+  renderFlip7();
+}
+
 function renderFlip7() {
-  const list = document.getElementById("flip7List");
-  list.innerHTML = "";
+  // ---- Сітка гравців ----
+  const grid = document.getElementById("flip7Grid");
+  grid.innerHTML = "";
 
-  flip7Players.forEach(p => {
-    const round = getFlip7Round(p.id);
-    const previewScore = computeFlip7Score(round);
-
+  flip7Players.forEach((p, idx) => {
+    const color = flip7Colors[idx % flip7Colors.length];
     const card = document.createElement("div");
-    card.className = "flip7-player";
+    card.className = "flip7-card" + (p.id === flip7ActiveId ? " selected" : "");
+    card.style.background = color;
+    card.onclick = () => selectFlip7Player(p.id);
+
+    let pendingHtml = "";
+    if (p.pendingDelta !== null) {
+      const sign = p.pendingDelta >= 0 ? "+" : "";
+      pendingHtml = `${sign}${p.pendingDelta} → ${p.total + p.pendingDelta}`;
+    }
+
     card.innerHTML = `
-      <div class="flip7-header">
-        <input class="counter-name" value="${p.name}" data-id="${p.id}" style="flex:1;">
-        <div class="flip7-total">${p.total}</div>
-        <button class="flip7-remove" data-id="${p.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
-      </div>
-
-      <div class="flip7-row">
-        <span class="row-label">Сума номерних карт</span>
-        <input type="text" inputmode="numeric" class="flip7-sum-input" data-id="${p.id}" value="${round.sum}" placeholder="0">
-        <button class="chip x2-chip ${round.x2 ? 'active' : ''}" data-id="${p.id}">x2</button>
-      </div>
-
-      <div class="flip7-row">
-        <span class="row-label">Модифікатори</span>
-        ${flip7Modifiers.map(v => `<button class="chip mod-chip ${round.mods[v] ? 'active' : ''}" data-id="${p.id}" data-value="${v}">+${v}</button>`).join("")}
-        <button class="chip flip7bonus-chip ${round.flip7 ? 'active' : ''}" data-id="${p.id}">Flip 7 (+15)</button>
-      </div>
-
-      <div class="flip7-preview">Раунд буде додано: <strong>${previewScore}</strong> ${round.flip7 ? '(зібрано 7 унікальних карт)' : ''}</div>
-
-      <div class="flip7-actions">
-        <button class="bust-btn" data-id="${p.id}">Баст (0)</button>
-        <button class="add-btn" data-id="${p.id}">Додати раунд</button>
-      </div>
+      <div class="fc-name">${p.name}</div>
+      <div class="fc-score">${p.total}</div>
+      <div class="fc-pending">${pendingHtml}</div>
     `;
-    list.appendChild(card);
+    grid.appendChild(card);
   });
 
-  // Ім'я гравця
-  list.querySelectorAll(".flip7-header .counter-name").forEach(input => {
-    input.addEventListener("input", () => {
-      const p = flip7Players.find(pl => pl.id == input.dataset.id);
-      if (p) p.name = input.value;
+  const addCard = document.createElement("button");
+  addCard.className = "flip7-add-card";
+  addCard.onclick = addFlip7Player;
+  addCard.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  grid.appendChild(addCard);
+
+  document.getElementById("flip7RoundTitle").textContent = `Раунд ${flip7Round}`;
+
+  // ---- Панель активного гравця ----
+  const panel = document.getElementById("flip7Panel");
+  const activePlayer = flip7Players.find(p => p.id === flip7ActiveId);
+
+  if (!activePlayer) {
+    panel.innerHTML = '<div class="empty" style="padding:20px 0;">Немає жодного гравця.<br>Натисни "+", щоб додати.</div>';
+  } else {
+    const sum = flip7BuilderSum();
+    const preview = computeFlip7Score();
+
+    panel.innerHTML = `
+      <div class="flip7-panel-header">
+        <input class="flip7-panel-name" id="flip7NameInput" value="${activePlayer.name}">
+        <span class="flip7-badge">FLIP 7</span>
+      </div>
+
+      <div class="flip7-actions-row">
+        <button class="flip7-action-btn bank-btn" id="flip7BankBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Bank
+        </button>
+        <button class="flip7-action-btn bust-btn" id="flip7BustBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          Bust
+        </button>
+        <button class="flip7-action-btn freeze-btn" id="flip7FreezeBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.5 6l15 12M19.5 6l-15 12"/></svg>
+          Freeze
+        </button>
+      </div>
+
+      <div class="flip7-section-label">Карти</div>
+      <div class="flip7-sum-row">
+        <div class="flip7-sum-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 4 4.4.6-3.2 3.1.8 4.4L12 13l-3.9 2.1.8-4.4-3.2-3.1 4.4-.6L12 3Z"/></svg>
+          <div>
+            <div class="sum-value">${sum}</div>
+            <div class="sum-caption">сума з карт (${flip7Builder.numbers.length})</div>
+          </div>
+        </div>
+        <button class="flip7-clear-btn" id="flip7ClearBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+          Clear
+        </button>
+      </div>
+
+      <div class="flip7-keypad">
+        ${Array.from({ length: 13 }, (_, n) => `<button class="flip7-key" data-num="${n}">${n}</button>`).join("")}
+      </div>
+
+      <div class="flip7-section-label">Модифікатори</div>
+      <div class="flip7-mod-row">
+        ${flip7Modifiers.map(v => `<button class="flip7-mod-chip mod-chip ${flip7Builder.mods[v] ? 'active' : ''}" data-value="${v}">+${v}</button>`).join("")}
+        <button class="flip7-mod-chip x2-chip ${flip7Builder.x2 ? 'active' : ''}">x2</button>
+        <button class="flip7-mod-chip flip7bonus-chip ${flip7Builder.flip7 ? 'active' : ''}">Flip 7 +15</button>
+      </div>
+
+      <div class="flip7-section-label" style="margin-top:14px;">Буде нараховано: ${preview}</div>
+    `;
+
+    document.getElementById("flip7NameInput").addEventListener("input", (e) => {
+      activePlayer.name = e.target.value;
+      const card = grid.children[flip7Players.indexOf(activePlayer)];
+      if (card) card.querySelector(".fc-name").textContent = e.target.value;
     });
-  });
 
-  // Видалення гравця
-  list.querySelectorAll(".flip7-remove").forEach(btn => {
-    btn.addEventListener("click", () => {
-      flip7Players = flip7Players.filter(p => p.id != btn.dataset.id);
-      delete flip7Round[btn.dataset.id];
+    panel.querySelectorAll(".flip7-key").forEach(btn => {
+      btn.addEventListener("click", () => {
+        flip7Builder.numbers.push(parseInt(btn.dataset.num, 10));
+        renderFlip7();
+      });
+    });
+
+    document.getElementById("flip7ClearBtn").addEventListener("click", () => {
+      flip7Builder.numbers = [];
       renderFlip7();
     });
-  });
 
-  // Сума карт
-  list.querySelectorAll(".flip7-sum-input").forEach(input => {
-    input.addEventListener("input", () => {
-      const round = getFlip7Round(input.dataset.id);
-      round.sum = input.value.replace(/[^0-9]/g, "");
+    panel.querySelectorAll(".mod-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.value;
+        flip7Builder.mods[v] = !flip7Builder.mods[v];
+        renderFlip7();
+      });
+    });
+
+    panel.querySelector(".x2-chip").addEventListener("click", () => {
+      flip7Builder.x2 = !flip7Builder.x2;
       renderFlip7();
     });
-  });
 
-  // x2
-  list.querySelectorAll(".x2-chip").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const round = getFlip7Round(btn.dataset.id);
-      round.x2 = !round.x2;
+    panel.querySelector(".flip7bonus-chip").addEventListener("click", () => {
+      flip7Builder.flip7 = !flip7Builder.flip7;
       renderFlip7();
     });
-  });
 
-  // Модифікатори
-  list.querySelectorAll(".mod-chip").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const round = getFlip7Round(btn.dataset.id);
-      const v = btn.dataset.value;
-      round.mods[v] = !round.mods[v];
-      renderFlip7();
-    });
-  });
+    document.getElementById("flip7BankBtn").addEventListener("click", () => commitFlip7Action("bank"));
+    document.getElementById("flip7BustBtn").addEventListener("click", () => commitFlip7Action("bust"));
+    document.getElementById("flip7FreezeBtn").addEventListener("click", () => commitFlip7Action("freeze"));
+  }
 
-  // Flip 7 бонус
-  list.querySelectorAll(".flip7bonus-chip").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const round = getFlip7Round(btn.dataset.id);
-      round.flip7 = !round.flip7;
-      renderFlip7();
-    });
-  });
+  const undoBtn = document.getElementById("flip7UndoBtn");
+  const redoBtn = document.getElementById("flip7RedoBtn");
+  if (undoBtn) undoBtn.disabled = flip7HistoryIndex <= 0;
+  if (redoBtn) redoBtn.disabled = flip7HistoryIndex >= flip7History.length - 1;
+}
 
-  // Баст
-  list.querySelectorAll(".bust-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      flip7Round[btn.dataset.id] = { sum: "", x2: false, mods: {}, flip7: false };
-      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
-      renderFlip7();
-    });
-  });
+function commitFlip7Action(kind) {
+  const activePlayer = flip7Players.find(p => p.id === flip7ActiveId);
+  if (!activePlayer) return;
 
-  // Додати раунд
-  list.querySelectorAll(".add-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const p = flip7Players.find(pl => pl.id == btn.dataset.id);
-      const round = getFlip7Round(btn.dataset.id);
-      const score = computeFlip7Score(round);
-      if (p) p.total += score;
-      flip7Round[btn.dataset.id] = { sum: "", x2: false, mods: {}, flip7: false };
-      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
-      renderFlip7();
-    });
+  const score = kind === "bust" ? 0 : computeFlip7Score();
+  activePlayer.pendingDelta = score;
+
+  if (tg.HapticFeedback) {
+    tg.HapticFeedback.notificationOccurred(kind === "bust" ? "error" : "success");
+  }
+
+  // Автоматично переходимо до наступного гравця, який ще не зробив хід цього раунду
+  const notYetDone = flip7Players.find(p => p.pendingDelta === null);
+  flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
+  if (notYetDone) {
+    flip7ActiveId = notYetDone.id;
+  }
+  renderFlip7();
+}
+
+function continueFlip7Round() {
+  flip7Players.forEach(p => {
+    const delta = p.pendingDelta === null ? 0 : p.pendingDelta;
+    p.total += delta;
+    p.pendingDelta = null;
   });
+  flip7Round += 1;
+  flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
+  flip7PushHistory();
+  renderFlip7();
 }
 
 function addFlip7Player() {
-  flip7Players.push({ id: nextFlip7Id, name: `Гравець ${nextFlip7Id}`, total: 0 });
+  const newPlayer = { id: nextFlip7Id, name: `Гравець ${nextFlip7Id}`, total: 0, pendingDelta: null };
+  flip7Players.push(newPlayer);
+  flip7ActiveId = newPlayer.id;
   nextFlip7Id++;
   renderFlip7();
 }
 
 function resetFlip7Game() {
-  flip7Players.forEach(p => p.total = 0);
-  flip7Round = {};
+  flip7Players.forEach(p => { p.total = 0; p.pendingDelta = null; });
+  flip7Round = 1;
+  flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
+  flip7History = [];
+  flip7HistoryIndex = -1;
+  flip7PushHistory();
   renderFlip7();
 }
 
+flip7PushHistory();
 renderFlip7();
 function loadCharacters() {
   try {
