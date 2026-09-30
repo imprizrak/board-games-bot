@@ -1,4 +1,5 @@
 import os
+import io
 import uuid
 import asyncio
 import logging
@@ -6,10 +7,17 @@ from threading import Thread
 from urllib.parse import quote
 
 import requests
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart
 from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 logging.basicConfig(level=logging.INFO)
 
@@ -64,6 +72,272 @@ def delete_file(url):
         )
     except Exception:
         logging.exception("Не вдалось видалити файл")
+
+
+# ==================== ГЕНЕРАТОР PDF ЧАРНИКА ====================
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+pdfmetrics.registerFont(TTFont("PlexSerif", f"{FONT_DIR}/IBMPlexSerif-Regular.ttf"))
+pdfmetrics.registerFont(TTFont("PlexSerif-Bold", f"{FONT_DIR}/IBMPlexSerif-Bold.ttf"))
+
+GOLD = colors.HexColor("#a9852a")
+DARK = colors.HexColor("#241333")
+MUTED = colors.HexColor("#6b6070")
+LIGHT_BG = colors.HexColor("#f7f3ea")
+
+SKILLS = [
+    ("Акробатика", "dex"), ("Аналіз поведінки", "wis"), ("Атлетика", "str"),
+    ("Виживання", "wis"), ("Виступ", "cha"), ("Залякування", "cha"),
+    ("Історія", "int"), ("Магія", "int"), ("Медицина", "wis"),
+    ("Обман", "cha"), ("Переконання", "cha"), ("Поводження з тваринами", "wis"),
+    ("Природа", "int"), ("Релігія", "int"), ("Розслідування", "int"),
+    ("Спритність рук", "dex"), ("Непомітність", "dex"), ("Уважність", "wis"),
+]
+ABILITY_LABELS = {"str": "СИЛА", "dex": "СПРИТНІСТЬ", "con": "ТІЛОБУДОВА",
+                  "int": "ІНТЕЛЕКТ", "wis": "МУДРІСТЬ", "cha": "ХАРИЗМА"}
+
+
+def mod(score):
+    return (score - 10) // 2
+
+
+def mod_str(m):
+    return f"+{m}" if m >= 0 else str(m)
+
+
+def prof_bonus(level):
+    return 2 + (max(level, 1) - 1) // 4
+
+
+def draw_section_title(c, x, y, text):
+    c.setFont("PlexSerif-Bold", 9)
+    c.setFillColor(GOLD)
+    c.drawString(x, y, text.upper())
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(0.6)
+    c.line(x, y - 3, x + 250, y - 3)
+    c.setFillColor(DARK)
+
+
+def wrapped_text(c, text, x, y, max_width, font="PlexSerif", size=8.5, leading=11):
+    c.setFont(font, size)
+    lines = []
+    for raw_line in (text or "").split("\n"):
+        words = raw_line.split(" ")
+        current = ""
+        for w in words:
+            trial = (current + " " + w).strip()
+            if pdfmetrics.stringWidth(trial, font, size) <= max_width:
+                current = trial
+            else:
+                if current:
+                    lines.append(current)
+                current = w
+        lines.append(current)
+    for line in lines:
+        c.drawString(x, y, line)
+        y -= leading
+    return y
+
+
+def generate_character_pdf(ch):
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    W, H = A4
+
+    abilities = ch.get("abilities", {})
+    scores = {k: int(abilities.get(k, 10) or 10) for k in ["str", "dex", "con", "int", "wis", "cha"]}
+    mods = {k: mod(v) for k, v in scores.items()}
+    level = int(ch.get("level") or 1)
+    pb = prof_bonus(level)
+    saves = ch.get("savingThrows", {}) or {}
+    skill_profs = ch.get("skillProfs", {}) or {}
+
+    margin = 15 * mm
+    x = margin
+    y = H - margin
+
+    # ---- Фон сторінки ----
+    c.setFillColor(LIGHT_BG)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+    c.setFillColor(DARK)
+
+    # ---- Заголовок ----
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1.2)
+    c.line(x, y, W - margin, y)
+    y -= 7 * mm
+    c.setFont("PlexSerif-Bold", 20)
+    c.setFillColor(DARK)
+    c.drawString(x, y, ch.get("name", "Без імені"))
+    c.setFont("PlexSerif", 9)
+    c.setFillColor(MUTED)
+    c.drawRightString(W - margin, y, "Аркуш персонажа")
+    y -= 6 * mm
+
+    header_fields = [
+        ("Клас та рівень", f"{ch.get('class','')} {level}".strip()),
+        ("Раса", ch.get("race", "")),
+        ("Передісторія", ch.get("background_title", "")),
+        ("Світогляд", ch.get("alignment", "")),
+        ("Гравець", ch.get("playerName", "")),
+        ("Досвід", str(ch.get("experience", ""))),
+    ]
+    col_w = (W - 2 * margin) / 3
+    row_h = 10 * mm
+    for i, (label, value) in enumerate(header_fields):
+        col = i % 3
+        row = i // 3
+        fx = x + col * col_w
+        fy = y - row * row_h
+        c.setFont("PlexSerif", 7.5)
+        c.setFillColor(MUTED)
+        c.drawString(fx, fy, label)
+        c.setFont("PlexSerif-Bold", 10)
+        c.setFillColor(DARK)
+        c.drawString(fx, fy - 4.5 * mm, value or "—")
+    y -= (2 * row_h + 4 * mm)
+
+    # ---- Ліва колонка: характеристики ----
+    left_w = 42 * mm
+    ab_y = y
+    for key in ["str", "dex", "con", "int", "wis", "cha"]:
+        box_h = 20 * mm
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1)
+        c.roundRect(x, ab_y - box_h, left_w, box_h, 4, fill=0, stroke=1)
+        c.setFont("PlexSerif", 7)
+        c.setFillColor(MUTED)
+        c.drawCentredString(x + left_w / 2, ab_y - 5 * mm, ABILITY_LABELS[key])
+        c.setFont("PlexSerif-Bold", 16)
+        c.setFillColor(DARK)
+        c.drawCentredString(x + left_w / 2, ab_y - 11 * mm, str(scores[key]))
+        c.setFont("PlexSerif-Bold", 9)
+        c.setFillColor(GOLD)
+        c.drawCentredString(x + left_w / 2, ab_y - 16.5 * mm, mod_str(mods[key]))
+        ab_y -= box_h + 3 * mm
+
+    # ---- Рятункові кидки (під характеристиками) ----
+    draw_section_title(c, x, ab_y - 5 * mm, "Рятункові кидки")
+    ab_y -= 11 * mm
+    for key in ["str", "dex", "con", "int", "wis", "cha"]:
+        prof = bool(saves.get(key))
+        val = mods[key] + (pb if prof else 0)
+        c.setFillColor(GOLD if prof else MUTED)
+        c.circle(x + 2 * mm, ab_y - 1 * mm, 1.3 * mm, fill=1 if prof else 0, stroke=1)
+        c.setFillColor(DARK)
+        c.setFont("PlexSerif", 8.5)
+        c.drawString(x + 6 * mm, ab_y - 2 * mm, f"{mod_str(val)}  {ABILITY_LABELS[key].capitalize()}")
+        ab_y -= 5 * mm
+
+    # ---- Середня колонка: бойові показники + навички ----
+    mid_x = x + left_w + 8 * mm
+    mid_w = 55 * mm
+    combat_y = y
+
+    combat_boxes = [
+        ("КЗ", str(ch.get("ac", "") or "10")),
+        ("ІНІЦІАТИВА", mod_str(mods["dex"])),
+        ("ШВИДКІСТЬ", str(ch.get("speed", "") or "30")),
+    ]
+    box_w = mid_w / 3 - 2 * mm
+    for i, (label, value) in enumerate(combat_boxes):
+        bx = mid_x + i * (box_w + 3 * mm)
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1)
+        c.roundRect(bx, combat_y - 16 * mm, box_w, 16 * mm, 4, fill=0, stroke=1)
+        c.setFont("PlexSerif-Bold", 13)
+        c.setFillColor(DARK)
+        c.drawCentredString(bx + box_w / 2, combat_y - 8 * mm, value)
+        c.setFont("PlexSerif", 6.5)
+        c.setFillColor(MUTED)
+        c.drawCentredString(bx + box_w / 2, combat_y - 13.5 * mm, label)
+    combat_y -= 20 * mm
+
+    hp_h = 16 * mm
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1)
+    c.roundRect(mid_x, combat_y - hp_h, mid_w, hp_h, 4, fill=0, stroke=1)
+    c.setFont("PlexSerif", 7)
+    c.setFillColor(MUTED)
+    c.drawString(mid_x + 3 * mm, combat_y - 5 * mm, "ХІТИ (поточні / максимум)")
+    c.setFont("PlexSerif-Bold", 14)
+    c.setFillColor(DARK)
+    hp_cur = ch.get("hpCurrent") or ch.get("hp") or "10"
+    hp_max = ch.get("hp") or "10"
+    c.drawString(mid_x + 3 * mm, combat_y - 12 * mm, f"{hp_cur} / {hp_max}")
+    combat_y -= hp_h + 4 * mm
+
+    hd_h = 10 * mm
+    c.setLineWidth(1)
+    c.roundRect(mid_x, combat_y - hd_h, mid_w, hd_h, 4, fill=0, stroke=1)
+    c.setFont("PlexSerif", 7)
+    c.setFillColor(MUTED)
+    c.drawString(mid_x + 3 * mm, combat_y - 4 * mm, "КУБИКИ ЗДОРОВ'Я")
+    c.setFont("PlexSerif-Bold", 11)
+    c.setFillColor(DARK)
+    c.drawString(mid_x + 3 * mm, combat_y - 8.5 * mm, f"{level}к{ch.get('hitDie', '8')}")
+    combat_y -= hd_h + 6 * mm
+
+    draw_section_title(c, mid_x, combat_y, "Навички")
+    combat_y -= 6 * mm
+    for skill_name, ability in SKILLS:
+        prof = bool(skill_profs.get(skill_name))
+        val = mods[ability] + (pb if prof else 0)
+        c.setFillColor(GOLD if prof else MUTED)
+        c.circle(mid_x + 1.5 * mm, combat_y - 1 * mm, 1.1 * mm, fill=1 if prof else 0, stroke=1)
+        c.setFillColor(DARK)
+        c.setFont("PlexSerif", 7.5)
+        c.drawString(mid_x + 5 * mm, combat_y - 1.8 * mm,
+                      f"{mod_str(val)}  {skill_name} ({ABILITY_LABELS[ability][:3].capitalize()})")
+        combat_y -= 4.3 * mm
+
+    passive_perception = 10 + mods["wis"] + (pb if skill_profs.get("Уважність") else 0)
+    combat_y -= 3 * mm
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(1)
+    c.roundRect(mid_x, combat_y - 10 * mm, mid_w, 10 * mm, 4, fill=0, stroke=1)
+    c.setFont("PlexSerif", 7)
+    c.setFillColor(MUTED)
+    c.drawCentredString(mid_x + mid_w / 2, combat_y - 4 * mm, "ПАСИВНА УВАЖНІСТЬ")
+    c.setFont("PlexSerif-Bold", 12)
+    c.setFillColor(DARK)
+    c.drawCentredString(mid_x + mid_w / 2, combat_y - 8.5 * mm, str(passive_perception))
+
+    # ---- Права колонка: атаки, спорядження, риси ----
+    right_x = mid_x + mid_w + 8 * mm
+    right_w = W - margin - right_x
+    right_y = y
+
+    draw_section_title(c, right_x, right_y, "Атаки та заклинання")
+    right_y -= 6 * mm
+    right_y = wrapped_text(c, ch.get("attacks", "") or "—", right_x, right_y, right_w)
+    right_y -= 6 * mm
+
+    draw_section_title(c, right_x, right_y, "Спорядження")
+    right_y -= 6 * mm
+    right_y = wrapped_text(c, ch.get("notes", "") or "—", right_x, right_y, right_w)
+    right_y -= 6 * mm
+
+    draw_section_title(c, right_x, right_y, "Уміння та особливості")
+    right_y -= 6 * mm
+    right_y = wrapped_text(c, ch.get("features", "") or "—", right_x, right_y, right_w)
+
+    # ---- Низ сторінки: передісторія / особистість ----
+    bottom_y = 30 * mm
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(0.8)
+    c.line(margin, bottom_y + 6 * mm, W - margin, bottom_y + 6 * mm)
+    draw_section_title(c, margin, bottom_y, "Особистість, ідеали, прив'язаності, слабкості")
+    wrapped_text(c, ch.get("background", "") or "—", margin, bottom_y - 6 * mm, W - 2 * margin, size=8.5)
+
+    c.setFont("PlexSerif", 6.5)
+    c.setFillColor(MUTED)
+    c.drawCentredString(W / 2, 10 * mm, "Створено в Бібліотеці настільних ігор")
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf
 
 
 # ==================== FLASK (веб-сторінка + API) ====================
@@ -271,6 +545,20 @@ def delete_wishlist(item_id):
     resp = requests.delete(WISHLIST_REST, headers=HEADERS, params={"id": f"eq.{item_id}"}, timeout=30)
     resp.raise_for_status()
     return jsonify({"status": "deleted"})
+
+
+# ==================== PDF ЧАРНИКА ====================
+@app.route("/api/character-pdf", methods=["POST"])
+def character_pdf():
+    ch = request.get_json(silent=True, force=True) or {}
+    pdf_buf = generate_character_pdf(ch)
+    safe_name = "".join(c for c in (ch.get("name") or "character") if c.isalnum() or c in " -_").strip() or "character"
+    return send_file(
+        pdf_buf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"{safe_name}.pdf",
+    )
 
 
 # ==================== TELEGRAM BOT ====================

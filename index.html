@@ -1338,6 +1338,18 @@
     <label>Рівень</label>
     <input type="text" id="charLevel" placeholder="1" inputmode="numeric">
 
+    <label>Передісторія (назва, напр. "Гільдійський торговець")</label>
+    <input type="text" id="charBackgroundTitle" placeholder="Гільдійський торговець">
+
+    <label>Світогляд</label>
+    <input type="text" id="charAlignment" placeholder="Нейтральний добрий">
+
+    <label>Ім'я гравця</label>
+    <input type="text" id="charPlayerName" placeholder="Твоє ім'я">
+
+    <label>Досвід</label>
+    <input type="text" id="charExperience" placeholder="0" inputmode="numeric">
+
     <label>Характеристики</label>
     <div class="ability-grid">
       <div class="ability-box">
@@ -1372,6 +1384,19 @@
       </div>
     </div>
 
+    <label>Рятункові кидки (володіння)</label>
+    <div class="lib-genre-row" id="saveProfRow" style="padding:0;">
+      <button type="button" class="lib-genre-chip save-chip" data-key="str">Сила</button>
+      <button type="button" class="lib-genre-chip save-chip" data-key="dex">Спритність</button>
+      <button type="button" class="lib-genre-chip save-chip" data-key="con">Тілобудова</button>
+      <button type="button" class="lib-genre-chip save-chip" data-key="int">Інтелект</button>
+      <button type="button" class="lib-genre-chip save-chip" data-key="wis">Мудрість</button>
+      <button type="button" class="lib-genre-chip save-chip" data-key="cha">Харизма</button>
+    </div>
+
+    <label style="margin-top:14px;">Навички (володіння)</label>
+    <div class="lib-genre-row" id="skillProfRow" style="padding:0; flex-wrap:wrap; overflow-x:visible;"></div>
+
     <div class="stat-row">
       <div class="ability-box">
         <label>КЗ</label>
@@ -1387,13 +1412,23 @@
       </div>
     </div>
 
-    <label>Передісторія (необов'язково)</label>
-    <textarea id="charBackground" rows="2" placeholder="Коротко про минуле персонажа"></textarea>
+    <label>Атаки та заклинання</label>
+    <textarea id="charAttacks" rows="2" placeholder="Зброя, бонус атаки, шкода"></textarea>
 
-    <label>Спорядження та нотатки (необов'язково)</label>
-    <textarea id="charNotes" rows="3" placeholder="Зброя, заклинання, інвентар..."></textarea>
+    <label>Спорядження</label>
+    <textarea id="charNotes" rows="3" placeholder="Броня, зілля, інвентар..."></textarea>
+
+    <label>Уміння та особливості</label>
+    <textarea id="charFeatures" rows="2" placeholder="Расові риси, вміння класу..."></textarea>
+
+    <label>Особистість, ідеали, прив'язаності, слабкості (необов'язково)</label>
+    <textarea id="charBackground" rows="3" placeholder="Хто цей персонаж..."></textarea>
 
     <button class="btn" onclick="submitCharacter()">Зберегти персонажа</button>
+    <button class="btn icon-inline" style="justify-content:center; margin-top:10px;" onclick="downloadCharacterPdf()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      Завантажити PDF
+    </button>
     <button class="btn icon-inline" id="charDeleteBtn" style="background:var(--danger-bg); color:var(--danger-text); justify-content:center; display:none;" onclick="deleteCurrentCharacter()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
       Видалити персонажа
@@ -2707,6 +2742,44 @@ let editingCharId = null;
 
 const abilityIds = ["str", "dex", "con", "int", "wis", "cha"];
 
+const CHAR_SKILLS = [
+  ["Акробатика", "dex"], ["Аналіз поведінки", "wis"], ["Атлетика", "str"],
+  ["Виживання", "wis"], ["Виступ", "cha"], ["Залякування", "cha"],
+  ["Історія", "int"], ["Магія", "int"], ["Медицина", "wis"],
+  ["Обман", "cha"], ["Переконання", "cha"], ["Поводження з тваринами", "wis"],
+  ["Природа", "int"], ["Релігія", "int"], ["Розслідування", "int"],
+  ["Спритність рук", "dex"], ["Непомітність", "dex"], ["Уважність", "wis"],
+];
+
+let charSaveProfs = {};
+let charSkillProfs = {};
+
+document.querySelectorAll(".save-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    const key = chip.dataset.key;
+    charSaveProfs[key] = !charSaveProfs[key];
+    chip.classList.toggle("active", !!charSaveProfs[key]);
+  });
+});
+
+function buildSkillProfRow() {
+  const row = document.getElementById("skillProfRow");
+  row.innerHTML = "";
+  CHAR_SKILLS.forEach(([name]) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "lib-genre-chip skill-chip" + (charSkillProfs[name] ? " active" : "");
+    chip.textContent = name;
+    chip.dataset.name = name;
+    chip.addEventListener("click", () => {
+      charSkillProfs[name] = !charSkillProfs[name];
+      chip.classList.toggle("active", !!charSkillProfs[name]);
+    });
+    row.appendChild(chip);
+  });
+}
+buildSkillProfRow();
+
 function abilityModifierText(score) {
   const n = parseInt(score, 10);
   if (isNaN(n)) return "+0";
@@ -2754,6 +2827,13 @@ function fillAbilityInputs(abilities) {
   });
 }
 
+function setChipStates(container, selector, dataAttr, stateObj) {
+  container.querySelectorAll(selector).forEach(chip => {
+    const key = chip.dataset[dataAttr];
+    chip.classList.toggle("active", !!stateObj[key]);
+  });
+}
+
 function openNewCharacter() {
   editingCharId = null;
   document.getElementById("charModalTitle").textContent = "Новий персонаж";
@@ -2761,12 +2841,22 @@ function openNewCharacter() {
   document.getElementById("charRace").value = "";
   document.getElementById("charClass").value = "";
   document.getElementById("charLevel").value = "1";
+  document.getElementById("charBackgroundTitle").value = "";
+  document.getElementById("charAlignment").value = "";
+  document.getElementById("charPlayerName").value = username;
+  document.getElementById("charExperience").value = "0";
   document.getElementById("charAC").value = "10";
   document.getElementById("charHP").value = "10";
   document.getElementById("charSpeed").value = "30";
-  document.getElementById("charBackground").value = "";
+  document.getElementById("charAttacks").value = "";
   document.getElementById("charNotes").value = "";
+  document.getElementById("charFeatures").value = "";
+  document.getElementById("charBackground").value = "";
   fillAbilityInputs(null);
+  charSaveProfs = {};
+  charSkillProfs = {};
+  setChipStates(document, ".save-chip", "key", charSaveProfs);
+  buildSkillProfRow();
   document.getElementById("charDeleteBtn").style.display = "none";
   document.getElementById("characterModal").classList.add("open");
 }
@@ -2780,41 +2870,65 @@ function openEditCharacter(id) {
   document.getElementById("charRace").value = ch.race || "";
   document.getElementById("charClass").value = ch.class || "";
   document.getElementById("charLevel").value = ch.level || "1";
+  document.getElementById("charBackgroundTitle").value = ch.backgroundTitle || "";
+  document.getElementById("charAlignment").value = ch.alignment || "";
+  document.getElementById("charPlayerName").value = ch.playerName || username;
+  document.getElementById("charExperience").value = ch.experience ?? "0";
   document.getElementById("charAC").value = ch.ac ?? "10";
   document.getElementById("charHP").value = ch.hp ?? "10";
   document.getElementById("charSpeed").value = ch.speed ?? "30";
-  document.getElementById("charBackground").value = ch.background || "";
+  document.getElementById("charAttacks").value = ch.attacks || "";
   document.getElementById("charNotes").value = ch.notes || "";
+  document.getElementById("charFeatures").value = ch.features || "";
+  document.getElementById("charBackground").value = ch.background || "";
   fillAbilityInputs(ch.abilities);
+  charSaveProfs = Object.assign({}, ch.savingThrows || {});
+  charSkillProfs = Object.assign({}, ch.skillProfs || {});
+  setChipStates(document, ".save-chip", "key", charSaveProfs);
+  buildSkillProfRow();
   document.getElementById("charDeleteBtn").style.display = "block";
   document.getElementById("characterModal").classList.add("open");
 }
 
-function submitCharacter() {
-  const name = document.getElementById("charName").value.trim();
-  if (!name) {
-    tg.showAlert("Введи ім'я персонажа");
-    return;
-  }
-
+function collectCharacterFormData() {
   const abilities = {};
   abilityIds.forEach(key => {
     abilities[key] = document.getElementById(`ab-${key}`).value || "10";
   });
 
-  const charData = {
-    id: editingCharId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)),
-    name,
+  return {
+    name: document.getElementById("charName").value.trim(),
     race: document.getElementById("charRace").value.trim(),
     class: document.getElementById("charClass").value.trim(),
     level: document.getElementById("charLevel").value.trim(),
+    backgroundTitle: document.getElementById("charBackgroundTitle").value.trim(),
+    alignment: document.getElementById("charAlignment").value.trim(),
+    playerName: document.getElementById("charPlayerName").value.trim(),
+    experience: document.getElementById("charExperience").value.trim(),
     ac: document.getElementById("charAC").value.trim(),
     hp: document.getElementById("charHP").value.trim(),
     speed: document.getElementById("charSpeed").value.trim(),
-    background: document.getElementById("charBackground").value.trim(),
+    attacks: document.getElementById("charAttacks").value.trim(),
     notes: document.getElementById("charNotes").value.trim(),
+    features: document.getElementById("charFeatures").value.trim(),
+    background: document.getElementById("charBackground").value.trim(),
     abilities,
+    savingThrows: Object.assign({}, charSaveProfs),
+    skillProfs: Object.assign({}, charSkillProfs),
   };
+}
+
+function submitCharacter() {
+  const formData = collectCharacterFormData();
+  if (!formData.name) {
+    tg.showAlert("Введи ім'я персонажа");
+    return;
+  }
+
+  const charData = Object.assign(
+    { id: editingCharId || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)) },
+    formData
+  );
 
   if (editingCharId) {
     characters = characters.map(c => c.id === editingCharId ? charData : c);
@@ -2825,6 +2939,33 @@ function submitCharacter() {
   saveCharactersToStorage();
   closeModal("characterModal");
   renderCharacters();
+}
+
+async function downloadCharacterPdf() {
+  const formData = collectCharacterFormData();
+  if (!formData.name) {
+    tg.showAlert("Введи ім'я персонажа перед завантаженням PDF");
+    return;
+  }
+
+  const payload = Object.assign({}, formData, {
+    background_title: formData.backgroundTitle,
+    hpCurrent: formData.hp,
+  });
+
+  try {
+    const res = await fetch("/api/character-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("PDF generation failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  } catch (e) {
+    tg.showAlert("Не вдалось згенерувати PDF. Спробуй ще раз.");
+  }
 }
 
 function deleteCurrentCharacter() {
