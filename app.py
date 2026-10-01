@@ -36,6 +36,9 @@ if SUPABASE_KEY.startswith("eyJ"):
 REST = f"{SUPABASE_URL}/rest/v1/games"
 HISTORY_REST = f"{SUPABASE_URL}/rest/v1/game_history"
 WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
+EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
+RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
+ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -559,6 +562,121 @@ def character_pdf():
         as_attachment=True,
         download_name=f"{safe_name}.pdf",
     )
+
+
+# ==================== АДМІНИ ====================
+@app.route("/api/admins/check", methods=["POST"])
+def check_admin():
+    data = request.get_json(silent=True, force=True) or {}
+    uname = (data.get("username") or "").lstrip("@").lower()
+    if not uname:
+        return jsonify({"is_admin": False})
+    resp = requests.get(
+        ADMINS_REST,
+        headers=HEADERS,
+        params={"username": f"eq.{uname}", "select": "username"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return jsonify({"is_admin": len(resp.json()) > 0})
+
+
+# ==================== ПОДІЇ ====================
+@app.route("/api/events", methods=["GET"])
+def get_events():
+    from datetime import date
+    resp = requests.get(
+        EVENTS_REST,
+        headers=HEADERS,
+        params={"select": "*", "event_date": f"gte.{date.today().isoformat()}", "order": "event_date.asc"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    events = resp.json()
+
+    ids = [str(e["id"]) for e in events]
+    rsvps_by_event = {}
+    if ids:
+        rr = requests.get(
+            RSVPS_REST,
+            headers=HEADERS,
+            params={"select": "*", "event_id": f"in.({','.join(ids)})"},
+            timeout=30,
+        )
+        rr.raise_for_status()
+        for row in rr.json():
+            rsvps_by_event.setdefault(row["event_id"], []).append(row)
+
+    for e in events:
+        e["rsvps"] = rsvps_by_event.get(e["id"], [])
+
+    return jsonify(events)
+
+
+@app.route("/api/events", methods=["POST"])
+def add_event():
+    data = request.get_json(silent=True, force=True) or {}
+    resp = requests.post(
+        EVENTS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        json={
+            "title": data.get("title", ""),
+            "event_date": data.get("event_date"),
+            "event_time": data.get("event_time", ""),
+            "game_name": data.get("game_name", ""),
+            "description": data.get("description", ""),
+            "created_by": data.get("created_by", "невідомо"),
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/events/<int:event_id>", methods=["DELETE"])
+def delete_event(event_id):
+    resp = requests.delete(EVENTS_REST, headers=HEADERS, params={"id": f"eq.{event_id}"}, timeout=30)
+    resp.raise_for_status()
+    return jsonify({"status": "deleted"})
+
+
+@app.route("/api/events/<int:event_id>/rsvp", methods=["POST"])
+def rsvp_event(event_id):
+    data = request.get_json(silent=True, force=True) or {}
+    username = (data.get("username") or "").lstrip("@").lower()
+    if not username:
+        return jsonify({"status": "no_username"}), 400
+
+    resp = requests.post(
+        RSVPS_REST,
+        headers={
+            **HEADERS,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        params={"on_conflict": "event_id,username"},
+        json={
+            "event_id": event_id,
+            "username": username,
+            "display_name": data.get("display_name", username),
+            "status": "going",
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/events/<int:event_id>/rsvp/<username>", methods=["DELETE"])
+def cancel_rsvp(event_id, username):
+    resp = requests.delete(
+        RSVPS_REST,
+        headers=HEADERS,
+        params={"event_id": f"eq.{event_id}", "username": f"eq.{username.lstrip('@').lower()}"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return jsonify({"status": "deleted"})
 
 
 # ==================== TELEGRAM BOT ====================
