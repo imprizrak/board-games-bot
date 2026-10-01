@@ -393,6 +393,12 @@ def add_game():
         timeout=30,
     )
     resp.raise_for_status()
+
+    notify_text = f"🎲 Нова гра в бібліотеці: {name}"
+    if description:
+        notify_text += f"\n\n{description}"
+    notify_subscribers_async(notify_text, photo_url=cover_url)
+
     return jsonify({"status": "ok"})
 
 
@@ -630,6 +636,34 @@ def add_event():
         timeout=30,
     )
     resp.raise_for_status()
+
+    event_photo = None
+    game_name = data.get("game_name", "")
+    if game_name:
+        try:
+            gresp = requests.get(
+                REST,
+                headers=HEADERS,
+                params={"name": f"eq.{game_name}", "select": "cover_url", "limit": 1},
+                timeout=15,
+            )
+            if gresp.ok and gresp.json():
+                event_photo = gresp.json()[0].get("cover_url")
+        except Exception:
+            logging.exception("Не вдалось знайти обкладинку гри для сповіщення")
+
+    notify_lines = [f"📅 Нова подія: {data.get('title', '')}"]
+    date_time = data.get("event_date", "")
+    if data.get("event_time"):
+        date_time += f" о {data.get('event_time')}"
+    if date_time:
+        notify_lines.append(date_time)
+    if game_name:
+        notify_lines.append(f"Гра: {game_name}")
+    if data.get("description"):
+        notify_lines.append(data.get("description"))
+    notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
+
     return jsonify({"status": "ok"})
 
 
@@ -680,8 +714,12 @@ def cancel_rsvp(event_id, username):
 
 
 # ==================== TELEGRAM BOT ====================
+SUBSCRIBERS_REST = f"{SUPABASE_URL}/rest/v1/subscribers"
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
+
+bot_loop = None  # заповнюється при старті фонового потоку бота
 
 
 @dp.message(CommandStart())
@@ -696,9 +734,71 @@ async def cmd_start(message: Message):
         reply_markup=kb,
     )
 
+    try:
+        requests.post(
+            SUBSCRIBERS_REST,
+            headers={
+                **HEADERS,
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            params={"on_conflict": "chat_id"},
+            json={
+                "chat_id": message.chat.id,
+                "username": message.from_user.username or "",
+                "first_name": message.from_user.first_name or "",
+            },
+            timeout=15,
+        )
+    except Exception:
+        logging.exception("Не вдалось зберегти підписника")
+
+
+async def notify_subscribers(text, photo_url=None):
+    """Надсилає повідомлення всім, хто колись натискав /start."""
+    try:
+        resp = requests.get(
+            SUBSCRIBERS_REST,
+            headers=HEADERS,
+            params={"select": "chat_id"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        subscribers = resp.json()
+    except Exception:
+        logging.exception("Не вдалось отримати список підписників")
+        return
+
+    for row in subscribers:
+        chat_id = row.get("chat_id")
+        if not chat_id:
+            continue
+        try:
+            if photo_url:
+                await bot.send_photo(chat_id, photo=photo_url, caption=text)
+            else:
+                await bot.send_message(chat_id, text)
+        except Exception:
+            # Людина могла заблокувати бота чи видалити чат - просто пропускаємо
+            logging.info(f"Не вдалось надіслати сповіщення {chat_id}")
+
+
+def notify_subscribers_async(text, photo_url=None):
+    """Викликається з синхронних Flask-роутів, щоб не чекати на розсилку."""
+    if bot_loop is None:
+        return
+    try:
+        asyncio.run_coroutine_threadsafe(notify_subscribers(text, photo_url), bot_loop)
+    except Exception:
+        logging.exception("Не вдалось запланувати розсилку")
+
 
 def run_bot_polling():
-    asyncio.run(dp.start_polling(bot, handle_signals=False))
+    global bot_loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    bot_loop = loop
+    loop.run_until_complete(dp.start_polling(bot, handle_signals=False))
 
 
 # Запускаємо бота у фоновому потоці, а Flask - в основному

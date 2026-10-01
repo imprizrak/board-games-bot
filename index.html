@@ -65,7 +65,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    padding: 12px;
+    padding: 12px 12px 76px;
   }
   .card {
     background: var(--parchment);
@@ -197,12 +197,93 @@
     grid-column: 1 / -1;
   }
 
+  /* ---------- Вкладка "Майстер-клас" ---------- */
+  .mc-wrap { padding: 16px 16px 40px; }
+  .mc-intro {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+  .mc-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .mc-chip {
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .mc-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mc-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .mc-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .mc-step-num {
+    flex-shrink: 0;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #1a1024;
+    font-weight: 800;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mc-text {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+    margin: 0 0 20px;
+  }
+  .mc-included {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mc-included-item {
+    font-size: 14px;
+    color: var(--text);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 12px;
+  }
+
   /* ---------- Вкладка "Події" ---------- */
   .events-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 12px;
+    padding: 12px 12px 76px;
   }
   .event-card {
     background: var(--card-bg);
@@ -414,7 +495,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px;
+    padding: 12px 12px 76px;
   }
   .wish-item, .history-item {
     background: var(--card-bg);
@@ -1102,7 +1183,7 @@
   .flip7-continue-btn svg { width: 16px; height: 16px; }
 
   /* ---------- Чарник персонажа ---------- */
-  .char-list { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  .char-list { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 76px; }
   .char-card {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -1379,6 +1460,53 @@
   </button>
 </div>
 
+<!-- ==================== ВКЛАДКА: МАЙСТЕР-КЛАС ==================== -->
+<div class="view" id="view-masterclass">
+  <header>Майстер-клас із розпису мініатюр</header>
+  <div class="mc-wrap">
+
+    <p class="mc-intro">
+      Розписуємо мініатюри персонажів із D&D, настільних ігор, улюблених ігор,
+      фільмів і серіалів — або будь-кого, кого ти собі уявиш.
+    </p>
+
+    <div class="mc-chip-row">
+      <span class="mc-chip">⚔️ D&D</span>
+      <span class="mc-chip">🎲 Настільні ігри</span>
+      <span class="mc-chip">🎮 Персонажі з ігор</span>
+      <span class="mc-chip">🎬 Герої фільмів і серіалів</span>
+      <span class="mc-chip">🐉 Фентезі та аніме</span>
+    </div>
+
+    <div class="mc-section-title">Етапи роботи</div>
+    <div class="mc-steps">
+      <div class="mc-step"><span class="mc-step-num">1</span>Вибір моделі</div>
+      <div class="mc-step"><span class="mc-step-num">2</span>Підготовка до фарбування</div>
+      <div class="mc-step"><span class="mc-step-num">3</span>Базові кольори</div>
+      <div class="mc-step"><span class="mc-step-num">4</span>Тіні та висвітлення</div>
+      <div class="mc-step"><span class="mc-step-num">5</span>Фінальні деталі</div>
+    </div>
+
+    <div class="mc-section-title">Як це працює</div>
+    <p class="mc-text">
+      Надішли фото чи файл бажаної фігурки — надрукую її до зустрічі.
+      На самому майстер-класі розпишемо її разом, від ґрунту до фінального штриха.
+      Також завжди приношу власну колекцію мініатюр, яка постійно поповнюється,
+      тож є з чого обрати і на місці.
+    </p>
+
+    <div class="mc-section-title">Усе необхідне надається</div>
+    <div class="mc-included">
+      <div class="mc-included-item">✔ Ґрунт</div>
+      <div class="mc-included-item">✔ Фарби</div>
+      <div class="mc-included-item">✔ Пензлі</div>
+      <div class="mc-included-item">✔ Палітра</div>
+      <div class="mc-included-item">✔ Надрукована мініатюра</div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
 <div class="bottom-nav">
   <button class="nav-btn active" data-view="view-library">
@@ -1396,6 +1524,10 @@
   <button class="nav-btn" data-view="view-character">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z"/></svg></span>
     <span>Чарник</span>
+  </button>
+  <button class="nav-btn" data-view="view-masterclass">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 3.5a2.1 2.1 0 0 1 3 3L10 18 5 19l1-5Z"/><path d="M14 6l3 3"/></svg></span>
+    <span>Майстер-клас</span>
   </button>
 </div>
 
