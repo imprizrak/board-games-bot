@@ -197,57 +197,109 @@
     grid-column: 1 / -1;
   }
 
-  /* ---------- Найближчі події ---------- */
-  .events-section {
-    padding: 12px 12px 0;
-  }
-  .events-scroll {
+  /* ---------- Вкладка "Події" ---------- */
+  .events-list {
     display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
   }
   .event-card {
-    flex-shrink: 0;
-    width: 220px;
     background: var(--card-bg);
     border: 1px solid var(--accent);
-    border-radius: 14px;
-    padding: 12px 14px;
+    border-radius: 16px;
+    padding: 14px 16px;
+  }
+  .event-card .ev-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
   }
   .event-card .ev-date {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--accent);
     font-weight: 700;
     letter-spacing: 0.5px;
   }
   .event-card .ev-title {
     font-family: 'Cinzel', serif;
-    font-size: 15px;
+    font-size: 18px;
     color: var(--text);
-    margin-top: 3px;
-  }
-  .event-card .ev-game {
-    font-size: 12px;
-    color: var(--muted);
     margin-top: 4px;
   }
-  .event-card .ev-attendees {
+  .event-card .ev-game {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+  .event-card .ev-description {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .event-card .ev-admin-del {
+    flex-shrink: 0;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .event-card .ev-admin-del svg { width: 13px; height: 13px; }
+
+  .ev-participants-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+  .ev-participants {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .participant-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+  }
+  .participant-chip .pc-remove {
+    border: none;
+    background: none;
+    color: var(--muted);
+    display: flex;
+    padding: 0;
+  }
+  .participant-chip .pc-remove svg { width: 11px; height: 11px; }
+  .ev-no-participants {
     font-size: 12px;
     color: var(--muted);
-    margin-top: 8px;
   }
+
   .event-card .ev-buttons {
     display: flex;
-    gap: 6px;
-    margin-top: 10px;
+    gap: 8px;
+    margin-top: 14px;
   }
   .event-card .ev-rsvp-btn {
     flex: 1;
-    padding: 7px 4px;
+    padding: 9px 4px;
     border-radius: 999px;
     border: none;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     background: var(--accent);
     color: #1a1024;
@@ -257,35 +309,22 @@
     color: var(--accent);
     border: 1px solid var(--accent);
   }
-  .event-card .ev-admin-btn {
-    width: 30px;
-    flex: none;
+  .event-card .ev-add-participant-btn {
+    flex: 1;
+    padding: 9px 4px;
     border-radius: 999px;
-    border: none;
-    background: var(--danger-bg);
-    color: var(--danger-text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
   }
-  .event-card .ev-admin-btn svg { width: 13px; height: 13px; }
   .events-empty {
     color: var(--muted);
-    font-size: 13px;
-    padding: 6px 2px 2px;
+    font-size: 14px;
+    padding: 30px 20px;
+    text-align: center;
   }
-  .events-add-btn {
-    flex-shrink: 0;
-    width: 44px;
-    border-radius: 14px;
-    border: 1.5px dashed var(--border);
-    background: none;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .events-add-btn svg { width: 18px; height: 18px; }
 
   /* ---------- Підвкладки бібліотеки ---------- */
   .lib-subtabs {
@@ -1134,10 +1173,6 @@
 <div class="view active" id="view-library">
   <header>Бібліотека настільних ігор</header>
 
-  <div class="events-section">
-    <div class="events-scroll" id="eventsScroll"></div>
-  </div>
-
   <div class="lib-subtabs">
     <button class="lib-subtab-btn active" data-lib="games">Бібліотека</button>
     <button class="lib-subtab-btn" data-lib="wishlist">Вішліст</button>
@@ -1335,11 +1370,24 @@
   </button>
 </div>
 
+<!-- ==================== ВКЛАДКА: ПОДІЇ ==================== -->
+<div class="view" id="view-events">
+  <header>Ігрові вечори</header>
+  <div class="events-list" id="eventsList"></div>
+  <button class="fab" id="eventsFab" onclick="openEventModal()" style="display:none;">
+    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+</div>
+
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
 <div class="bottom-nav">
   <button class="nav-btn active" data-view="view-library">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5c-1.5-1-4-1.5-6-1v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V5.5c-2-.5-4.5 0-6 1Z"/><path d="M12 6.5v13"/></svg></span>
     <span>Бібліотека</span>
+  </button>
+  <button class="nav-btn" data-view="view-events">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
+    <span>Події</span>
   </button>
   <button class="nav-btn" data-view="view-tools">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>
@@ -1565,6 +1613,19 @@
     <textarea id="historyNote" rows="2" placeholder="Як пройшов вечір"></textarea>
 
     <button class="btn" onclick="submitHistory()">Зберегти запис</button>
+  </div>
+</div>
+
+<!-- Модалка додавання учасника вручну (для адмінів) -->
+<div class="modal" id="addParticipantModal">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('addParticipantModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h2>Додати учасника</h2>
+
+    <label>Ім'я</label>
+    <input type="text" id="participantName" placeholder="Ім'я учасника">
+
+    <button class="btn" onclick="submitManualParticipant()">Додати</button>
   </div>
 </div>
 
@@ -1855,6 +1916,7 @@ async function checkAdminStatus() {
   } catch (e) {
     isAdmin = false;
   }
+  document.getElementById("eventsFab").style.display = isAdmin ? "flex" : "none";
   renderEvents(lastEventsData);
 }
 
@@ -1866,6 +1928,7 @@ function formatEventDate(iso) {
 }
 
 let lastEventsData = [];
+let currentParticipantEventId = null;
 
 async function loadEvents() {
   try {
@@ -1878,60 +1941,80 @@ async function loadEvents() {
 }
 
 function renderEvents(events) {
-  const scroll = document.getElementById("eventsScroll");
-  scroll.innerHTML = "";
+  const list = document.getElementById("eventsList");
+  list.innerHTML = "";
 
   if (!events || events.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "events-empty";
-    empty.textContent = "Найближчих подій поки немає.";
-    scroll.appendChild(empty);
-  } else {
-    events.forEach(ev => {
-      const card = document.createElement("div");
-      card.className = "event-card";
+    list.innerHTML = '<div class="events-empty">Найближчих подій поки немає.<br>' +
+      (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') + '</div>';
+    return;
+  }
 
-      const rsvps = ev.rsvps || [];
-      const joined = telegramUsername && rsvps.some(r => r.username === telegramUsername);
-      const names = rsvps.map(r => r.display_name || r.username).slice(0, 3).join(", ");
-      const extra = rsvps.length > 3 ? ` +${rsvps.length - 3}` : "";
+  events.forEach(ev => {
+    const rsvps = ev.rsvps || [];
+    const joined = telegramUsername && rsvps.some(r => r.username === telegramUsername);
 
-      card.innerHTML = `
-        <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? " · " + ev.event_time : ""}</div>
-        <div class="ev-title">${ev.title}</div>
-        ${ev.game_name ? `<div class="ev-game">🎲 ${ev.game_name}</div>` : ""}
-        <div class="ev-attendees">${rsvps.length === 0 ? "Поки ніхто не записався" : `Йдуть: ${names}${extra}`}</div>
-        <div class="ev-buttons">
-          <button class="ev-rsvp-btn ${joined ? 'joined' : ''}" data-id="${ev.id}" data-joined="${joined}">
-            ${joined ? "Я йду ✓" : "Записатись"}
-          </button>
-          ${isAdmin ? `<button class="ev-admin-btn" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ""}
+    const card = document.createElement("div");
+    card.className = "event-card";
+
+    const participantsHtml = rsvps.length === 0
+      ? '<div class="ev-no-participants">Поки ніхто не записався</div>'
+      : rsvps.map(r => `
+          <span class="participant-chip">
+            ${r.display_name || r.username}
+            ${isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${r.username}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ""}
+          </span>
+        `).join("");
+
+    card.innerHTML = `
+      <div class="ev-top-row">
+        <div>
+          <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? " · " + ev.event_time : ""}</div>
+          <div class="ev-title">${ev.title}</div>
+          ${ev.game_name ? `<div class="ev-game">🎲 ${ev.game_name}</div>` : ""}
+          ${ev.description ? `<div class="ev-description">${ev.description}</div>` : ""}
         </div>
-      `;
+        ${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ""}
+      </div>
 
-      card.querySelector(".ev-rsvp-btn").addEventListener("click", () => toggleRsvp(ev.id, joined));
-      const adminBtn = card.querySelector(".ev-admin-btn");
-      if (adminBtn) {
-        adminBtn.addEventListener("click", () => {
-          tg.showConfirm(`Видалити подію "${ev.title}"?`, async (confirmed) => {
-            if (!confirmed) return;
-            await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
-            loadEvents();
-          });
+      <div class="ev-participants-label">Учасники (${rsvps.length})</div>
+      <div class="ev-participants">${participantsHtml}</div>
+
+      <div class="ev-buttons">
+        <button class="ev-rsvp-btn ${joined ? 'joined' : ''}" data-id="${ev.id}">
+          ${joined ? "Я йду ✓" : "Записатись"}
+        </button>
+        ${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ""}
+      </div>
+    `;
+
+    card.querySelector(".ev-rsvp-btn").addEventListener("click", () => toggleRsvp(ev.id, joined));
+
+    const delBtn = card.querySelector(".ev-admin-del");
+    if (delBtn) {
+      delBtn.addEventListener("click", () => {
+        tg.showConfirm(`Видалити подію "${ev.title}"?`, async (confirmed) => {
+          if (!confirmed) return;
+          await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
+          loadEvents();
         });
-      }
+      });
+    }
 
-      scroll.appendChild(card);
+    const addPartBtn = card.querySelector(".ev-add-participant-btn");
+    if (addPartBtn) {
+      addPartBtn.addEventListener("click", () => openAddParticipantModal(ev.id));
+    }
+
+    card.querySelectorAll(".pc-remove").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        await fetch(`/api/events/${btn.dataset.event}/rsvp/${btn.dataset.username}`, { method: "DELETE" });
+        loadEvents();
+      });
     });
-  }
 
-  if (isAdmin) {
-    const addBtn = document.createElement("button");
-    addBtn.className = "events-add-btn";
-    addBtn.onclick = openEventModal;
-    addBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-    scroll.appendChild(addBtn);
-  }
+    list.appendChild(card);
+  });
 }
 
 async function toggleRsvp(eventId, currentlyJoined) {
@@ -1948,6 +2031,28 @@ async function toggleRsvp(eventId, currentlyJoined) {
       body: JSON.stringify({ username: telegramUsername, display_name: username }),
     });
   }
+  loadEvents();
+}
+
+function openAddParticipantModal(eventId) {
+  currentParticipantEventId = eventId;
+  document.getElementById("participantName").value = "";
+  document.getElementById("addParticipantModal").classList.add("open");
+}
+
+async function submitManualParticipant() {
+  const name = document.getElementById("participantName").value.trim();
+  if (!name) {
+    tg.showAlert("Введи ім'я учасника");
+    return;
+  }
+  const syntheticUsername = "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await fetch(`/api/events/${currentParticipantEventId}/rsvp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: syntheticUsername, display_name: name }),
+  });
+  closeModal("addParticipantModal");
   loadEvents();
 }
 
