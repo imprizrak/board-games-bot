@@ -1180,8 +1180,9 @@
   .flip7-bottombar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     margin-top: 16px;
+    flex-wrap: wrap;
   }
   .flip7-newround-link {
     background: none;
@@ -1565,15 +1566,15 @@
       <div class="flip7-panel" id="flip7Panel"></div>
 
       <div class="flip7-bottombar">
-        <button class="flip7-newround-link" onclick="continueFlip7Round()">Наступний раунд</button>
+        <button class="flip7-newround-link" id="flip7RoundBtn" onclick="finishFlip7Round()">Завершити раунд</button>
         <button class="flip7-history-btn" id="flip7UndoBtn" onclick="undoFlip7()" title="Скасувати">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-1"/></svg>
         </button>
         <button class="flip7-history-btn" id="flip7RedoBtn" onclick="redoFlip7()" title="Повторити">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h1"/></svg>
         </button>
-        <button class="flip7-continue-btn" onclick="continueFlip7Round()">
-          Continue
+        <button class="flip7-continue-btn" id="flip7ContinueBtn" onclick="continueFlip7Flow()">
+          Продовжити
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </div>
@@ -3404,15 +3405,15 @@ function renderFlip7() {
       <div class="flip7-actions-row">
         <button class="flip7-action-btn bank-btn" id="flip7BankBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          Bank
+          Зарахувати
         </button>
         <button class="flip7-action-btn bust-btn" id="flip7BustBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-          Bust
+          Перебір
         </button>
         <button class="flip7-action-btn freeze-btn" id="flip7FreezeBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.5 6l15 12M19.5 6l-15 12"/></svg>
-          Freeze
+          Заморозити
         </button>
       </div>
 
@@ -3427,7 +3428,7 @@ function renderFlip7() {
         </div>
         <button class="flip7-clear-btn" id="flip7ClearBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
-          Clear
+          Очистити
         </button>
       </div>
 
@@ -3519,9 +3520,83 @@ function continueFlip7Round() {
     p.pendingDelta = null;
   });
   flip7Round += 1;
+  flip7ActiveId = flip7Players.length ? flip7Players[0].id : null;
   flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
   flip7PushHistory();
   renderFlip7();
+
+  if (tg.HapticFeedback) {
+    tg.HapticFeedback.notificationOccurred("success");
+  }
+}
+
+function finishFlip7Round() {
+  if (!flip7Players.length) return;
+
+  const unfinished = flip7Players.filter(p => p.pendingDelta === null);
+  if (!unfinished.length) {
+    continueFlip7Round();
+    return;
+  }
+
+  const names = unfinished.map(p => p.name).join(", ");
+  const message = `Не завершили хід: ${names}. Зарахувати їм 0 балів і перейти до наступного раунду?`;
+
+  if (tg && typeof tg.showConfirm === "function") {
+    tg.showConfirm(message, confirmed => {
+      if (confirmed) continueFlip7Round();
+    });
+  } else if (window.confirm(message)) {
+    continueFlip7Round();
+  }
+}
+
+function continueFlip7Flow() {
+  if (!flip7Players.length) return;
+
+  const activePlayer = flip7Players.find(p => p.id === flip7ActiveId);
+  const hasBuilderValue =
+    flip7Builder.numbers.length > 0 ||
+    flip7Builder.x2 ||
+    flip7Builder.flip7 ||
+    Object.values(flip7Builder.mods).some(Boolean);
+
+  // Якщо гравець уже ввів карти/бонуси, «Продовжити» зараховує результат як звичайний банк.
+  if (activePlayer && activePlayer.pendingDelta === null && hasBuilderValue) {
+    commitFlip7Action("bank");
+    return;
+  }
+
+  const unresolved = flip7Players.filter(p => p.pendingDelta === null);
+
+  // Усі гравці вже завершили хід — кнопка переходить до наступного раунду.
+  if (unresolved.length === 0) {
+    continueFlip7Round();
+    return;
+  }
+
+  const currentIndex = flip7Players.findIndex(p => p.id === flip7ActiveId);
+  let nextPlayer = null;
+  for (let offset = 1; offset <= flip7Players.length; offset++) {
+    const p = flip7Players[(currentIndex + offset + flip7Players.length) % flip7Players.length];
+    if (p && p.pendingDelta === null) {
+      nextPlayer = p;
+      break;
+    }
+  }
+
+  if (!nextPlayer) {
+    // Якщо єдиний незавершений — поточний гравець, просимо спершу вибрати результат.
+    if (tg && typeof tg.showAlert === "function") {
+      tg.showAlert("Спочатку зарахуй бали, обери «Перебір» або «Заморозити».");
+    }
+    return;
+  }
+
+  flip7ActiveId = nextPlayer.id;
+  flip7Builder = { numbers: [], x2: false, mods: {}, flip7: false };
+  renderFlip7();
+  if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
 function addFlip7Player() {
