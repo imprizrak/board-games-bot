@@ -1422,6 +1422,52 @@
     height: 88px;
   }
 
+  /* ---------- FIX: прокрутка Flip Seven у Telegram/iOS ---------- */
+  html {
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  #view-tools.active {
+    min-height: 100%;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #panel-counters.active {
+    overflow: visible;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #mode-flip7.active {
+    display: block;
+    overflow: visible;
+    touch-action: pan-y;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #mode-flip7 .flip7-bottombar {
+    margin-bottom: 24px;
+  }
+
+  /* Повноекранний вибір гравця як і раніше блокує прокрутку тільки у своєму режимі */
+  body.picker-fullscreen {
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+    touch-action: none;
+  }
+
 </style>
 </head>
 <body>
