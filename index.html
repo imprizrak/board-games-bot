@@ -198,85 +198,121 @@
   }
 
   /* ---------- Вкладка "Майстер-клас" ---------- */
-  .mc-wrap { padding: 16px 16px 40px; }
-  .mc-intro {
-    font-size: 15px;
-    line-height: 1.55;
-    color: var(--text);
-    margin: 0 0 16px;
-  }
-  .mc-chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-  .mc-chip {
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-size: 13px;
-  }
-  .mc-section-title {
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin: 0 0 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-  }
-  .mc-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-  .mc-step {
+  .mc-wrap { padding: 8px 14px 92px; }
+  .mc-hero {
     display: flex;
     align-items: center;
-    gap: 10px;
-    background: var(--card-bg);
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(157,97,255,0.08));
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 14px;
-    color: var(--text);
+    border-radius: 16px;
   }
-  .mc-step-num {
+  .mc-hero-title { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 800; color: var(--text); }
+  .mc-hero-sub { margin-top: 3px; font-size: 12px; color: var(--muted); line-height: 1.3; }
+  .mc-random-btn {
     flex-shrink: 0;
-    width: 24px; height: 24px;
+    width: 44px; height: 44px;
     border-radius: 50%;
-    background: var(--accent);
-    color: #1a1024;
-    font-weight: 800;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: 1px solid var(--accent);
+    background: var(--card-bg);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
   }
-  .mc-text {
-    font-size: 14px;
-    line-height: 1.55;
+  .mc-random-btn svg { width: 20px; height: 20px; }
+
+  .mc-progress-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 2px 7px; }
+  .mc-progress-label { font-size: 12px; color: var(--muted); }
+  .mc-progress-value { font-size: 12px; color: var(--accent); font-weight: 700; }
+  .mc-progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 14px; }
+  .mc-progress-seg { height: 4px; border-radius: 999px; background: var(--border); transition: background .2s ease, transform .2s ease; }
+  .mc-progress-seg.done { background: var(--accent); }
+  .mc-progress-seg.current { background: var(--accent); transform: scaleY(1.65); }
+
+  .mc-stage { display: none; }
+  .mc-stage.active { display: block; animation: mcStageIn .18s ease-out; }
+  @keyframes mcStageIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .mc-stage-title { font-family: 'Cinzel', serif; color: var(--accent); font-size: 15px; margin: 0 0 4px; }
+  .mc-stage-sub { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+
+  .mc-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .mc-choice {
+    min-height: 92px;
+    padding: 11px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
     color: var(--text);
-    margin: 0 0 20px;
-  }
-  .mc-included {
+    text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 8px;
+    transition: border-color .15s ease, background .15s ease, transform .08s ease;
   }
-  .mc-included-item {
-    font-size: 14px;
-    color: var(--text);
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 9px 12px;
+  .mc-choice:active { transform: scale(.98); }
+  .mc-choice.selected { border-color: var(--accent); background: rgba(212,175,55,.1); box-shadow: inset 0 0 0 1px rgba(212,175,55,.35); }
+  .mc-choice-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+  .mc-choice-icon svg { width: 20px; height: 20px; }
+  .mc-choice-name { font-size: 14px; font-weight: 700; line-height: 1.15; }
+  .mc-choice-desc { color: var(--muted); font-size: 11px; line-height: 1.25; }
+
+  .mc-palette { display: flex; gap: 4px; margin-top: 3px; }
+  .mc-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); }
+  .mc-swatch.s1 { background: #d8c49c; } .mc-swatch.s2 { background: #7d5a43; } .mc-swatch.s3 { background: #333; }
+  .mc-swatch.b1 { background: #e6c229; } .mc-swatch.b2 { background: #e94f37; } .mc-swatch.b3 { background: #46a3e6; }
+  .mc-swatch.d1 { background: #17131f; } .mc-swatch.d2 { background: #4c355d; } .mc-swatch.d3 { background: #7a1f35; }
+  .mc-swatch.p1 { background: #e7d9c4; } .mc-swatch.p2 { background: #a27c62; } .mc-swatch.p3 { background: #5f738d; }
+
+  .mc-level-list { display: flex; flex-direction: column; gap: 8px; }
+  .mc-level-btn {
+    width: 100%; padding: 11px 12px; border-radius: 13px; border: 1px solid var(--border);
+    background: var(--card-bg); color: var(--text); display: flex; align-items: center; gap: 10px; text-align: left;
   }
+  .mc-level-btn.selected { border-color: var(--accent); background: rgba(212,175,55,.1); }
+  .mc-level-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); box-shadow: 0 0 0 4px rgba(255,255,255,.02); }
+  .mc-level-btn.selected .mc-level-dot { background: var(--accent); }
+  .mc-level-main { font-size: 14px; font-weight: 700; }
+  .mc-level-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .mc-booking-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
+  .mc-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mc-field { min-width: 0; }
+  .mc-field.full { grid-column: 1 / -1; }
+  .mc-field label { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+  .mc-field input {
+    width: 100%; min-width: 0; height: 42px; padding: 8px 10px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 16px;
+  }
+  .mc-field input:focus { outline: 2px solid rgba(212,175,55,.3); border-color: var(--accent); }
+
+  .mc-nav { display: flex; gap: 8px; margin-top: 14px; }
+  .mc-nav .btn { margin-top: 0; }
+  .mc-nav .mc-back { flex: 0 0 42%; }
+  .mc-nav .mc-next { flex: 1; }
+  .mc-nav .btn:disabled { opacity: .38; }
+
+  .mc-summary {
+    margin-top: 14px; padding: 12px 13px; border-radius: 14px;
+    border: 1px solid rgba(212,175,55,.45); background: rgba(212,175,55,.06);
+  }
+  .mc-summary-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .mc-summary-title { font-family: 'Cinzel', serif; color: var(--accent); font-size: 13px; }
+  .mc-summary-edit { border: none; background: none; color: var(--muted); font-size: 11px; padding: 4px; }
+  .mc-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .mc-summary-item { min-width: 0; }
+  .mc-summary-item span { display: block; font-size: 10px; color: var(--muted); }
+  .mc-summary-item strong { display: block; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .mc-included-row { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 2px; }
+  .mc-chip { flex-shrink: 0; padding: 6px 9px; border-radius: 999px; background: var(--card-bg); border: 1px solid var(--border); color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  .mc-success { display: none; margin-top: 10px; padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(74, 190, 120, .5); background: rgba(74,190,120,.08); }
+  .mc-success.show { display: block; }
+  .mc-success-title { font-weight: 800; color: #8dd8a9; font-size: 13px; }
+  .mc-success-sub { color: var(--muted); font-size: 11px; line-height: 1.35; margin-top: 3px; }
 
   /* ---------- Вкладка "Події" ---------- */
   .events-list {
@@ -1607,21 +1643,109 @@
 
 <!-- ==================== ВКЛАДКА: МАЙСТЕР-КЛАС ==================== -->
 <div class="view" id="view-masterclass">
-  <header>Майстер-клас із розпису мініатюр</header>
+  <header>Майстер-клас</header>
   <div class="mc-wrap">
-    <p class="mc-intro">Розпис мініатюр для D&D, настільних ігор та улюблених персонажів.</p>
-
-    <div class="mc-section-title">Як це працює</div>
-    <div class="mc-steps">
-      <div class="mc-step"><span class="mc-step-num">1</span>Обираєш фігурку</div>
-      <div class="mc-step"><span class="mc-step-num">2</span>Я друкую її до зустрічі</div>
-      <div class="mc-step"><span class="mc-step-num">3</span>Розписуємо разом</div>
+    <div class="mc-hero">
+      <div>
+        <div class="mc-hero-title">Створи свою мініатюру</div>
+        <div class="mc-hero-sub">4 короткі кроки — від вибору фігурки до запису.</div>
+      </div>
+      <button type="button" class="mc-random-btn" id="mcRandomBtn" aria-label="Підібрати випадково" title="Підібрати випадково">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>
+      </button>
     </div>
 
-    <p class="mc-text">Усе для роботи вже є: фігурка, ґрунт, фарби, пензлі та палітра.</p>
+    <div class="mc-progress-top">
+      <span class="mc-progress-label" id="mcProgressLabel">Обери фігурку</span>
+      <span class="mc-progress-value" id="mcProgressValue">1 / 4</span>
+    </div>
+    <div class="mc-progress" aria-hidden="true">
+      <span class="mc-progress-seg current" data-mc-progress="1"></span>
+      <span class="mc-progress-seg" data-mc-progress="2"></span>
+      <span class="mc-progress-seg" data-mc-progress="3"></span>
+      <span class="mc-progress-seg" data-mc-progress="4"></span>
+    </div>
+
+    <section class="mc-stage active" data-mc-stage="1">
+      <h3 class="mc-stage-title">Що будемо фарбувати?</h3>
+      <p class="mc-stage-sub">Обери один варіант.</p>
+      <div class="mc-choice-grid">
+        <button type="button" class="mc-choice" data-mc-figure="D&D персонаж">
+          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 5 7v5c0 4.6 3 7.8 7 9 4-1.2 7-4.4 7-9V7l-7-4Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <span><span class="mc-choice-name">D&D персонаж</span><span class="mc-choice-desc">Герой, монстр або NPC</span></span>
+        </button>
+        <button type="button" class="mc-choice" data-mc-figure="Фігурка з настільної гри">
+          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 4h10l3 5-8 11L4 9l3-5Z"/><path d="m7 4 5 16 5-16M4 9h16"/></svg></span>
+          <span><span class="mc-choice-name">З настільної гри</span><span class="mc-choice-desc">Улюблена мініатюра з коробки</span></span>
+        </button>
+        <button type="button" class="mc-choice" data-mc-figure="Власна 3D-модель">
+          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 7 4v10l-7 4-7-4V7l7-4Z"/><path d="m5 7 7 4 7-4M12 11v10"/></svg></span>
+          <span><span class="mc-choice-name">Власна 3D-модель</span><span class="mc-choice-desc">Підготуємо модель до друку</span></span>
+        </button>
+        <button type="button" class="mc-choice" data-mc-figure="Сюрприз">
+          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9h16v11H4zM12 9v11M3 5h18v4H3z"/><path d="M12 5c-1-3-5-3-5 0 0 2 3 2 5 0Zm0 0c1-3 5-3 5 0 0 2-3 2-5 0Z"/></svg></span>
+          <span><span class="mc-choice-name">Сюрприз</span><span class="mc-choice-desc">Нехай вибір буде випадковим</span></span>
+        </button>
+      </div>
+      <div class="mc-nav"><button type="button" class="btn secondary mc-back" disabled>Назад</button><button type="button" class="btn mc-next" data-mc-next="2" disabled>Далі</button></div>
+    </section>
+
+    <section class="mc-stage" data-mc-stage="2">
+      <h3 class="mc-stage-title">Який стиль?</h3>
+      <p class="mc-stage-sub">Це допоможе підібрати палітру та техніку.</p>
+      <div class="mc-choice-grid">
+        <button type="button" class="mc-choice" data-mc-style="Простий"><span class="mc-choice-icon">✦</span><span><span class="mc-choice-name">Простий</span><span class="mc-choice-desc">Чисто й швидко</span><span class="mc-palette"><i class="mc-swatch p1"></i><i class="mc-swatch p2"></i><i class="mc-swatch p3"></i></span></span></button>
+        <button type="button" class="mc-choice" data-mc-style="Детальний"><span class="mc-choice-icon">✧</span><span><span class="mc-choice-name">Детальний</span><span class="mc-choice-desc">Тіні, світло, дрібні акценти</span><span class="mc-palette"><i class="mc-swatch s1"></i><i class="mc-swatch s2"></i><i class="mc-swatch s3"></i></span></span></button>
+        <button type="button" class="mc-choice" data-mc-style="Темний"><span class="mc-choice-icon">◐</span><span><span class="mc-choice-name">Темний</span><span class="mc-choice-desc">Похмурий fantasy / grimdark</span><span class="mc-palette"><i class="mc-swatch d1"></i><i class="mc-swatch d2"></i><i class="mc-swatch d3"></i></span></span></button>
+        <button type="button" class="mc-choice" data-mc-style="Яскравий"><span class="mc-choice-icon">☀</span><span><span class="mc-choice-name">Яскравий</span><span class="mc-choice-desc">Контрастні кольори</span><span class="mc-palette"><i class="mc-swatch b1"></i><i class="mc-swatch b2"></i><i class="mc-swatch b3"></i></span></span></button>
+      </div>
+      <div class="mc-nav"><button type="button" class="btn secondary mc-back" data-mc-back="1">Назад</button><button type="button" class="btn mc-next" data-mc-next="3" disabled>Далі</button></div>
+    </section>
+
+    <section class="mc-stage" data-mc-stage="3">
+      <h3 class="mc-stage-title">Твій досвід</h3>
+      <p class="mc-stage-sub">Підлаштуємо темп майстер-класу під тебе.</p>
+      <div class="mc-level-list">
+        <button type="button" class="mc-level-btn" data-mc-level="Новачок"><span class="mc-level-dot"></span><span><span class="mc-level-main">Ніколи не фарбував</span><span class="mc-level-sub">Почнемо з основ — без складних технік</span></span></button>
+        <button type="button" class="mc-level-btn" data-mc-level="Пробував"><span class="mc-level-dot"></span><span><span class="mc-level-main">Вже пробував</span><span class="mc-level-sub">Додамо тіні, висвітлення й акуратні деталі</span></span></button>
+        <button type="button" class="mc-level-btn" data-mc-level="Досвідчений"><span class="mc-level-dot"></span><span><span class="mc-level-main">Вже вмію</span><span class="mc-level-sub">Більше часу на стиль і складніші ефекти</span></span></button>
+      </div>
+      <div class="mc-nav"><button type="button" class="btn secondary mc-back" data-mc-back="2">Назад</button><button type="button" class="btn mc-next" data-mc-next="4" disabled>До запису</button></div>
+    </section>
+
+    <section class="mc-stage" data-mc-stage="4">
+      <h3 class="mc-stage-title">Запис на майстер-клас</h3>
+      <p class="mc-stage-sub">Обери зручну дату й час.</p>
+      <div class="mc-booking-card">
+        <div class="mc-form-grid">
+          <div class="mc-field full"><label for="mcName">Ім’я</label><input id="mcName" type="text" autocomplete="name" placeholder="Як до тебе звертатися"></div>
+          <div class="mc-field"><label for="mcDate">Дата</label><input id="mcDate" type="date"></div>
+          <div class="mc-field"><label for="mcTime">Час</label><input id="mcTime" type="time"></div>
+        </div>
+        <button type="button" class="btn" id="mcBookBtn" disabled>Записатися</button>
+        <div class="mc-success" id="mcSuccess">
+          <div class="mc-success-title">✓ Запис збережено</div>
+          <div class="mc-success-sub" id="mcSuccessText">Дані залишаться на цьому пристрої. Пізніше можемо підключити запис до «Подій» або Supabase.</div>
+        </div>
+      </div>
+      <div class="mc-nav"><button type="button" class="btn secondary mc-back" data-mc-back="3">Назад</button><button type="button" class="btn secondary" id="mcRestartBtn">Почати заново</button></div>
+    </section>
+
+    <div class="mc-summary" id="mcSummary">
+      <div class="mc-summary-head"><span class="mc-summary-title">Твій майстер-клас</span><button type="button" class="mc-summary-edit" id="mcSummaryEdit">Змінити</button></div>
+      <div class="mc-summary-grid">
+        <div class="mc-summary-item"><span>Фігурка</span><strong id="mcSummaryFigure">—</strong></div>
+        <div class="mc-summary-item"><span>Стиль</span><strong id="mcSummaryStyle">—</strong></div>
+        <div class="mc-summary-item"><span>Рівень</span><strong id="mcSummaryLevel">—</strong></div>
+        <div class="mc-summary-item"><span>Дата</span><strong id="mcSummaryDate">—</strong></div>
+      </div>
+    </div>
+
+    <div class="mc-included-row" aria-label="Матеріали включено">
+      <span class="mc-chip">Фігурка</span><span class="mc-chip">Ґрунт</span><span class="mc-chip">Фарби</span><span class="mc-chip">Пензлі</span><span class="mc-chip">Палітра</span>
+    </div>
   </div>
 </div>
-
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
 <div class="bottom-nav">
   <button class="nav-btn active" data-view="view-library">
@@ -3678,6 +3802,217 @@ function deleteCurrentCharacter() {
     renderCharacters();
   });
 }
+
+
+/* ==================== ІНТЕРАКТИВНИЙ МАЙСТЕР-КЛАС ==================== */
+const MC_STORAGE_KEY = "boardgames_masterclass_v2";
+const mcStepLabels = ["Обери фігурку", "Обери стиль", "Рівень досвіду", "Запис"];
+const mcRandomFigures = ["D&D персонаж", "Фігурка з настільної гри", "Власна 3D-модель"];
+const mcRandomStyles = ["Простий", "Детальний", "Темний", "Яскравий"];
+const mcRandomLevels = ["Новачок", "Пробував", "Досвідчений"];
+let mcState = {
+  step: 1,
+  figure: null,
+  style: null,
+  level: null,
+  name: username || "",
+  date: "",
+  time: "",
+  confirmed: false,
+};
+
+function mcSave() {
+  try { localStorage.setItem(MC_STORAGE_KEY, JSON.stringify(mcState)); } catch (e) {}
+}
+
+function mcLoad() {
+  try {
+    const raw = localStorage.getItem(MC_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    mcState = Object.assign(mcState, saved || {});
+    mcState.step = Math.min(4, Math.max(1, Number(mcState.step) || 1));
+  } catch (e) {}
+}
+
+function mcHaptic(kind = "selection") {
+  try {
+    if (!tg.HapticFeedback) return;
+    if (kind === "success") tg.HapticFeedback.notificationOccurred("success");
+    else tg.HapticFeedback.selectionChanged();
+  } catch (e) {}
+}
+
+function mcFormatDate(date, time) {
+  if (!date) return "—";
+  const parts = date.split("-");
+  if (parts.length !== 3) return date;
+  const label = `${parts[2]}.${parts[1]}.${parts[0]}`;
+  return time ? `${label}, ${time}` : label;
+}
+
+function mcCanContinue(step) {
+  if (step === 1) return !!mcState.figure;
+  if (step === 2) return !!mcState.style;
+  if (step === 3) return !!mcState.level;
+  return true;
+}
+
+function renderMasterclass() {
+  const root = document.getElementById("view-masterclass");
+  if (!root) return;
+
+  root.querySelectorAll("[data-mc-stage]").forEach(el => {
+    el.classList.toggle("active", Number(el.dataset.mcStage) === mcState.step);
+  });
+  root.querySelectorAll("[data-mc-progress]").forEach(el => {
+    const n = Number(el.dataset.mcProgress);
+    el.classList.toggle("done", n < mcState.step);
+    el.classList.toggle("current", n === mcState.step);
+  });
+
+  const progressLabel = document.getElementById("mcProgressLabel");
+  const progressValue = document.getElementById("mcProgressValue");
+  if (progressLabel) progressLabel.textContent = mcStepLabels[mcState.step - 1];
+  if (progressValue) progressValue.textContent = `${mcState.step} / 4`;
+
+  root.querySelectorAll("[data-mc-figure]").forEach(btn => btn.classList.toggle("selected", btn.dataset.mcFigure === mcState.figure));
+  root.querySelectorAll("[data-mc-style]").forEach(btn => btn.classList.toggle("selected", btn.dataset.mcStyle === mcState.style));
+  root.querySelectorAll("[data-mc-level]").forEach(btn => btn.classList.toggle("selected", btn.dataset.mcLevel === mcState.level));
+
+  root.querySelectorAll("[data-mc-next]").forEach(btn => {
+    const current = Number(btn.dataset.mcNext) - 1;
+    btn.disabled = !mcCanContinue(current);
+  });
+
+  const nameInput = document.getElementById("mcName");
+  const dateInput = document.getElementById("mcDate");
+  const timeInput = document.getElementById("mcTime");
+  if (nameInput && document.activeElement !== nameInput) nameInput.value = mcState.name || "";
+  if (dateInput && document.activeElement !== dateInput) dateInput.value = mcState.date || "";
+  if (timeInput && document.activeElement !== timeInput) timeInput.value = mcState.time || "";
+
+  const bookBtn = document.getElementById("mcBookBtn");
+  if (bookBtn) bookBtn.disabled = !(mcState.figure && mcState.style && mcState.level && (mcState.name || "").trim() && mcState.date && mcState.time);
+
+  const sumFigure = document.getElementById("mcSummaryFigure");
+  const sumStyle = document.getElementById("mcSummaryStyle");
+  const sumLevel = document.getElementById("mcSummaryLevel");
+  const sumDate = document.getElementById("mcSummaryDate");
+  if (sumFigure) sumFigure.textContent = mcState.figure || "—";
+  if (sumStyle) sumStyle.textContent = mcState.style || "—";
+  if (sumLevel) sumLevel.textContent = mcState.level || "—";
+  if (sumDate) sumDate.textContent = mcFormatDate(mcState.date, mcState.time);
+
+  const success = document.getElementById("mcSuccess");
+  const successText = document.getElementById("mcSuccessText");
+  if (success) success.classList.toggle("show", !!mcState.confirmed);
+  if (successText && mcState.confirmed) {
+    successText.textContent = `${mcState.name}: ${mcState.figure}, ${mcState.style.toLowerCase()} стиль — ${mcFormatDate(mcState.date, mcState.time)}.`;
+  }
+}
+
+function setMasterclassStep(step) {
+  mcState.step = Math.min(4, Math.max(1, Number(step) || 1));
+  mcSave();
+  renderMasterclass();
+  const view = document.getElementById("view-masterclass");
+  if (view && view.classList.contains("active")) window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function mcReset() {
+  mcState = { step: 1, figure: null, style: null, level: null, name: username || "", date: "", time: "", confirmed: false };
+  mcSave();
+  renderMasterclass();
+  mcHaptic();
+}
+
+function mcRandomize() {
+  mcState.figure = mcRandomFigures[Math.floor(Math.random() * mcRandomFigures.length)];
+  mcState.style = mcRandomStyles[Math.floor(Math.random() * mcRandomStyles.length)];
+  mcState.level = mcRandomLevels[Math.floor(Math.random() * mcRandomLevels.length)];
+  mcState.confirmed = false;
+  mcState.step = 4;
+  mcSave();
+  renderMasterclass();
+  mcHaptic();
+  if (tg.showAlert) tg.showAlert(`Готово! ${mcState.figure} · ${mcState.style} · ${mcState.level}`);
+}
+
+function initMasterclass() {
+  const root = document.getElementById("view-masterclass");
+  if (!root || root.dataset.mcInit === "1") return;
+  root.dataset.mcInit = "1";
+  mcLoad();
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  const dateInput = document.getElementById("mcDate");
+  if (dateInput) dateInput.min = `${yyyy}-${mm}-${dd}`;
+
+  root.querySelectorAll("[data-mc-figure]").forEach(btn => btn.addEventListener("click", () => {
+    mcState.figure = btn.dataset.mcFigure;
+    mcState.confirmed = false;
+    mcSave(); renderMasterclass(); mcHaptic();
+  }));
+  root.querySelectorAll("[data-mc-style]").forEach(btn => btn.addEventListener("click", () => {
+    mcState.style = btn.dataset.mcStyle;
+    mcState.confirmed = false;
+    mcSave(); renderMasterclass(); mcHaptic();
+  }));
+  root.querySelectorAll("[data-mc-level]").forEach(btn => btn.addEventListener("click", () => {
+    mcState.level = btn.dataset.mcLevel;
+    mcState.confirmed = false;
+    mcSave(); renderMasterclass(); mcHaptic();
+  }));
+  root.querySelectorAll("[data-mc-next]").forEach(btn => btn.addEventListener("click", () => {
+    const next = Number(btn.dataset.mcNext);
+    if (!mcCanContinue(next - 1)) return;
+    setMasterclassStep(next); mcHaptic();
+  }));
+  root.querySelectorAll("[data-mc-back]").forEach(btn => btn.addEventListener("click", () => { setMasterclassStep(btn.dataset.mcBack); mcHaptic(); }));
+
+  const randomBtn = document.getElementById("mcRandomBtn");
+  if (randomBtn) randomBtn.addEventListener("click", mcRandomize);
+  const restartBtn = document.getElementById("mcRestartBtn");
+  if (restartBtn) restartBtn.addEventListener("click", mcReset);
+  const editBtn = document.getElementById("mcSummaryEdit");
+  if (editBtn) editBtn.addEventListener("click", () => setMasterclassStep(1));
+
+  const nameInput = document.getElementById("mcName");
+  const timeInput = document.getElementById("mcTime");
+  [nameInput, dateInput, timeInput].forEach(input => {
+    if (!input) return;
+    input.addEventListener("input", () => {
+      mcState.name = nameInput ? nameInput.value : mcState.name;
+      mcState.date = dateInput ? dateInput.value : mcState.date;
+      mcState.time = timeInput ? timeInput.value : mcState.time;
+      mcState.confirmed = false;
+      mcSave(); renderMasterclass();
+    });
+    input.addEventListener("change", () => {
+      mcState.name = nameInput ? nameInput.value : mcState.name;
+      mcState.date = dateInput ? dateInput.value : mcState.date;
+      mcState.time = timeInput ? timeInput.value : mcState.time;
+      mcState.confirmed = false;
+      mcSave(); renderMasterclass();
+    });
+  });
+
+  const bookBtn = document.getElementById("mcBookBtn");
+  if (bookBtn) bookBtn.addEventListener("click", () => {
+    if (bookBtn.disabled) return;
+    mcState.confirmed = true;
+    mcSave(); renderMasterclass(); mcHaptic("success");
+    if (tg.showAlert) tg.showAlert("Запис на майстер-клас збережено.");
+  });
+
+  renderMasterclass();
+}
+
+initMasterclass();
 
 renderCharacters();
 </script>
