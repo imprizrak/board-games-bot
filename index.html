@@ -1247,6 +1247,144 @@
     margin: 6px 0 4px;
   }
   .stat-row .ability-box label { font-size: 10px; }
+
+
+  /* ---------- Повноекранний вибір гравця ---------- */
+  body.picker-fullscreen {
+    overflow: hidden;
+    padding-bottom: 0;
+    overscroll-behavior: none;
+  }
+
+  .picker-exit {
+    display: none;
+  }
+
+  body.picker-fullscreen #panel-picker.active {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    background: #140a22;
+  }
+
+  body.picker-fullscreen #panel-picker .picker-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background:
+      radial-gradient(circle at 50% 45%, rgba(87, 54, 130, 0.86) 0%, rgba(38, 20, 58, 0.98) 48%, #100718 100%);
+  }
+
+  body.picker-fullscreen #panel-picker .picker-intro {
+    position: absolute;
+    z-index: 104;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: 64px;
+    right: 64px;
+    margin: 0;
+    padding: 8px 10px;
+    text-align: center;
+    color: rgba(240, 230, 210, 0.78);
+    font-size: 13px;
+    line-height: 1.3;
+    pointer-events: none;
+    text-shadow: 0 1px 5px rgba(0,0,0,0.8);
+  }
+
+  body.picker-fullscreen #panel-picker .picker-hint {
+    font-size: 18px;
+    line-height: 1.45;
+    color: rgba(240, 230, 210, 0.68);
+  }
+
+  body.picker-fullscreen #panel-picker .picker-status {
+    position: absolute;
+    z-index: 104;
+    left: 16px;
+    right: 16px;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 14px;
+    min-height: 42px;
+    border-radius: 14px;
+    background: rgba(20, 10, 34, 0.66);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
+  }
+
+  body.picker-fullscreen #panel-picker .picker-reset {
+    position: absolute;
+    z-index: 105;
+    left: 50%;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: auto;
+    min-width: 160px;
+    margin: 0;
+    padding: 11px 18px;
+    border-radius: 999px;
+    background: rgba(36, 19, 51, 0.9);
+    border: 1px solid var(--border);
+    color: var(--text);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  body.picker-fullscreen #panel-picker .picker-exit {
+    display: flex;
+    position: absolute;
+    z-index: 106;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    left: 12px;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 50%;
+    background: rgba(20, 10, 34, 0.72);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  body.picker-fullscreen #panel-picker .picker-exit svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  body.picker-fullscreen #panel-picker .touch-dot {
+    width: 88px;
+    height: 88px;
+    margin-left: -44px;
+    margin-top: -44px;
+  }
+
+  body.picker-fullscreen #panel-picker .touch-dot .dot-fill {
+    width: 64px;
+    height: 64px;
+  }
+
+  body.picker-fullscreen #panel-picker .touch-dot.winner .dot-fill {
+    width: 88px;
+    height: 88px;
+  }
+
 </style>
 </head>
 <body>
@@ -1349,12 +1487,15 @@
 
   <!-- Вибір гравця -->
   <div class="tool-panel" id="panel-picker">
-    <p class="roll-sub" style="padding:0 16px; margin-top:0;">Кожен гравець тримає палець на екрані одночасно, поки не з'явиться переможець.</p>
+    <button class="picker-exit" type="button" onclick="exitPickerFullscreen()" aria-label="Вийти з повноекранного вибору">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <p class="roll-sub picker-intro" style="padding:0 16px; margin-top:0;">Кожен гравець тримає палець на екрані одночасно, поки не з'явиться переможець.</p>
     <div class="picker-area" id="pickerArea">
-      <div class="picker-hint" id="pickerHint">Покладіть пальці сюди<br>(мінімум 2)</div>
+      <div class="picker-hint" id="pickerHint">Покладіть пальці на екран<br>(мінімум 2)</div>
     </div>
     <div class="picker-status" id="pickerStatus"></div>
-    <button class="btn secondary picker-reset" onclick="resetPicker()">Скинути</button>
+    <button class="btn secondary picker-reset" type="button" onclick="resetPicker()">Скинути</button>
   </div>
 
   <!-- Лічильники -->
@@ -1785,6 +1926,12 @@ document.querySelectorAll(".tool-tab-btn").forEach(btn => {
     document.querySelectorAll(".tool-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("panel-" + btn.dataset.tool).classList.add("active");
+
+    if (btn.dataset.tool === "picker") {
+      enterPickerFullscreen();
+    } else if (document.body.classList.contains("picker-fullscreen")) {
+      exitPickerFullscreen(false);
+    }
   });
 });
 
@@ -2650,6 +2797,67 @@ const pickerStatus = document.getElementById("pickerStatus");
 
 const pickerColors = ["#e0533d", "#3f8fd1", "#5cb85c", "#c9a227", "#a259c4", "#e08fc4", "#4fbfa8", "#e0904d"];
 
+/* Повноекранний режим + звук рулетки */
+let pickerAudioCtx = null;
+
+function ensurePickerAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!pickerAudioCtx) pickerAudioCtx = new AudioContextClass();
+  if (pickerAudioCtx.state === "suspended") {
+    pickerAudioCtx.resume().catch(() => {});
+  }
+  return pickerAudioCtx;
+}
+
+function playPickerTone(freq, duration = 0.05, volume = 0.045, type = "sine", delay = 0) {
+  const ctx = ensurePickerAudio();
+  if (!ctx || ctx.state !== "running") return;
+
+  const startAt = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startAt);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), startAt + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startAt);
+  osc.stop(startAt + duration + 0.02);
+}
+
+function playPickerTick(progress = 0) {
+  const p = Math.max(0, Math.min(1, progress));
+  const freq = 300 + Math.round(p * 260);
+  playPickerTone(freq, 0.04, 0.035, "square");
+}
+
+function playPickerWinner() {
+  playPickerTone(523.25, 0.10, 0.055, "sine", 0.00);
+  playPickerTone(659.25, 0.12, 0.055, "sine", 0.10);
+  playPickerTone(783.99, 0.18, 0.065, "sine", 0.22);
+}
+
+function enterPickerFullscreen() {
+  ensurePickerAudio();
+  document.body.classList.add("picker-fullscreen");
+  resetPicker();
+  if (tg && typeof tg.expand === "function") tg.expand();
+  if (tg && typeof tg.requestFullscreen === "function") {
+    try { tg.requestFullscreen(); } catch (_) {}
+  }
+}
+
+function exitPickerFullscreen(resetState = true) {
+  document.body.classList.remove("picker-fullscreen");
+  if (resetState) resetPicker();
+  if (tg && typeof tg.exitFullscreen === "function") {
+    try { tg.exitFullscreen(); } catch (_) {}
+  }
+}
+
 let activeTouches = {};
 let pickerTimer = null;
 let pickerLocked = false;
@@ -2729,6 +2937,7 @@ function spinAndPickWinner() {
     const dot = pickerArea.querySelector(`.touch-dot[data-id="${id}"]`);
     if (dot) dot.classList.add("spin-highlight");
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    playPickerTick(step / Math.max(1, totalSteps - 1));
 
     step++;
     if (step < totalSteps) {
@@ -2760,6 +2969,7 @@ function finishPick(winnerId) {
 
   pickerStatus.textContent = "Хід має цей гравець! Торкніться ще раз для нового вибору.";
   if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+  playPickerWinner();
 
   // Якщо пальці вже прибрані (або приберуться найближчим часом), поле саме
   // повернеться в стан очікування, готове до нового вибору.
@@ -2788,6 +2998,7 @@ function getRelativePos(touch) {
 }
 
 pickerArea.addEventListener("touchstart", (e) => {
+  ensurePickerAudio();
   if (pickerSpinning) return;
   // Новий дотик після показу переможця одразу починає новий раунд вибору.
   if (pickerLocked) {
@@ -2844,6 +3055,7 @@ pickerArea.addEventListener("touchcancel", handleTouchEnd);
 
 /* Підтримка миші для тесту на комп'ютері (одна точка) */
 pickerArea.addEventListener("mousedown", (e) => {
+  ensurePickerAudio();
   if (pickerSpinning) return;
   if (pickerLocked) resetPicker();
   const rect = pickerArea.getBoundingClientRect();
