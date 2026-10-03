@@ -3,8 +3,12 @@ import io
 import uuid
 import asyncio
 import logging
+import hashlib
+import hmac
+import json
+import time
 from threading import Thread
-from urllib.parse import quote
+from urllib.parse import quote, parse_qsl
 
 import requests
 from flask import Flask, request, jsonify, send_from_directory, send_file
@@ -370,6 +374,9 @@ def get_games():
 
 @app.route("/api/games", methods=["POST"])
 def add_game():
+    denied = _admin_required_response()
+    if denied:
+        return denied
     name = request.form.get("name")
     description = request.form.get("description", "")
     added_by = request.form.get("added_by", "невідомо")
@@ -408,6 +415,9 @@ def add_game():
 
 @app.route("/api/games/<int:game_id>", methods=["PUT"])
 def update_game(game_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
     name = request.form.get("name")
     description = request.form.get("description", "")
     tags = request.form.get("tags", "")
@@ -469,6 +479,9 @@ def toggle_favorite(game_id):
 
 @app.route("/api/games/<int:game_id>", methods=["DELETE"])
 def delete_game(game_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
     current = requests.get(
         REST,
         headers=HEADERS,
@@ -588,21 +601,98 @@ def character_pdf():
     )
 
 
+# ==================== ПРАВА АДМІНІСТРАТОРА TELEGRAM-ГРУПИ ====================
+def _verified_telegram_webapp_user(init_data):
+    """Перевіряє підпис Telegram WebApp initData і повертає user або None."""
+    if not init_data or not API_TOKEN:
+        return None
+    try:
+        values = dict(parse_qsl(init_data, keep_blank_values=True))
+        received_hash = values.pop("hash", None)
+        if not received_hash:
+            return None
+        data_check_string = "\\n".join(f"{k}={values[k]}" for k in sorted(values))
+        secret_key = hmac.new(b"WebAppData", API_TOKEN.encode("utf-8"), hashlib.sha256).digest()
+        calculated_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(calculated_hash, received_hash):
+            return None
+
+        auth_date = int(values.get("auth_date") or 0)
+        if auth_date and abs(int(time.time()) - auth_date) > 7 * 24 * 60 * 60:
+            return None
+
+        raw_user = values.get("user")
+        if not raw_user:
+            return None
+        user = json.loads(raw_user)
+        return user if user.get("id") else None
+    except Exception:
+        logging.exception("Не вдалося перевірити Telegram WebApp initData")
+        return None
+
+
+def _request_telegram_user():
+    init_data = request.headers.get("X-Telegram-Init-Data", "")
+    if not init_data:
+        init_data = request.form.get("_tg_init_data", "")
+    if not init_data and request.is_json:
+        body = request.get_json(silent=True) or {}
+        init_data = body.get("_tg_init_data", "")
+    return _verified_telegram_webapp_user(init_data)
+
+
+def _active_telegram_group_ids():
+    try:
+        resp = requests.get(
+            TELEGRAM_GROUPS_REST,
+            headers=HEADERS,
+            params={"select": "chat_id", "active": "eq.true"},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return [int(row["chat_id"]) for row in resp.json() if row.get("chat_id")]
+    except Exception:
+        logging.exception("Не вдалося отримати список підключених Telegram-груп")
+        return []
+
+
+def _telegram_user_is_group_admin(user_id):
+    """Адмін, якщо користувач є creator/administrator хоча б в одній активній групі бота."""
+    if not user_id or not API_TOKEN:
+        return False
+    for chat_id in _active_telegram_group_ids():
+        try:
+            resp = requests.post(
+                f"https://api.telegram.org/bot{API_TOKEN}/getChatMember",
+                json={"chat_id": chat_id, "user_id": int(user_id)},
+                timeout=20,
+            )
+            data = resp.json() if resp.content else {}
+            status = ((data.get("result") or {}).get("status") or "").lower()
+            if resp.ok and data.get("ok") and status in {"administrator", "creator"}:
+                return True
+        except Exception:
+            logging.exception("Не вдалося перевірити адміністратора групи %s", chat_id)
+    return False
+
+
+def _request_is_group_admin():
+    user = _request_telegram_user()
+    return bool(user and _telegram_user_is_group_admin(user.get("id")))
+
+
+def _admin_required_response():
+    if not _request_is_group_admin():
+        return jsonify({"error": "group_admin_required"}), 403
+    return None
+
+
 # ==================== АДМІНИ ====================
 @app.route("/api/admins/check", methods=["POST"])
 def check_admin():
-    data = request.get_json(silent=True, force=True) or {}
-    uname = (data.get("username") or "").lstrip("@").lower()
-    if not uname:
-        return jsonify({"is_admin": False})
-    resp = requests.get(
-        ADMINS_REST,
-        headers=HEADERS,
-        params={"username": f"eq.{uname}", "select": "username"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return jsonify({"is_admin": len(resp.json()) > 0})
+    user = _request_telegram_user()
+    is_admin = bool(user and _telegram_user_is_group_admin(user.get("id")))
+    return jsonify({"is_admin": is_admin})
 
 
 def _is_admin_username(username):
@@ -792,6 +882,9 @@ def get_events():
 
 @app.route("/api/events", methods=["POST"])
 def add_event():
+    denied = _admin_required_response()
+    if denied:
+        return denied
     content_type = (request.content_type or "").lower()
     if "multipart/form-data" in content_type:
         data = request.form.to_dict(flat=True)
@@ -872,6 +965,9 @@ def add_event():
 
 @app.route("/api/events/<int:event_id>", methods=["DELETE"])
 def delete_event(event_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
     try:
         current = requests.get(
             EVENTS_REST,
@@ -937,7 +1033,7 @@ def get_masterclass_bookings():
     username = (request.args.get("username") or "").lstrip("@").lower()
     params = {"select": "*", "order": "booking_date.asc,booking_time.asc,id.desc"}
     try:
-        if not _is_admin_username(username):
+        if not _request_is_group_admin():
             if not username:
                 return jsonify([])
             params["telegram_username"] = f"eq.{username}"
@@ -994,9 +1090,10 @@ def add_masterclass_booking():
 
 @app.route("/api/masterclass/bookings/<int:booking_id>/status", methods=["PATCH"])
 def update_masterclass_booking_status(booking_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
     data = request.get_json(silent=True, force=True) or {}
-    if not _is_admin_username(data.get("admin_username")):
-        return jsonify({"error": "forbidden"}), 403
     status = data.get("status")
     if status not in {"pending", "confirmed", "completed", "cancelled"}:
         return jsonify({"error": "bad_status"}), 400

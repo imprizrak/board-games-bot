@@ -1574,7 +1574,7 @@
       <button class="lib-genre-chip" id="libFavChip" data-genre="__favorites__">★ Улюблені</button>
     </div>
     <div class="grid" id="gamesGrid"></div>
-    <button class="fab" onclick="openAddModal()">
+    <button class="fab group-admin-only" onclick="openAddModal()" style="display:none;">
       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </div>
@@ -1927,8 +1927,8 @@
       <div class="quick-start-title">Швидкий старт</div>
       <div class="quick-start-grid" id="quickStartGrid"></div>
     </div>
-    <button class="btn secondary icon-inline" style="margin-top:20px; justify-content:center;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
-    <button class="btn icon-inline" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button>
+    <button class="btn secondary icon-inline group-admin-only" style="margin-top:20px; justify-content:center; display:none;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
+    <button class="btn icon-inline group-admin-only" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center; display:none;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button>
   </div>
 </div>
 
@@ -2195,6 +2195,17 @@ const username = tg.initDataUnsafe?.user?.username
   || "гість";
 const telegramUsername = (tg.initDataUnsafe?.user?.username || "").toLowerCase() || null;
 let isAdmin = false;
+const telegramInitData = tg.initData || "";
+function telegramAuthHeaders(extra = {}) {
+  return { ...extra, "X-Telegram-Init-Data": telegramInitData };
+}
+function applyAdminPermissionsUi() {
+  document.querySelectorAll(".group-admin-only").forEach(el => {
+    el.style.display = isAdmin ? "" : "none";
+  });
+  const eventsFab = document.getElementById("eventsFab");
+  if (eventsFab) eventsFab.style.display = isAdmin ? "flex" : "none";
+}
 
 /* ==================== НАВІГАЦІЯ ВКЛАДКАМИ ==================== */
 document.querySelectorAll(".nav-btn").forEach(btn => {
@@ -2343,10 +2354,12 @@ function openViewModal(game) {
 }
 
 function openAddModal() {
+  if (!isAdmin) { tg.showAlert("Додавати ігри можуть лише адміністратори Telegram-групи."); return; }
   document.getElementById("addModal").classList.add("open");
 }
 
 function openEditModal() {
+  if (!isAdmin) { tg.showAlert("Редагувати ігри можуть лише адміністратори Telegram-групи."); return; }
   if (!currentGame) return;
   document.getElementById("editName").value = currentGame.name || "";
   document.getElementById("editDescription").value = currentGame.description || "";
@@ -2358,6 +2371,7 @@ function openEditModal() {
 }
 
 async function submitEdit() {
+  if (!isAdmin) { tg.showAlert("Недостатньо прав."); return; }
   if (!currentGame) return;
   const name = document.getElementById("editName").value.trim();
   if (!name) {
@@ -2375,20 +2389,24 @@ async function submitEdit() {
   if (coverFile) formData.append("cover", coverFile);
   if (rulesFile) formData.append("rules", rulesFile);
 
-  await fetch(`/api/games/${currentGame.id}`, {
+  const res = await fetch(`/api/games/${currentGame.id}`, {
     method: "PUT",
+    headers: telegramAuthHeaders(),
     body: formData,
   });
+  if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
 
   closeModal("editModal");
   loadGames();
 }
 
 async function deleteCurrentGame() {
+  if (!isAdmin) { tg.showAlert("Видаляти ігри можуть лише адміністратори Telegram-групи."); return; }
   if (!currentGame) return;
   tg.showConfirm(`Видалити гру "${currentGame.name}"?`, async (confirmed) => {
     if (!confirmed) return;
-    await fetch(`/api/games/${currentGame.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/games/${currentGame.id}`, { method: "DELETE", headers: telegramAuthHeaders() });
+    if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
     closeModal("viewModal");
     loadGames();
   });
@@ -2399,6 +2417,7 @@ function closeModal(id) {
 }
 
 async function submitGame() {
+  if (!isAdmin) { tg.showAlert("Додавати ігри можуть лише адміністратори Telegram-групи."); return; }
   const name = document.getElementById("inputName").value.trim();
   if (!name) {
     tg.showAlert("Введи назву гри");
@@ -2417,10 +2436,12 @@ async function submitGame() {
   if (coverFile) formData.append("cover", coverFile);
   if (rulesFile) formData.append("rules", rulesFile);
 
-  await fetch("/api/games", {
+  const res = await fetch("/api/games", {
     method: "POST",
+    headers: telegramAuthHeaders(),
     body: formData,
   });
+  if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
 
   closeModal("addModal");
   document.getElementById("inputName").value = "";
@@ -2436,22 +2457,18 @@ loadGames();
 
 /* ==================== АДМІНКА ТА ПОДІЇ ==================== */
 async function checkAdminStatus() {
-  if (!telegramUsername) {
-    isAdmin = false;
-    return;
-  }
   try {
     const res = await fetch("/api/admins/check", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: telegramUsername }),
+      headers: telegramAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({}),
     });
     const data = await res.json();
     isAdmin = !!data.is_admin;
   } catch (e) {
     isAdmin = false;
   }
-  document.getElementById("eventsFab").style.display = isAdmin ? "flex" : "none";
+  applyAdminPermissionsUi();
   renderEvents(lastEventsData);
 }
 
@@ -2531,7 +2548,7 @@ function renderEvents(events) {
       delBtn.addEventListener("click", () => {
         tg.showConfirm(`Видалити подію "${ev.title}"?`, async (confirmed) => {
           if (!confirmed) return;
-          await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
+          await fetch(`/api/events/${ev.id}`, { method: "DELETE", headers: telegramAuthHeaders() });
           loadEvents();
         });
       });
@@ -2628,10 +2645,12 @@ async function submitEvent() {
   const coverFile = document.getElementById("eventCover")?.files?.[0];
   if (coverFile) formData.append("cover", coverFile);
 
-  await fetch("/api/events", {
+  const res = await fetch("/api/events", {
     method: "POST",
+    headers: telegramAuthHeaders(),
     body: formData,
   });
+  if (res.status === 403) { tg.showAlert("Створювати події можуть лише адміністратори Telegram-групи."); return; }
   closeModal("eventModal");
   loadEvents();
 }
@@ -4594,19 +4613,18 @@ async function loadMasterclassBookings() {
     if (!items.length) { list.innerHTML = '<div class="mc-booking-meta">Записів поки немає.</div>'; return; }
     list.innerHTML = items.map(b => `<div class="mc-booking-item"><div class="mc-booking-head"><div class="mc-booking-title">${escapeHtml(b.display_name || b.telegram_username || 'Гість')}</div><span class="mc-booking-status">${escapeHtml(formatStatusUk(b.status))}</span></div><div class="mc-booking-meta">${escapeHtml(b.booking_date || '')} · ${escapeHtml((b.booking_time || '').slice(0,5))} · ${escapeHtml(b.figure || '')} · ${escapeHtml(b.style || '')}</div>${isAdmin ? `<div class="mc-booking-actions"><button type="button" data-booking="${b.id}" data-status="confirmed">Підтвердити</button><button type="button" data-booking="${b.id}" data-status="completed">Завершено</button><button type="button" data-booking="${b.id}" data-status="cancelled">Скасувати</button></div>` : ''}</div>`).join('');
     if (isAdmin) list.querySelectorAll('[data-booking]').forEach(btn => btn.addEventListener('click', async () => {
-      await fetch(`/api/masterclass/bookings/${btn.dataset.booking}/status`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:btn.dataset.status, admin_username:telegramUsername }) });
+      await fetch(`/api/masterclass/bookings/${btn.dataset.booking}/status`, { method:'PATCH', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:JSON.stringify({ status:btn.dataset.status }) });
       loadMasterclassBookings(); loadMasterclassSlots();
     }));
   } catch (_) { list.innerHTML = '<div class="mc-booking-meta">Підключи таблицю masterclass_bookings у Supabase (SQL-файл додається).</div>'; }
 }
 
 async function checkAdminStatus() {
-  if (!telegramUsername) { isAdmin = false; document.getElementById('eventsFab').style.display = 'none'; renderEvents(lastEventsData); loadMasterclassBookings(); return; }
   try {
-    const res = await fetch('/api/admins/check', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:telegramUsername}) });
+    const res = await fetch('/api/admins/check', { method:'POST', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:JSON.stringify({}) });
     const data = await res.json(); isAdmin = !!data.is_admin;
   } catch (_) { isAdmin = false; }
-  document.getElementById('eventsFab').style.display = isAdmin ? 'flex' : 'none';
+  applyAdminPermissionsUi();
   renderEvents(lastEventsData); loadMasterclassBookings();
 }
 
@@ -4624,7 +4642,7 @@ function renderEvents(events) {
     if (window.__deepLinkedEventId && String(ev.id) === String(window.__deepLinkedEventId)) card.classList.add('deep-linked-event');
     card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+ev.event_time : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${ev.game_name ? `<div class="ev-game">🎲 ${escapeHtml(ev.game_name)}</div>` : ''}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div></div>${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">Учасники та черга</div><div class="ev-participants">${participantHtml}</div><div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}`;
     card.querySelector('.ev-rsvp-btn').addEventListener('click', () => toggleRsvp(ev.id, !!mine));
-    card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE'}); loadEvents(); }));
+    card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE',headers:telegramAuthHeaders()}); loadEvents(); }));
     card.querySelector('.ev-add-participant-btn')?.addEventListener('click', () => openAddParticipantModal(ev.id));
     card.querySelector('.ev-start-session-btn')?.addEventListener('click', () => { const game = allGames.find(g => g.name === ev.game_name) || {name:ev.game_name,tags:'',description:''}; const q = quickToolsForGame(game)[0]; openGameTool(ev.game_name, q?.tool || 'counters', q?.mode || 'simple'); });
     card.querySelectorAll('.pc-remove').forEach(btn => btn.addEventListener('click', async () => { await fetch(`/api/events/${btn.dataset.event}/rsvp/${encodeURIComponent(btn.dataset.username)}`, {method:'DELETE'}); loadEvents(); }));
@@ -4652,7 +4670,7 @@ async function submitEvent() {
   formData.append('created_by', username);
   const coverFile = document.getElementById('eventCover')?.files?.[0];
   if (coverFile) formData.append('cover', coverFile);
-  await fetch('/api/events',{method:'POST',body:formData});
+  const res = await fetch('/api/events',{method:'POST',headers:telegramAuthHeaders(),body:formData}); if(res.status===403){tg.showAlert('Створювати події можуть лише адміністратори Telegram-групи.');return;}
   closeModal('eventModal'); loadEvents();
 }
 
