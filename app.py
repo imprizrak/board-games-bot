@@ -1025,6 +1025,152 @@ async def cmd_start(message: Message):
         logging.exception("Не вдалось зберегти підписника")
 
 
+
+TELEGRAM_API_BASE = f"https://api.telegram.org/bot{API_TOKEN}"
+
+
+def telegram_api_post(method, payload):
+    """Надійний синхронний виклик Telegram Bot API, незалежний від aiogram polling loop."""
+    if not API_TOKEN:
+        logging.error("BOT_TOKEN порожній — Telegram-повідомлення неможливо надіслати")
+        return False, "BOT_TOKEN is empty"
+
+    try:
+        resp = requests.post(
+            f"{TELEGRAM_API_BASE}/{method}",
+            json=payload,
+            timeout=25,
+        )
+        data = {}
+        try:
+            data = resp.json()
+        except Exception:
+            pass
+
+        if not resp.ok or not data.get("ok", False):
+            logging.error(
+                "Telegram API %s error: status=%s response=%s",
+                method, resp.status_code, resp.text[:1000]
+            )
+            return False, data.get("description") or resp.text
+
+        return True, data.get("result")
+    except Exception as exc:
+        logging.exception("Telegram API %s request failed", method)
+        return False, str(exc)
+
+
+def telegram_keyboard_payload(event_id):
+    rows = [[
+        {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
+        {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
+    ]]
+    if WEBAPP_URL:
+        sep = "&" if "?" in WEBAPP_URL else "?"
+        rows.append([{
+            "text": "📅 Відкрити подію",
+            "url": f"{WEBAPP_URL}{sep}view=events&event={event_id}",
+        }])
+    return {"inline_keyboard": rows}
+
+
+def get_active_group_ids_sync():
+    try:
+        resp = requests.get(
+            TELEGRAM_GROUPS_REST,
+            headers=HEADERS,
+            params={"select": "chat_id", "active": "eq.true"},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        ids = [int(row["chat_id"]) for row in resp.json() if row.get("chat_id")]
+        logging.info("Активні Telegram-групи для анонсів: %s", ids)
+        return ids
+    except Exception:
+        logging.exception("Не вдалось отримати Telegram-групи. Чи виконано SQL для telegram_groups?")
+        return []
+
+
+def notify_subscribers_sync(text, photo_url=None):
+    """Особиста розсилка напряму через Bot API — не залежить від polling."""
+    try:
+        resp = requests.get(
+            SUBSCRIBERS_REST,
+            headers=HEADERS,
+            params={"select": "chat_id"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        subscribers = resp.json()
+    except Exception:
+        logging.exception("Не вдалось отримати список підписників")
+        return
+
+    for row in subscribers:
+        chat_id = row.get("chat_id")
+        if not chat_id:
+            continue
+
+        if photo_url:
+            ok, err = telegram_api_post("sendPhoto", {
+                "chat_id": chat_id,
+                "photo": photo_url,
+                "caption": text[:1024],
+            })
+        else:
+            ok, err = telegram_api_post("sendMessage", {
+                "chat_id": chat_id,
+                "text": text[:4096],
+            })
+
+        if not ok:
+            logging.warning("Не вдалось надіслати особисте сповіщення %s: %s", chat_id, err)
+
+
+def notify_groups_sync(event_id, photo_url=None):
+    """Публікує подію в усіх активних групах напряму через Telegram Bot API."""
+    try:
+        event = get_event_snapshot(event_id)
+        if not event:
+            logging.error("Не знайдено подію id=%s для групового анонсу", event_id)
+            return
+
+        text = format_group_event(event)
+        keyboard = telegram_keyboard_payload(event_id)
+        group_ids = get_active_group_ids_sync()
+
+        if not group_ids:
+            logging.warning(
+                "Немає активних Telegram-груп. Надішли /setgroup у потрібній групі."
+            )
+            return
+
+        for chat_id in group_ids:
+            if photo_url:
+                ok, err = telegram_api_post("sendPhoto", {
+                    "chat_id": chat_id,
+                    "photo": photo_url,
+                    "caption": text[:1024],
+                    "reply_markup": keyboard,
+                })
+            else:
+                ok, err = telegram_api_post("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": text[:4096],
+                    "reply_markup": keyboard,
+                })
+
+            if ok:
+                logging.info("Подію %s успішно опубліковано в групі %s", event_id, chat_id)
+            else:
+                logging.error(
+                    "Не вдалось опублікувати подію %s в групі %s: %s",
+                    event_id, chat_id, err
+                )
+    except Exception:
+        logging.exception("Не вдалось опублікувати групове сповіщення про подію")
+
+
 async def notify_subscribers(text, photo_url=None):
     """Надсилає повідомлення всім, хто колись натискав /start."""
     try:
@@ -1055,13 +1201,12 @@ async def notify_subscribers(text, photo_url=None):
 
 
 def notify_subscribers_async(text, photo_url=None):
-    """Викликається з синхронних Flask-роутів, щоб не чекати на розсилку."""
-    if bot_loop is None:
-        return
-    try:
-        asyncio.run_coroutine_threadsafe(notify_subscribers(text, photo_url), bot_loop)
-    except Exception:
-        logging.exception("Не вдалось запланувати розсилку")
+    """Фонова розсилка, незалежна від aiogram polling loop."""
+    Thread(
+        target=notify_subscribers_sync,
+        args=(text, photo_url),
+        daemon=True,
+    ).start()
 
 
 def event_group_keyboard(event_id):
@@ -1141,12 +1286,12 @@ async def notify_groups(event_id, photo_url=None):
 
 
 def notify_groups_async(event_id, photo_url=None):
-    if bot_loop is None:
-        return
-    try:
-        asyncio.run_coroutine_threadsafe(notify_groups(event_id, photo_url), bot_loop)
-    except Exception:
-        logging.exception("Не вдалось запланувати групове сповіщення")
+    """Фоновий груповий анонс, незалежний від aiogram polling loop."""
+    Thread(
+        target=notify_groups_sync,
+        args=(event_id, photo_url),
+        daemon=True,
+    ).start()
 
 
 async def refresh_group_event_message(callback: CallbackQuery, event_id: int):
@@ -1197,7 +1342,7 @@ async def cmd_setgroup(message: Message):
             timeout=20,
         )
         resp.raise_for_status()
-        await message.answer("✅ Готово. Нові події тепер автоматично публікуватимуться в цій групі.")
+        await message.answer("✅ Готово. Групу підключено. Для перевірки надішли /testgroup.")
     except Exception:
         logging.exception("Не вдалось зареєструвати групу")
         await message.answer("Не вдалося зберегти групу. Перевір, чи виконано SQL-оновлення в Supabase.")
@@ -1224,6 +1369,35 @@ async def cmd_unsetgroup(message: Message):
     except Exception:
         logging.exception("Не вдалось вимкнути групу")
         await message.answer("Не вдалося змінити налаштування групи.")
+
+
+
+@dp.message(Command("testgroup"))
+async def cmd_testgroup(message: Message):
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("Цю команду потрібно надіслати в групі.")
+        return
+
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Тест може запускати лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+
+    active_ids = get_active_group_ids_sync()
+    if message.chat.id not in active_ids:
+        await message.answer("⚠️ Ця група ще не підключена. Спочатку надішли /setgroup.")
+        return
+
+    ok, result = telegram_api_post("sendMessage", {
+        "chat_id": message.chat.id,
+        "text": "🧪 Тестове повідомлення. Автоматичні анонси подій працюють ✅",
+    })
+    if not ok:
+        await message.answer(f"❌ Telegram не прийняв повідомлення: {result}")
 
 
 @dp.message(Command("chatid"))
