@@ -2237,8 +2237,16 @@ let allGames = [];
 let activeGenreFilter = null;
 
 async function loadGames() {
-  const res = await fetch("/api/games");
-  allGames = await res.json();
+  try {
+    // Перегляд бібліотеки доступний усім учасникам. Адмін-перевірка тут не потрібна.
+    const res = await fetch("/api/games");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allGames = Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("Не вдалося завантажити бібліотеку ігор", e);
+    allGames = [];
+  }
   renderGamesGrid();
 }
 
@@ -2266,7 +2274,7 @@ function renderGamesGrid() {
   grid.innerHTML = "";
 
   if (allGames.length === 0) {
-    grid.innerHTML = '<div class="empty">Ще немає жодної гри.<br>Натисни "+", щоб додати першу!</div>';
+    grid.innerHTML = '<div class="empty">Ще немає жодної гри.' + (isAdmin ? '<br>Натисни "+", щоб додати першу!' : '') + '</div>';
     return;
   }
   if (games.length === 0) {
@@ -2334,6 +2342,7 @@ document.querySelectorAll(".lib-genre-chip").forEach(chip => {
 let currentGame = null;
 
 function openViewModal(game) {
+  // Перегляд гри та правил доступний усім учасникам.
   currentGame = game;
   document.getElementById("viewName").textContent = game.name;
   document.getElementById("viewDescription").textContent = game.description || "";
@@ -4416,6 +4425,7 @@ function renderQuickStart(game) {
 }
 
 function openViewModal(game) {
+  // Перегляд гри та правил доступний усім учасникам.
   currentGame = game;
   document.getElementById('viewName').textContent = game.name;
   document.getElementById('viewDescription').textContent = game.description || '';

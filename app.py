@@ -360,6 +360,7 @@ def index():
     return send_from_directory(".", "index.html")
 
 
+# Перегляд бібліотеки та правил доступний усім користувачам Mini App.
 @app.route("/api/games", methods=["GET"])
 def get_games():
     resp = requests.get(
@@ -372,6 +373,7 @@ def get_games():
     return jsonify(resp.json())
 
 
+# Додавання гри — тільки адміністратор/власник підключеної Telegram-групи.
 @app.route("/api/games", methods=["POST"])
 def add_game():
     denied = _admin_required_response()
@@ -413,6 +415,7 @@ def add_game():
     return jsonify({"status": "ok"})
 
 
+# Редагування гри — тільки адміністратор/власник підключеної Telegram-групи.
 @app.route("/api/games/<int:game_id>", methods=["PUT"])
 def update_game(game_id):
     denied = _admin_required_response()
@@ -477,6 +480,7 @@ def toggle_favorite(game_id):
     return jsonify({"status": "ok"})
 
 
+# Видалення гри — тільки адміністратор/власник підключеної Telegram-групи.
 @app.route("/api/games/<int:game_id>", methods=["DELETE"])
 def delete_game(game_id):
     denied = _admin_required_response()
