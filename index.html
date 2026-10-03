@@ -328,6 +328,53 @@
     object-fit: cover;
   }
 
+
+  .event-game-choice-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.035);
+  }
+  .event-game-choice {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    margin: 0 !important;
+    padding: 10px 11px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card-bg);
+    color: var(--text) !important;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .event-game-choice input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    accent-color: var(--accent);
+  }
+  .event-form-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .event-cover-preview {
+    display: none;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 10px;
+  }
+
   /* ---------- Вкладка "Події" ---------- */
   .events-subtabs {
     display: flex;
@@ -2582,16 +2629,20 @@
     <label>Час (необов'язково)</label>
     <input type="text" id="eventTime" placeholder="19:00">
 
-    <label>Гра з бібліотеки (необов'язково)</label>
-    <select id="eventGameSelect" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; color:var(--parchment-text); font-size:15px;">
-      <option value="">— без гри —</option>
-    </select>
+    <label>Настільні ігри (можна обрати декілька)</label>
+    <div class="event-game-choice-list" id="eventGameChoices"></div>
+    <div class="event-form-hint">Познач одну або кілька ігор, у які плануєте грати.</div>
 
     <label>Максимум учасників (0 = без ліміту)</label>
     <input type="number" id="eventCapacity" min="0" max="99" value="0" inputmode="numeric">
 
     <label>Опис (необов'язково)</label>
     <textarea id="eventDescription" rows="2" placeholder="Деталі, місце, що принести"></textarea>
+
+    <label>Обкладинка події (необов'язково)</label>
+    <input type="file" id="eventCover" accept="image/*">
+    <div class="event-form-hint">Якщо свою обкладинку не додати, для Telegram-анонсу використається обкладинка першої обраної гри.</div>
+    <img id="eventCoverPreview" class="event-cover-preview" alt="Попередній перегляд обкладинки">
 
     <button class="btn" onclick="submitEvent()">Створити подію</button>
   </div>
@@ -2955,7 +3006,7 @@ function renderEvents(events) {
         <div>
           <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? " · " + ev.event_time : ""}</div>
           <div class="ev-title">${ev.title}</div>
-          ${ev.game_name ? `<div class="ev-game">🎲 ${ev.game_name}</div>` : ""}
+          ${eventGamesHtml(ev)}
           ${ev.description ? `<div class="ev-description">${ev.description}</div>` : ""}
           ${ev.cover_url ? `<div class="event-cover-wrap"><img class="event-cover" src="${ev.cover_url}" alt="Обкладинка події ${ev.title}"></div>` : ""}
         </div>
@@ -3041,50 +3092,128 @@ async function submitManualParticipant() {
   loadEvents();
 }
 
-function openEventModal() {
-  document.getElementById("eventTitle").value = "";
-  document.getElementById("eventDate").value = "";
-  document.getElementById("eventTime").value = "";
-  document.getElementById("eventDescription").value = "";
-  const eventCover = document.getElementById("eventCover"); if (eventCover) eventCover.value = "";
 
-  const select = document.getElementById("eventGameSelect");
-  select.innerHTML = '<option value="">— без гри —</option>';
-  allGames.forEach(g => {
-    const opt = document.createElement("option");
-    opt.value = g.name;
-    opt.textContent = g.name;
-    select.appendChild(opt);
+function getSelectedEventGames() {
+  return Array.from(document.querySelectorAll('#eventGameChoices input[type="checkbox"]:checked'))
+    .map(input => input.value)
+    .filter(Boolean);
+}
+
+function renderEventGameChoices() {
+  const box = document.getElementById('eventGameChoices');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!allGames || !allGames.length) {
+    box.innerHTML = '<div class="event-form-hint">У бібліотеці поки немає ігор.</div>';
+    return;
+  }
+  allGames.forEach(game => {
+    const label = document.createElement('label');
+    label.className = 'event-game-choice';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = game.name;
+    const text = document.createElement('span');
+    text.textContent = game.name;
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    box.appendChild(label);
   });
+}
 
-  document.getElementById("eventModal").classList.add("open");
+function resetEventCoverPreview() {
+  const input = document.getElementById('eventCover');
+  const preview = document.getElementById('eventCoverPreview');
+  if (input) input.value = '';
+  if (preview) {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+  }
+}
+
+function initEventCoverPreview() {
+  const input = document.getElementById('eventCover');
+  const preview = document.getElementById('eventCoverPreview');
+  if (!input || !preview || input.dataset.previewInit === '1') return;
+  input.dataset.previewInit = '1';
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) {
+      preview.removeAttribute('src');
+      preview.style.display = 'none';
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    preview.src = url;
+    preview.style.display = 'block';
+    preview.onload = () => URL.revokeObjectURL(url);
+  });
+}
+
+function eventGameNames(ev) {
+  if (Array.isArray(ev?.game_names) && ev.game_names.length) return ev.game_names.filter(Boolean);
+  if (ev?.game_name) return [ev.game_name];
+  return [];
+}
+
+function eventGamesHtml(ev) {
+  const names = eventGameNames(ev);
+  return names.length ? `<div class="ev-game">🎲 ${names.map(escapeHtml).join(' · ')}</div>` : '';
+}
+
+function openEventModal() {
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventDate').value = '';
+  document.getElementById('eventTime').value = '';
+  document.getElementById('eventDescription').value = '';
+  const capacity = document.getElementById('eventCapacity');
+  if (capacity) capacity.value = '0';
+  renderEventGameChoices();
+  resetEventCoverPreview();
+  initEventCoverPreview();
+  document.getElementById('eventModal').classList.add('open');
 }
 
 async function submitEvent() {
-  const title = document.getElementById("eventTitle").value.trim();
-  const date = document.getElementById("eventDate").value.trim();
+  const title = document.getElementById('eventTitle').value.trim();
+  const date = document.getElementById('eventDate').value.trim();
   if (!title || !date) {
-    tg.showAlert("Введи назву і дату події");
+    tg.showAlert('Введи назву і дату події');
     return;
   }
-  const formData = new FormData();
-  formData.append("_tg_init_data", telegramInitData);
-  formData.append("title", title);
-  formData.append("event_date", date);
-  formData.append("event_time", document.getElementById("eventTime").value.trim());
-  formData.append("game_name", document.getElementById("eventGameSelect").value);
-  formData.append("description", document.getElementById("eventDescription").value.trim());
-  formData.append("created_by", username);
-  const coverFile = document.getElementById("eventCover")?.files?.[0];
-  if (coverFile) formData.append("cover", coverFile);
 
-  const res = await fetch("/api/events", {
-    method: "POST",
+  const selectedGames = getSelectedEventGames();
+  const formData = new FormData();
+  formData.append('_tg_init_data', telegramInitData);
+  formData.append('title', title);
+  formData.append('event_date', date);
+  formData.append('event_time', document.getElementById('eventTime').value.trim());
+  formData.append('game_name', selectedGames[0] || '');
+  formData.append('game_names_json', JSON.stringify(selectedGames));
+  formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
+  formData.append('description', document.getElementById('eventDescription').value.trim());
+  formData.append('created_by', username);
+
+  const coverFile = document.getElementById('eventCover')?.files?.[0];
+  if (coverFile) formData.append('cover', coverFile);
+
+  const res = await fetch('/api/events', {
+    method: 'POST',
     headers: telegramAuthHeaders(),
     body: formData,
   });
-  if (res.status === 403) { tg.showAlert("Створювати події можуть лише адміністратори Telegram-групи."); return; }
-  closeModal("eventModal");
+
+  if (res.status === 403) {
+    tg.showAlert('Створювати події можуть лише адміністратори Telegram-групи.');
+    return;
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    tg.showAlert(data.error || 'Не вдалося створити подію.');
+    return;
+  }
+
+  closeModal('eventModal');
   loadEvents();
 }
 
@@ -5095,7 +5224,7 @@ function renderEvents(events) {
     const completedAt = ev.completed_at ? new Date(ev.completed_at).toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
     const cover = ev.cover_url ? `<div class="event-cover-wrap"><img class="event-cover" src="${escapeHtml(ev.cover_url)}" alt="Обкладинка події ${escapeHtml(ev.title || '')}"></div>` : '';
 
-    card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+String(ev.event_time).slice(0,5) : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${ev.game_name ? `<div class="ev-game">🎲 ${escapeHtml(ev.game_name)}</div>` : ''}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}${cover}${historyMode ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · '+escapeHtml(completedAt) : ''}</div>` : `<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div>`}</div>${!historyMode && isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div><div class="ev-participants">${participantHtml}</div>${!historyMode ? `<div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}` : ''}`;
+    card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+String(ev.event_time).slice(0,5) : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${eventGamesHtml(ev)}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}${cover}${historyMode ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · '+escapeHtml(completedAt) : ''}</div>` : `<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div>`}</div>${!historyMode && isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div><div class="ev-participants">${participantHtml}</div>${!historyMode ? `<div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}` : ''}`;
 
     if (!historyMode) {
       card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => toggleRsvp(ev.id, !!mine));
@@ -5109,28 +5238,59 @@ function renderEvents(events) {
 }
 
 function openEventModal() {
-  document.getElementById('eventTitle').value=''; document.getElementById('eventDate').value=''; document.getElementById('eventTime').value=''; document.getElementById('eventDescription').value=''; document.getElementById('eventCapacity').value='0'; const eventCover=document.getElementById('eventCover'); if(eventCover) eventCover.value='';
-  const select = document.getElementById('eventGameSelect'); select.innerHTML='<option value="">— без гри —</option>';
-  allGames.forEach(g => { const opt=document.createElement('option'); opt.value=g.name; opt.textContent=g.name; select.appendChild(opt); });
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventDate').value = '';
+  document.getElementById('eventTime').value = '';
+  document.getElementById('eventDescription').value = '';
+  const capacity = document.getElementById('eventCapacity');
+  if (capacity) capacity.value = '0';
+  renderEventGameChoices();
+  resetEventCoverPreview();
+  initEventCoverPreview();
   document.getElementById('eventModal').classList.add('open');
 }
 
 async function submitEvent() {
-  const title=document.getElementById('eventTitle').value.trim(); const date=document.getElementById('eventDate').value.trim();
-  if (!title || !date) { tg.showAlert('Введи назву і дату події'); return; }
+  const title = document.getElementById('eventTitle').value.trim();
+  const date = document.getElementById('eventDate').value.trim();
+  if (!title || !date) {
+    tg.showAlert('Введи назву і дату події');
+    return;
+  }
+
+  const selectedGames = getSelectedEventGames();
   const formData = new FormData();
-  formData.append("_tg_init_data", telegramInitData);
+  formData.append('_tg_init_data', telegramInitData);
   formData.append('title', title);
   formData.append('event_date', date);
   formData.append('event_time', document.getElementById('eventTime').value.trim());
-  formData.append('game_name', document.getElementById('eventGameSelect').value);
-  formData.append('max_participants', parseInt(document.getElementById('eventCapacity').value,10)||0);
+  formData.append('game_name', selectedGames[0] || '');
+  formData.append('game_names_json', JSON.stringify(selectedGames));
+  formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
   formData.append('created_by', username);
+
   const coverFile = document.getElementById('eventCover')?.files?.[0];
   if (coverFile) formData.append('cover', coverFile);
-  const res = await fetch('/api/events',{method:'POST',headers:telegramAuthHeaders(),body:formData}); if(res.status===403){tg.showAlert('Створювати події можуть лише адміністратори Telegram-групи.');return;}
-  closeModal('eventModal'); loadEvents();
+
+  const res = await fetch('/api/events', {
+    method: 'POST',
+    headers: telegramAuthHeaders(),
+    body: formData,
+  });
+
+  if (res.status === 403) {
+    tg.showAlert('Створювати події можуть лише адміністратори Telegram-групи.');
+    return;
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    tg.showAlert(data.error || 'Не вдалося створити подію.');
+    return;
+  }
+
+  closeModal('eventModal');
+  loadEvents();
 }
 
 async function toggleRsvp(eventId, currentlyJoined) {

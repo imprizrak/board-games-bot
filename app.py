@@ -1329,6 +1329,7 @@ def add_event():
     denied = _admin_required_response()
     if denied:
         return denied
+
     content_type = (request.content_type or "").lower()
     if "multipart/form-data" in content_type:
         data = request.form.to_dict(flat=True)
@@ -1337,13 +1338,34 @@ def add_event():
         data = request.get_json(silent=True, force=True) or {}
         cover_file = None
 
-    uploaded_cover_url = upload_file(cover_file, "event-covers") if cover_file and getattr(cover_file, "filename", "") else None
+    try:
+        raw_games = data.get("game_names_json")
+        game_names = json.loads(raw_games) if isinstance(raw_games, str) and raw_games.strip() else data.get("game_names", [])
+    except Exception:
+        game_names = []
+
+    if not isinstance(game_names, list):
+        game_names = []
+    game_names = [str(name).strip() for name in game_names if str(name).strip()]
+    game_names = list(dict.fromkeys(game_names))
+
+    legacy_game_name = (data.get("game_name") or "").strip()
+    if not game_names and legacy_game_name:
+        game_names = [legacy_game_name]
+    primary_game = game_names[0] if game_names else legacy_game_name
+
+    uploaded_cover_url = (
+        upload_file(cover_file, "event-covers")
+        if cover_file and getattr(cover_file, "filename", "")
+        else None
+    )
 
     payload = {
         "title": data.get("title", ""),
         "event_date": data.get("event_date"),
         "event_time": data.get("event_time", ""),
-        "game_name": data.get("game_name", ""),
+        "game_name": primary_game,
+        "game_names": game_names,
         "description": data.get("description", ""),
         "created_by": data.get("created_by", "невідомо"),
         "max_participants": max(0, int(data.get("max_participants") or 0)),
@@ -1351,36 +1373,40 @@ def add_event():
         "status": "scheduled",
         "completed_at": None,
     }
+
     resp = requests.post(
         EVENTS_REST,
         headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
         json=payload,
         timeout=30,
     )
-    if resp.status_code >= 400 and ("max_participants" in resp.text or "cover_url" in resp.text):
+
+    if resp.status_code >= 400 and any(field in resp.text for field in ("max_participants", "cover_url", "game_names")):
         fallback = dict(payload)
         if "max_participants" in resp.text:
             fallback.pop("max_participants", None)
         if "cover_url" in resp.text:
             fallback.pop("cover_url", None)
+        if "game_names" in resp.text:
+            fallback.pop("game_names", None)
         resp = requests.post(
             EVENTS_REST,
             headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
             json=fallback,
             timeout=30,
         )
+
     resp.raise_for_status()
     created_rows = resp.json() if resp.content else []
     event_id = created_rows[0].get("id") if created_rows else None
 
     event_photo = uploaded_cover_url
-    game_name = data.get("game_name", "")
-    if not event_photo and game_name:
+    if not event_photo and primary_game:
         try:
             gresp = requests.get(
                 REST,
                 headers=HEADERS,
-                params={"name": f"eq.{game_name}", "select": "cover_url", "limit": 1},
+                params={"name": f"eq.{primary_game}", "select": "cover_url", "limit": 1},
                 timeout=15,
             )
             if gresp.ok and gresp.json():
@@ -1394,13 +1420,15 @@ def add_event():
         date_time += f" о {data.get('event_time')}"
     if date_time:
         notify_lines.append(date_time)
-    if game_name:
-        notify_lines.append(f"🎲 Гра: {game_name}")
+    if game_names:
+        notify_lines.append(f"🎲 Ігри: {', '.join(game_names)}")
+
     max_participants = max(0, int(data.get("max_participants") or 0))
     if max_participants:
         notify_lines.append(f"👥 Місць: {max_participants}")
     if data.get("description"):
         notify_lines.append(data.get("description"))
+
     notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
 
     if event_id:
@@ -1940,8 +1968,16 @@ def format_group_event(event):
         dt += f" · {str(event.get('event_time'))[:5]}"
     if dt:
         lines.append(f"🗓 {dt}")
-    if event.get("game_name"):
-        lines.append(f"🎲 {event.get('game_name')}")
+
+    game_names = event.get("game_names") or []
+    if not isinstance(game_names, list):
+        game_names = []
+    game_names = [str(name).strip() for name in game_names if str(name).strip()]
+    if not game_names and event.get("game_name"):
+        game_names = [str(event.get("game_name")).strip()]
+    if game_names:
+        lines.append(f"🎲 Ігри: {', '.join(game_names)}")
+
     cap = int(event.get("max_participants") or 0)
     if cap:
         places = f"👥 {len(going)}/{cap} місць"
