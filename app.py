@@ -401,6 +401,7 @@ def add_game():
     if description:
         notify_text += f"\n\n{description}"
     notify_subscribers_async(notify_text, photo_url=cover_url)
+    notify_game_groups_async(name, description=description, cover_url=cover_url)
 
     return jsonify({"status": "ok"})
 
@@ -861,8 +862,7 @@ def add_event():
         notify_lines.append(f"👥 Місць: {max_participants}")
     if data.get("description"):
         notify_lines.append(data.get("description"))
-    notify_subscribers_async("
-".join(notify_lines), photo_url=event_photo)
+    notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
 
     if event_id:
         notify_groups_async(event_id, photo_url=event_photo)
@@ -1152,6 +1152,69 @@ def notify_subscribers_sync(text, photo_url=None):
 
         if not ok:
             logging.warning("Не вдалось надіслати особисте сповіщення %s: %s", chat_id, err)
+
+
+def game_group_keyboard_payload():
+    rows = []
+    if WEBAPP_URL:
+        rows.append([{
+            "text": "🎲 Відкрити бібліотеку",
+            "url": WEBAPP_URL,
+        }])
+    return {"inline_keyboard": rows} if rows else None
+
+
+def notify_game_groups_sync(name, description="", cover_url=None):
+    """Публікує нову гру в усіх активних Telegram-групах."""
+    try:
+        group_ids = get_active_group_ids_sync()
+        if not group_ids:
+            logging.warning(
+                "Немає активних Telegram-груп для анонсу нової гри. Надішли /setgroup у потрібній групі."
+            )
+            return
+
+        lines = ["🎲 Нова гра в бібліотеці", "", str(name or "Без назви")]
+        desc = (description or "").strip()
+        if desc:
+            lines.extend(["", desc[:700]])
+        lines.extend(["", "Відкрий бібліотеку, щоб переглянути гру."])
+        text = "\n".join(lines)
+        keyboard = game_group_keyboard_payload()
+
+        for chat_id in group_ids:
+            payload = {"chat_id": chat_id}
+            if keyboard:
+                payload["reply_markup"] = keyboard
+
+            if cover_url:
+                payload.update({
+                    "photo": cover_url,
+                    "caption": text[:1024],
+                })
+                ok, err = telegram_api_post("sendPhoto", payload)
+            else:
+                payload["text"] = text[:4096]
+                ok, err = telegram_api_post("sendMessage", payload)
+
+            if ok:
+                logging.info("Нову гру '%s' опубліковано в групі %s", name, chat_id)
+            else:
+                logging.error(
+                    "Не вдалось опублікувати нову гру '%s' в групі %s: %s",
+                    name, chat_id, err
+                )
+    except Exception:
+        logging.exception("Не вдалось опублікувати групове сповіщення про нову гру")
+
+
+def notify_game_groups_async(name, description="", cover_url=None):
+    """Запускає груповий анонс нової гри у фоні."""
+    Thread(
+        target=notify_game_groups_sync,
+        args=(name, description, cover_url),
+        daemon=True,
+    ).start()
 
 
 def notify_groups_sync(event_id, photo_url=None):
