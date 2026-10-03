@@ -2196,6 +2196,7 @@ const username = tg.initDataUnsafe?.user?.username
 const telegramUsername = (tg.initDataUnsafe?.user?.username || "").toLowerCase() || null;
 let isAdmin = false;
 const telegramInitData = tg.initData || "";
+if (!telegramInitData) console.warn("Telegram initData is empty — admin rights cannot be verified securely.");
 function telegramAuthHeaders(extra = {}) {
   return { ...extra, "X-Telegram-Init-Data": telegramInitData };
 }
@@ -2389,6 +2390,7 @@ async function submitEdit() {
   }
 
   const formData = new FormData();
+  formData.append("_tg_init_data", telegramInitData);
   formData.append("name", name);
   formData.append("description", document.getElementById("editDescription").value);
   formData.append("tags", document.getElementById("editTags").value);
@@ -2414,7 +2416,7 @@ async function deleteCurrentGame() {
   if (!currentGame) return;
   tg.showConfirm(`Видалити гру "${currentGame.name}"?`, async (confirmed) => {
     if (!confirmed) return;
-    const res = await fetch(`/api/games/${currentGame.id}`, { method: "DELETE", headers: telegramAuthHeaders() });
+    const res = await fetch(`/api/games/${currentGame.id}`, { method: "DELETE", headers: telegramAuthHeaders({"Content-Type":"application/json"}), body: JSON.stringify({_tg_init_data: telegramInitData}) });
     if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
     closeModal("viewModal");
     loadGames();
@@ -2434,6 +2436,7 @@ async function submitGame() {
   }
 
   const formData = new FormData();
+  formData.append("_tg_init_data", telegramInitData);
   formData.append("name", name);
   formData.append("description", document.getElementById("inputDescription").value);
   formData.append("tags", document.getElementById("inputTags").value);
@@ -2470,7 +2473,7 @@ async function checkAdminStatus() {
     const res = await fetch("/api/admins/check", {
       method: "POST",
       headers: telegramAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({}),
+      body: JSON.stringify({_tg_init_data: telegramInitData}),
     });
     const data = await res.json();
     isAdmin = !!data.is_admin;
@@ -2557,7 +2560,7 @@ function renderEvents(events) {
       delBtn.addEventListener("click", () => {
         tg.showConfirm(`Видалити подію "${ev.title}"?`, async (confirmed) => {
           if (!confirmed) return;
-          await fetch(`/api/events/${ev.id}`, { method: "DELETE", headers: telegramAuthHeaders() });
+          await fetch(`/api/events/${ev.id}`, { method: "DELETE", headers: telegramAuthHeaders({"Content-Type":"application/json"}), body: JSON.stringify({_tg_init_data: telegramInitData}) });
           loadEvents();
         });
       });
@@ -2645,6 +2648,7 @@ async function submitEvent() {
     return;
   }
   const formData = new FormData();
+  formData.append("_tg_init_data", telegramInitData);
   formData.append("title", title);
   formData.append("event_date", date);
   formData.append("event_time", document.getElementById("eventTime").value.trim());
@@ -4623,7 +4627,7 @@ async function loadMasterclassBookings() {
     if (!items.length) { list.innerHTML = '<div class="mc-booking-meta">Записів поки немає.</div>'; return; }
     list.innerHTML = items.map(b => `<div class="mc-booking-item"><div class="mc-booking-head"><div class="mc-booking-title">${escapeHtml(b.display_name || b.telegram_username || 'Гість')}</div><span class="mc-booking-status">${escapeHtml(formatStatusUk(b.status))}</span></div><div class="mc-booking-meta">${escapeHtml(b.booking_date || '')} · ${escapeHtml((b.booking_time || '').slice(0,5))} · ${escapeHtml(b.figure || '')} · ${escapeHtml(b.style || '')}</div>${isAdmin ? `<div class="mc-booking-actions"><button type="button" data-booking="${b.id}" data-status="confirmed">Підтвердити</button><button type="button" data-booking="${b.id}" data-status="completed">Завершено</button><button type="button" data-booking="${b.id}" data-status="cancelled">Скасувати</button></div>` : ''}</div>`).join('');
     if (isAdmin) list.querySelectorAll('[data-booking]').forEach(btn => btn.addEventListener('click', async () => {
-      await fetch(`/api/masterclass/bookings/${btn.dataset.booking}/status`, { method:'PATCH', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:JSON.stringify({ status:btn.dataset.status }) });
+      await fetch(`/api/masterclass/bookings/${btn.dataset.booking}/status`, { method:'PATCH', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:JSON.stringify({ status:btn.dataset.status, _tg_init_data:telegramInitData }) });
       loadMasterclassBookings(); loadMasterclassSlots();
     }));
   } catch (_) { list.innerHTML = '<div class="mc-booking-meta">Підключи таблицю masterclass_bookings у Supabase (SQL-файл додається).</div>'; }
@@ -4652,7 +4656,7 @@ function renderEvents(events) {
     if (window.__deepLinkedEventId && String(ev.id) === String(window.__deepLinkedEventId)) card.classList.add('deep-linked-event');
     card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+ev.event_time : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${ev.game_name ? `<div class="ev-game">🎲 ${escapeHtml(ev.game_name)}</div>` : ''}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div></div>${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">Учасники та черга</div><div class="ev-participants">${participantHtml}</div><div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}`;
     card.querySelector('.ev-rsvp-btn').addEventListener('click', () => toggleRsvp(ev.id, !!mine));
-    card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE',headers:telegramAuthHeaders()}); loadEvents(); }));
+    card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({_tg_init_data:telegramInitData})}); loadEvents(); }));
     card.querySelector('.ev-add-participant-btn')?.addEventListener('click', () => openAddParticipantModal(ev.id));
     card.querySelector('.ev-start-session-btn')?.addEventListener('click', () => { const game = allGames.find(g => g.name === ev.game_name) || {name:ev.game_name,tags:'',description:''}; const q = quickToolsForGame(game)[0]; openGameTool(ev.game_name, q?.tool || 'counters', q?.mode || 'simple'); });
     card.querySelectorAll('.pc-remove').forEach(btn => btn.addEventListener('click', async () => { await fetch(`/api/events/${btn.dataset.event}/rsvp/${encodeURIComponent(btn.dataset.username)}`, {method:'DELETE'}); loadEvents(); }));
@@ -4671,6 +4675,7 @@ async function submitEvent() {
   const title=document.getElementById('eventTitle').value.trim(); const date=document.getElementById('eventDate').value.trim();
   if (!title || !date) { tg.showAlert('Введи назву і дату події'); return; }
   const formData = new FormData();
+  formData.append("_tg_init_data", telegramInitData);
   formData.append('title', title);
   formData.append('event_date', date);
   formData.append('event_time', document.getElementById('eventTime').value.trim());
