@@ -615,7 +615,7 @@ def _verified_telegram_webapp_user(init_data):
         received_hash = values.pop("hash", None)
         if not received_hash:
             return None
-        data_check_string = "\\n".join(f"{k}={values[k]}" for k in sorted(values))
+        data_check_string = "\n".join(f"{k}={values[k]}" for k in sorted(values))
         secret_key = hmac.new(b"WebAppData", API_TOKEN.encode("utf-8"), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calculated_hash, received_hash):
