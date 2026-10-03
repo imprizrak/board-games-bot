@@ -10,6 +10,7 @@ import time
 import re
 from threading import Thread
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import quote, parse_qsl
 
 import requests
@@ -34,6 +35,7 @@ WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 BUCKET = "files"
+EVENT_TIMEZONE = os.environ.get("EVENT_TIMEZONE", "Europe/Berlin")
 
 HEADERS = {"apikey": SUPABASE_KEY}
 # Старі ключі (JWT) потребують ще й заголовка Authorization
@@ -736,19 +738,29 @@ def _profile_history_stats(user):
     except Exception:
         logging.exception("Не вдалося порахувати статистику профілю з історії")
 
+    # Відвідування зараховується тільки після автоматичного завершення події.
     events_attended = 0
     if username:
         try:
-            rr = requests.get(
-                RSVPS_REST,
+            completed = requests.get(
+                EVENTS_REST,
                 headers=HEADERS,
-                params={"username": f"eq.{username}", "status": "eq.going", "select": "id"},
+                params={"status": "eq.completed", "select": "id"},
                 timeout=20,
             )
-            if rr.ok:
-                events_attended = len(rr.json())
+            completed.raise_for_status()
+            completed_ids = {row.get("id") for row in completed.json()}
+            if completed_ids:
+                rr = requests.get(
+                    RSVPS_REST,
+                    headers=HEADERS,
+                    params={"username": f"eq.{username}", "status": "eq.going", "select": "id,event_id"},
+                    timeout=20,
+                )
+                rr.raise_for_status()
+                events_attended = sum(1 for row in rr.json() if row.get("event_id") in completed_ids)
         except Exception:
-            logging.exception("Не вдалося порахувати події профілю")
+            logging.exception("Не вдалося порахувати завершені події профілю")
 
     favorite_game = "—"
     if game_counts:
@@ -921,6 +933,178 @@ def _is_admin_username(username):
     return bool(resp.json())
 
 
+# ==================== АВТОМАТИЧНЕ ЗАВЕРШЕННЯ ПОДІЙ ====================
+def _event_local_due_at(event):
+    """Час, коли подія переходить в історію, у часовому поясі клубу."""
+    raw_date = str(event.get("event_date") or "").strip()
+    if not raw_date:
+        return None
+    try:
+        day = datetime.strptime(raw_date[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+    raw_time = str(event.get("event_time") or "").strip()
+    if raw_time:
+        try:
+            parts = raw_time.split(":")
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
+            second = int(float(parts[2])) if len(parts) > 2 and parts[2] else 0
+        except (ValueError, IndexError):
+            hour, minute, second = 23, 59, 59
+    else:
+        # Якщо час не вказаний, подія активна до кінця вказаного дня.
+        hour, minute, second = 23, 59, 59
+
+    try:
+        tz = ZoneInfo(EVENT_TIMEZONE)
+    except Exception:
+        logging.exception("Невідомий EVENT_TIMEZONE=%s, використовую UTC", EVENT_TIMEZONE)
+        tz = timezone.utc
+    return datetime(day.year, day.month, day.day, hour, minute, second, tzinfo=tz)
+
+
+def _refresh_existing_profile_after_event(rsvp):
+    """Оновлює XP/досягнення вже створеного профілю після завершення події."""
+    username = (rsvp.get("username") or "").lstrip("@").lower()
+    telegram_user_id = rsvp.get("telegram_user_id")
+    profile = None
+    try:
+        params = {"select": "*", "limit": 1}
+        if telegram_user_id:
+            params["telegram_user_id"] = f"eq.{int(telegram_user_id)}"
+        elif username:
+            params["username"] = f"eq.{username}"
+        else:
+            return
+        resp = requests.get(PROFILES_REST, headers=HEADERS, params=params, timeout=20)
+        resp.raise_for_status()
+        rows = resp.json()
+        if not rows:
+            return
+        profile = rows[0]
+    except Exception:
+        logging.exception("Не вдалося знайти профіль учасника завершеної події")
+        return
+
+    pseudo_user = {
+        "username": profile.get("username") or username,
+        "first_name": profile.get("display_name") or rsvp.get("display_name") or username,
+        "last_name": "",
+    }
+    stats = _profile_history_stats(pseudo_user)
+    xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
+    level = max(1, xp // 250 + 1)
+
+    achievements = _profile_achievements(stats)
+    current_ids = {a["id"] for a in achievements if a.get("unlocked")}
+    old_ids = {str(x) for x in (profile.get("earned_achievements") or []) if x}
+    initialized = bool(profile.get("achievements_initialized"))
+    newly_earned = current_ids - old_ids if initialized else set()
+    earned_ids = old_ids | current_ids
+
+    try:
+        patch = requests.patch(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"telegram_user_id": f"eq.{profile.get('telegram_user_id')}"},
+            json={
+                "xp": xp,
+                "earned_achievements": sorted(earned_ids),
+                "achievements_initialized": True,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            timeout=20,
+        )
+        patch.raise_for_status()
+    except Exception:
+        logging.exception("Не вдалося оновити XP профілю після завершення події")
+        return
+
+    if initialized and newly_earned:
+        by_id = {a["id"]: a for a in achievements}
+        display_name = profile.get("display_name") or rsvp.get("display_name") or username or "Гравець"
+        for achievement_id in sorted(newly_earned):
+            achievement = by_id.get(achievement_id)
+            if achievement:
+                notify_achievement_groups_async(display_name, achievement, level, xp)
+
+
+def _complete_event(event):
+    """Атомарно завершує одну подію. Повертає True тільки для процесу, який зробив перехід."""
+    event_id = event.get("id")
+    if not event_id:
+        return False
+    now_utc = datetime.now(timezone.utc).isoformat()
+    resp = requests.patch(
+        EVENTS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+        params={"id": f"eq.{event_id}", "status": "eq.scheduled"},
+        json={"status": "completed", "completed_at": now_utc},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    changed = resp.json() if resp.content else []
+    if not changed:
+        return False
+
+    try:
+        rr = requests.get(
+            RSVPS_REST,
+            headers=HEADERS,
+            params={"event_id": f"eq.{event_id}", "status": "eq.going", "select": "*"},
+            timeout=30,
+        )
+        rr.raise_for_status()
+        for rsvp in rr.json():
+            _refresh_existing_profile_after_event(rsvp)
+    except Exception:
+        logging.exception("Не вдалося нарахувати XP учасникам завершеної події %s", event_id)
+
+    logging.info("Подію %s автоматично завершено", event_id)
+    return True
+
+
+def auto_complete_due_events():
+    """Завершує всі заплановані події, час яких уже настав."""
+    try:
+        try:
+            tz = ZoneInfo(EVENT_TIMEZONE)
+        except Exception:
+            tz = timezone.utc
+        now_local = datetime.now(tz)
+        resp = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={
+                "status": "eq.scheduled",
+                "event_date": f"lte.{now_local.date().isoformat()}",
+                "select": "*",
+                "order": "event_date.asc,event_time.asc",
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        for event in resp.json():
+            due_at = _event_local_due_at(event)
+            if due_at and now_local >= due_at:
+                try:
+                    _complete_event(event)
+                except Exception:
+                    logging.exception("Не вдалося завершити подію %s", event.get("id"))
+    except Exception:
+        logging.exception("Помилка автоматичної перевірки завершення подій")
+
+
+def event_completion_worker():
+    # Невелика затримка після запуску, щоб застосунок встиг ініціалізуватися.
+    time.sleep(5)
+    while True:
+        auto_complete_due_events()
+        time.sleep(60)
+
+
 # ==================== ДОПОМІЖНА ЛОГІКА ПОДІЙ ====================
 def get_event_snapshot(event_id):
     """Повертає подію разом зі списком RSVP або None."""
@@ -946,7 +1130,7 @@ def get_event_snapshot(event_id):
     return event
 
 
-def add_event_rsvp(event_id, username, display_name):
+def add_event_rsvp(event_id, username, display_name, telegram_user_id=None):
     """Записує користувача на подію. Повертає going або waitlist."""
     username = (username or "").lstrip("@").lower()
     if not username:
@@ -957,13 +1141,15 @@ def add_event_rsvp(event_id, username, display_name):
         eresp = requests.get(
             EVENTS_REST,
             headers=HEADERS,
-            params={"id": f"eq.{event_id}", "select": "id,max_participants", "limit": 1},
+            params={"id": f"eq.{event_id}", "select": "id,max_participants,status", "limit": 1},
             timeout=20,
         )
         eresp.raise_for_status()
         rows = eresp.json()
         if not rows:
-            raise ValueError("event not found")
+            raise ValueError("event_not_found")
+        if (rows[0].get("status") or "scheduled") != "scheduled":
+            raise ValueError("event_closed")
         cap = int(rows[0].get("max_participants") or 0)
         if cap > 0:
             cresp = requests.get(
@@ -1003,15 +1189,50 @@ def add_event_rsvp(event_id, username, display_name):
             "username": username,
             "display_name": display_name or username,
             "status": status,
+            "telegram_user_id": int(telegram_user_id) if telegram_user_id else None,
         },
         timeout=30,
     )
+    # Сумісність, якщо міграцію telegram_user_id ще не виконано.
+    if resp.status_code >= 400 and "telegram_user_id" in resp.text:
+        resp = requests.post(
+            RSVPS_REST,
+            headers={
+                **HEADERS,
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            params={"on_conflict": "event_id,username"},
+            json={
+                "event_id": event_id,
+                "username": username,
+                "display_name": display_name or username,
+                "status": status,
+            },
+            timeout=30,
+        )
     resp.raise_for_status()
     return status
 
 
 def remove_event_rsvp(event_id, username):
-    """Скасовує RSVP і піднімає першого з waitlist, якщо звільнилось місце."""
+    """Скасовує RSVP лише для активної події й піднімає першого з waitlist."""
+    try:
+        eresp = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={"id": f"eq.{event_id}", "select": "status", "limit": 1},
+            timeout=20,
+        )
+        eresp.raise_for_status()
+        erows = eresp.json()
+        if not erows:
+            raise ValueError("event_not_found")
+        if (erows[0].get("status") or "scheduled") != "scheduled":
+            raise ValueError("event_closed")
+    except ValueError:
+        raise
+
     uname = (username or "").lstrip("@").lower()
     if not uname:
         return False
@@ -1063,13 +1284,24 @@ def remove_event_rsvp(event_id, username):
 # ==================== ПОДІЇ ====================
 @app.route("/api/events", methods=["GET"])
 def get_events():
-    from datetime import date, timezone
-    resp = requests.get(
-        EVENTS_REST,
-        headers=HEADERS,
-        params={"select": "*", "event_date": f"gte.{date.today().isoformat()}", "order": "event_date.asc"},
-        timeout=30,
-    )
+    # Працює і як страховка, якщо Render спав у момент запланованого часу.
+    auto_complete_due_events()
+
+    scope = (request.args.get("scope") or "upcoming").strip().lower()
+    if scope == "history":
+        params = {
+            "select": "*",
+            "status": "eq.completed",
+            "order": "completed_at.desc,event_date.desc,event_time.desc",
+        }
+    else:
+        params = {
+            "select": "*",
+            "status": "eq.scheduled",
+            "order": "event_date.asc,event_time.asc",
+        }
+
+    resp = requests.get(EVENTS_REST, headers=HEADERS, params=params, timeout=30)
     resp.raise_for_status()
     events = resp.json()
 
@@ -1116,6 +1348,8 @@ def add_event():
         "created_by": data.get("created_by", "невідомо"),
         "max_participants": max(0, int(data.get("max_participants") or 0)),
         "cover_url": uploaded_cover_url,
+        "status": "scheduled",
+        "completed_at": None,
     }
     resp = requests.post(
         EVENTS_REST,
@@ -1204,15 +1438,27 @@ def rsvp_event(event_id):
     if not username:
         return jsonify({"status": "no_username"}), 400
     try:
-        status = add_event_rsvp(event_id, username, data.get("display_name", username))
-    except ValueError:
+        status = add_event_rsvp(
+            event_id,
+            username,
+            data.get("display_name", username),
+            data.get("telegram_user_id"),
+        )
+    except ValueError as exc:
+        if str(exc) == "event_closed":
+            return jsonify({"status": "completed"}), 409
         return jsonify({"status": "not_found"}), 404
     return jsonify({"status": status})
 
 
 @app.route("/api/events/<int:event_id>/rsvp/<username>", methods=["DELETE"])
 def cancel_rsvp(event_id, username):
-    remove_event_rsvp(event_id, username)
+    try:
+        remove_event_rsvp(event_id, username)
+    except ValueError as exc:
+        if str(exc) == "event_closed":
+            return jsonify({"status": "completed"}), 409
+        return jsonify({"status": "not_found"}), 404
     return jsonify({"status": "deleted"})
 
 
@@ -1871,14 +2117,17 @@ async def callback_event_go(callback: CallbackQuery):
     try:
         event_id = int(callback.data.split(":", 1)[1])
         username, display_name = telegram_rsvp_identity(callback.from_user)
-        status = add_event_rsvp(event_id, username, display_name)
+        status = add_event_rsvp(event_id, username, display_name, callback.from_user.id)
         if status == "waitlist":
             await callback.answer("Місць немає — тебе додано в чергу ⏳", show_alert=True)
         else:
             await callback.answer("Ти записаний ✅")
         await refresh_group_event_message(callback, event_id)
-    except ValueError:
-        await callback.answer("Подію вже не знайдено.", show_alert=True)
+    except ValueError as exc:
+        if str(exc) == "event_closed":
+            await callback.answer("Ця подія вже завершена ✅", show_alert=True)
+        else:
+            await callback.answer("Подію вже не знайдено.", show_alert=True)
     except Exception:
         logging.exception("Помилка RSVP із Telegram-групи")
         await callback.answer("Не вдалося записатися. Спробуй ще раз.", show_alert=True)
@@ -1892,6 +2141,11 @@ async def callback_event_no(callback: CallbackQuery):
         existed = remove_event_rsvp(event_id, username)
         await callback.answer("Запис скасовано ❌" if existed else "Ти не був записаний на цю подію.")
         await refresh_group_event_message(callback, event_id)
+    except ValueError as exc:
+        if str(exc) == "event_closed":
+            await callback.answer("Ця подія вже завершена — список учасників зафіксовано ✅", show_alert=True)
+        else:
+            await callback.answer("Подію вже не знайдено.", show_alert=True)
     except Exception:
         logging.exception("Помилка скасування RSVP із Telegram-групи")
         await callback.answer("Не вдалося скасувати запис.", show_alert=True)
@@ -1905,8 +2159,9 @@ def run_bot_polling():
     loop.run_until_complete(dp.start_polling(bot, handle_signals=False))
 
 
-# Запускаємо бота у фоновому потоці, а Flask - в основному
+# Запускаємо бота та автоматичне завершення подій у фонових потоках, а Flask - в основному
 Thread(target=run_bot_polling, daemon=True).start()
+Thread(target=event_completion_worker, daemon=True).start()
 
 
 if __name__ == "__main__":
