@@ -1546,6 +1546,485 @@
     width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); font-size:16px; background:#fff; color:var(--parchment-text);
   }
 
+
+
+  /* ==========================================================
+     UI POLISH: рівні блоки + читабельна типографіка
+     ========================================================== */
+  :root {
+    --text: #fff8ee;
+    --muted: #d2c7dd;
+    --accent: #e3bf55;
+    --accent-dark: #c9a43b;
+    --border: #62497b;
+    --parchment-text: #25190d;
+    --page-pad: 14px;
+    --ui-radius: 14px;
+    --ui-gap: 12px;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    word-spacing: 0.055em;
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+  }
+
+  button, input, textarea, select {
+    font: inherit;
+    letter-spacing: 0.01em;
+    word-spacing: 0.035em;
+  }
+
+  p, .mc-text, .mc-intro, .ev-description, .session-meta,
+  .player-profile-meta, .card-title, .sheet, .event-card,
+  .history-item, .wish-item, .mc-booking-meta, .roll-sub {
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
+  }
+
+  header {
+    padding: 18px var(--page-pad) 20px;
+    font-size: 20px;
+    line-height: 1.25;
+    letter-spacing: 0.035em;
+    word-spacing: 0.06em;
+  }
+
+  /* Єдина сітка відступів на всіх основних екранах */
+  .grid,
+  .events-list,
+  .wishlist-list,
+  .history-list,
+  .stats-wrap {
+    padding-left: var(--page-pad);
+    padding-right: var(--page-pad);
+  }
+
+  .grid {
+    gap: var(--ui-gap);
+    align-items: stretch;
+  }
+
+  .lib-subtabs,
+  .lib-search-row,
+  .lib-genre-row,
+  .tools-tabs {
+    padding-left: var(--page-pad);
+    padding-right: var(--page-pad);
+  }
+
+  .tool-panel {
+    padding-left: var(--page-pad);
+    padding-right: var(--page-pad);
+  }
+
+  .mc-wrap {
+    padding-left: var(--page-pad);
+    padding-right: var(--page-pad);
+  }
+
+  .session-banner {
+    margin-left: var(--page-pad);
+    margin-right: var(--page-pad);
+  }
+
+  /* Картки однакової геометрії */
+  .card,
+  .event-card,
+  .wish-item,
+  .history-item,
+  .counter-row,
+  .initiative-row,
+  .flip7-panel,
+  .stats-card,
+  .player-profile,
+  .mc-hero,
+  .mc-booking-item,
+  .session-banner {
+    border-radius: var(--ui-radius);
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .card-title {
+    padding: 10px 11px 9px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    line-height: 1.35;
+    letter-spacing: 0.012em;
+    word-spacing: 0.055em;
+  }
+
+  .card-tags {
+    margin-top: auto;
+    line-height: 1.35;
+  }
+
+  .event-card,
+  .wish-item,
+  .history-item,
+  .player-profile,
+  .mc-booking-item {
+    padding: 14px;
+  }
+
+  .event-card .ev-top-row,
+  .player-profile-head,
+  .mc-booking-head,
+  .session-top {
+    align-items: flex-start;
+  }
+
+  .event-card .ev-top-row > div,
+  .player-profile-head > div,
+  .mc-booking-head > div,
+  .session-top > div {
+    min-width: 0;
+  }
+
+  .event-card .ev-date {
+    font-size: 12px;
+    line-height: 1.35;
+    letter-spacing: 0.045em;
+  }
+
+  .event-card .ev-title {
+    margin-top: 5px;
+    font-size: 18px;
+    line-height: 1.3;
+    letter-spacing: 0.015em;
+    word-spacing: 0.05em;
+  }
+
+  .event-card .ev-game,
+  .event-card .ev-description,
+  .ev-capacity,
+  .ev-no-participants {
+    line-height: 1.45;
+  }
+
+  .event-card .ev-description,
+  .mc-hero-sub,
+  .mc-text,
+  .mc-intro,
+  .session-meta,
+  .player-profile-meta,
+  .mc-booking-meta,
+  .roll-sub,
+  .empty {
+    color: var(--muted);
+  }
+
+  /* Світліший другорядний текст — краще читається на темному фоні */
+  .sheet label,
+  .counter-name,
+  .picker-status,
+  .initiative-row input.init-name,
+  .flip7-card .fc-name,
+  .flip7-card .fc-pending {
+    line-height: 1.4;
+  }
+
+  .sheet {
+    padding: 22px var(--page-pad) calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sheet h2 {
+    margin: 0 36px 16px 0;
+    font-size: 19px;
+    line-height: 1.3;
+    letter-spacing: 0.025em;
+    word-spacing: 0.05em;
+  }
+
+  .sheet label {
+    margin: 15px 0 6px;
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--muted);
+  }
+
+  /* Всі поля форм мають однаковий контраст і висоту */
+  .sheet input[type=text],
+  .sheet input[type=number],
+  .sheet input[type=date],
+  .sheet input[type=time],
+  .sheet textarea,
+  .sheet select,
+  .lib-search-input,
+  .timer-setup-row input {
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    border: 1px solid #b7aa94;
+    background: #fffaf2;
+    color: #23180e;
+    font-size: 16px;
+    line-height: 1.35;
+  }
+
+  .sheet textarea {
+    min-height: 88px;
+    resize: vertical;
+  }
+
+  .sheet input::placeholder,
+  .sheet textarea::placeholder,
+  .lib-search-input::placeholder {
+    color: #74695d;
+    opacity: 1;
+  }
+
+  .sheet input[type=file] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.35;
+  }
+
+  /* Кнопки: рівні, з читабельним контрастом */
+  .btn,
+  .lib-subtab-btn,
+  .tool-tab-btn,
+  .counters-subtab-btn,
+  .die-btn,
+  .quick-start-btn,
+  .ev-rsvp-btn,
+  .ev-add-participant-btn,
+  .ev-start-session-btn,
+  .flip7-action-btn,
+  .flip7-continue-btn,
+  .flip7-newround-link,
+  .mc-slot,
+  .mc-booking-actions button {
+    line-height: 1.3;
+    min-height: 44px;
+  }
+
+  .btn,
+  .tools-tabs button.active,
+  .lib-subtab-btn.active,
+  .counters-subtab-btn.active,
+  .die-btn.active,
+  .quick-start-btn.primary,
+  .flip7-continue-btn,
+  .mc-slot.selected {
+    color: #1a1024;
+  }
+
+  .btn.secondary {
+    color: var(--text);
+  }
+
+  .rules-link {
+    color: #f0cf67;
+    line-height: 1.4;
+    word-spacing: 0.045em;
+  }
+
+  /* Рівні списки та міжблокові інтервали */
+  .events-list,
+  .wishlist-list,
+  .history-list,
+  .player-profiles,
+  .mc-bookings,
+  .initiative-list,
+  .timer-list,
+  .counters-list {
+    gap: var(--ui-gap);
+  }
+
+  .mc-step,
+  .mc-included-item {
+    line-height: 1.45;
+  }
+
+  .participant-chip {
+    line-height: 1.25;
+    word-spacing: 0.03em;
+  }
+
+  .flip7-card .fc-name,
+  .flip7-panel-name,
+  .flip7-section-label,
+  .flip7-sum-pill,
+  .flip7-mod-chip {
+    word-spacing: 0.035em;
+  }
+
+  .stats-card span,
+  .stats-section-title,
+  .player-profile-meta,
+  .stats-game-row {
+    line-height: 1.4;
+  }
+
+  /* Нижня навігація без “злиплого” тексту */
+  .bottom-nav button {
+    min-width: 0;
+    padding: 9px 3px 8px;
+    font-size: 11px;
+    line-height: 1.2;
+    letter-spacing: 0.005em;
+    word-spacing: 0.025em;
+  }
+
+  .bottom-nav button span:last-child {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  @media (max-width: 360px) {
+    :root { --page-pad: 12px; --ui-gap: 10px; }
+    body { font-size: 14px; }
+    header { font-size: 18px; }
+    .card-title { font-size: 13px; min-height: 46px; }
+    .event-card .ev-title { font-size: 17px; }
+  }
+
+
+
+  /* ---------- Профіль учасника ---------- */
+  .profile-wrap {
+    padding: 12px 14px calc(92px + env(safe-area-inset-bottom, 0px));
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .profile-hero {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.18);
+  }
+  .profile-avatar {
+    width: 76px;
+    height: 76px;
+    flex: 0 0 76px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #3a2350, #1b1028);
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-size: 26px;
+    font-weight: 800;
+  }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .profile-main { min-width: 0; flex: 1; }
+  .profile-name {
+    font-size: 20px;
+    line-height: 1.25;
+    font-weight: 800;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .profile-username { margin-top: 3px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .profile-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 9px; }
+  .profile-title, .profile-level-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.2;
+  }
+  .profile-title { background: rgba(212,175,55,.12); border: 1px solid rgba(212,175,55,.36); color: var(--accent); }
+  .profile-level-badge { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+  .profile-xp-card {
+    margin-top: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .profile-xp-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+  .profile-xp-label { color: var(--text); font-weight: 750; font-size: 14px; }
+  .profile-xp-value { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .profile-xp-track { height: 10px; margin-top: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; border: 1px solid var(--border); }
+  .profile-xp-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); transition: width .35s ease; }
+  .profile-section-title { margin: 20px 2px 9px; font-size: 13px; font-weight: 800; color: var(--accent); letter-spacing: .02em; text-transform: uppercase; }
+  .profile-stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .profile-stat {
+    min-width: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px;
+  }
+  .profile-stat strong { display: block; color: var(--text); font-size: 21px; line-height: 1.15; overflow-wrap: anywhere; }
+  .profile-stat span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .profile-favorite { font-size: 15px !important; line-height: 1.3 !important; }
+  .profile-achievements { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .achievement-card {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 76px;
+    padding: 11px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .achievement-card.locked { opacity: .48; filter: grayscale(.35); }
+  .achievement-icon {
+    width: 40px; height: 40px; flex: 0 0 40px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 20px;
+  }
+  .achievement-card.unlocked .achievement-icon { border-color: rgba(212,175,55,.55); background: rgba(212,175,55,.10); }
+  .achievement-name { color: var(--text); font-weight: 750; font-size: 13px; line-height: 1.25; }
+  .achievement-desc { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+  .profile-note {
+    margin-top: 14px;
+    padding: 11px 13px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .profile-loading { padding: 30px 16px; text-align: center; color: var(--muted); }
+  @media (max-width: 370px) {
+    .profile-wrap { padding-left: 10px; padding-right: 10px; }
+    .profile-hero { padding: 13px; gap: 11px; }
+    .profile-avatar { width: 64px; height: 64px; flex-basis: 64px; }
+    .profile-name { font-size: 18px; }
+    .profile-achievements { grid-template-columns: 1fr; }
+  }
+
 </style>
 </head>
 <body>
@@ -1783,118 +2262,14 @@
   </button>
 </div>
 
-<!-- ==================== ВКЛАДКА: МАЙСТЕР-КЛАС ==================== -->
-<div class="view" id="view-masterclass">
-  <header>Майстер-клас</header>
-  <div class="mc-wrap">
-    <div class="mc-hero">
-      <div>
-        <div class="mc-hero-title">Створи свою мініатюру</div>
-        <div class="mc-hero-sub">4 короткі кроки — від вибору фігурки до запису.</div>
-      </div>
-      <button type="button" class="mc-random-btn" id="mcRandomBtn" aria-label="Підібрати випадково" title="Підібрати випадково">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>
-      </button>
-    </div>
-
-    <div class="mc-progress-top">
-      <span class="mc-progress-label" id="mcProgressLabel">Обери фігурку</span>
-      <span class="mc-progress-value" id="mcProgressValue">1 / 4</span>
-    </div>
-    <div class="mc-progress" aria-hidden="true">
-      <span class="mc-progress-seg current" data-mc-progress="1"></span>
-      <span class="mc-progress-seg" data-mc-progress="2"></span>
-      <span class="mc-progress-seg" data-mc-progress="3"></span>
-      <span class="mc-progress-seg" data-mc-progress="4"></span>
-    </div>
-
-    <section class="mc-stage active" data-mc-stage="1">
-      <h3 class="mc-stage-title">Що будемо фарбувати?</h3>
-      <p class="mc-stage-sub">Обери один варіант.</p>
-      <div class="mc-choice-grid">
-        <button type="button" class="mc-choice" data-mc-figure="D&D персонаж">
-          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 5 7v5c0 4.6 3 7.8 7 9 4-1.2 7-4.4 7-9V7l-7-4Z"/><path d="m9 12 2 2 4-4"/></svg></span>
-          <span><span class="mc-choice-name">D&D персонаж</span><span class="mc-choice-desc">Герой, монстр або NPC</span></span>
-        </button>
-        <button type="button" class="mc-choice" data-mc-figure="Фігурка з настільної гри">
-          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 4h10l3 5-8 11L4 9l3-5Z"/><path d="m7 4 5 16 5-16M4 9h16"/></svg></span>
-          <span><span class="mc-choice-name">З настільної гри</span><span class="mc-choice-desc">Улюблена мініатюра з коробки</span></span>
-        </button>
-        <button type="button" class="mc-choice" data-mc-figure="Власна 3D-модель">
-          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 7 4v10l-7 4-7-4V7l7-4Z"/><path d="m5 7 7 4 7-4M12 11v10"/></svg></span>
-          <span><span class="mc-choice-name">Власна 3D-модель</span><span class="mc-choice-desc">Підготуємо модель до друку</span></span>
-        </button>
-        <button type="button" class="mc-choice" data-mc-figure="Сюрприз">
-          <span class="mc-choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9h16v11H4zM12 9v11M3 5h18v4H3z"/><path d="M12 5c-1-3-5-3-5 0 0 2 3 2 5 0Zm0 0c1-3 5-3 5 0 0 2-3 2-5 0Z"/></svg></span>
-          <span><span class="mc-choice-name">Сюрприз</span><span class="mc-choice-desc">Нехай вибір буде випадковим</span></span>
-        </button>
-      </div>
-      <div class="mc-nav"><button type="button" class="btn secondary mc-back" disabled>Назад</button><button type="button" class="btn mc-next" data-mc-next="2" disabled>Далі</button></div>
-    </section>
-
-    <section class="mc-stage" data-mc-stage="2">
-      <h3 class="mc-stage-title">Який стиль?</h3>
-      <p class="mc-stage-sub">Це допоможе підібрати палітру та техніку.</p>
-      <div class="mc-choice-grid">
-        <button type="button" class="mc-choice" data-mc-style="Простий"><span class="mc-choice-icon">✦</span><span><span class="mc-choice-name">Простий</span><span class="mc-choice-desc">Чисто й швидко</span><span class="mc-palette"><i class="mc-swatch p1"></i><i class="mc-swatch p2"></i><i class="mc-swatch p3"></i></span></span></button>
-        <button type="button" class="mc-choice" data-mc-style="Детальний"><span class="mc-choice-icon">✧</span><span><span class="mc-choice-name">Детальний</span><span class="mc-choice-desc">Тіні, світло, дрібні акценти</span><span class="mc-palette"><i class="mc-swatch s1"></i><i class="mc-swatch s2"></i><i class="mc-swatch s3"></i></span></span></button>
-        <button type="button" class="mc-choice" data-mc-style="Темний"><span class="mc-choice-icon">◐</span><span><span class="mc-choice-name">Темний</span><span class="mc-choice-desc">Похмурий fantasy / grimdark</span><span class="mc-palette"><i class="mc-swatch d1"></i><i class="mc-swatch d2"></i><i class="mc-swatch d3"></i></span></span></button>
-        <button type="button" class="mc-choice" data-mc-style="Яскравий"><span class="mc-choice-icon">☀</span><span><span class="mc-choice-name">Яскравий</span><span class="mc-choice-desc">Контрастні кольори</span><span class="mc-palette"><i class="mc-swatch b1"></i><i class="mc-swatch b2"></i><i class="mc-swatch b3"></i></span></span></button>
-      </div>
-      <div class="mc-nav"><button type="button" class="btn secondary mc-back" data-mc-back="1">Назад</button><button type="button" class="btn mc-next" data-mc-next="3" disabled>Далі</button></div>
-    </section>
-
-    <section class="mc-stage" data-mc-stage="3">
-      <h3 class="mc-stage-title">Твій досвід</h3>
-      <p class="mc-stage-sub">Підлаштуємо темп майстер-класу під тебе.</p>
-      <div class="mc-level-list">
-        <button type="button" class="mc-level-btn" data-mc-level="Новачок"><span class="mc-level-dot"></span><span><span class="mc-level-main">Ніколи не фарбував</span><span class="mc-level-sub">Почнемо з основ — без складних технік</span></span></button>
-        <button type="button" class="mc-level-btn" data-mc-level="Пробував"><span class="mc-level-dot"></span><span><span class="mc-level-main">Вже пробував</span><span class="mc-level-sub">Додамо тіні, висвітлення й акуратні деталі</span></span></button>
-        <button type="button" class="mc-level-btn" data-mc-level="Досвідчений"><span class="mc-level-dot"></span><span><span class="mc-level-main">Вже вмію</span><span class="mc-level-sub">Більше часу на стиль і складніші ефекти</span></span></button>
-      </div>
-      <div class="mc-nav"><button type="button" class="btn secondary mc-back" data-mc-back="2">Назад</button><button type="button" class="btn mc-next" data-mc-next="4" disabled>До запису</button></div>
-    </section>
-
-    <section class="mc-stage" data-mc-stage="4">
-      <h3 class="mc-stage-title">Запис на майстер-клас</h3>
-      <p class="mc-stage-sub">Обери зручну дату й час.</p>
-      <div class="mc-booking-card">
-        <div class="mc-form-grid">
-          <div class="mc-field full"><label for="mcName">Ім’я</label><input id="mcName" type="text" autocomplete="name" placeholder="Як до тебе звертатися"></div>
-          <div class="mc-field"><label for="mcDate">Дата</label><input id="mcDate" type="date"></div>
-          <div class="mc-field"><label for="mcTime">Час</label><input id="mcTime" type="time" readonly></div>
-        </div>
-        <div class="mc-slot-label">Доступний час</div>
-        <div class="mc-slots" id="mcSlots"><button type="button" class="mc-slot" data-time="11:00">11:00</button><button type="button" class="mc-slot" data-time="14:00">14:00</button><button type="button" class="mc-slot" data-time="17:00">17:00</button><button type="button" class="mc-slot" data-time="19:00">19:00</button></div>
-        <button type="button" class="btn" id="mcBookBtn" disabled>Записатися</button>
-        <div class="mc-success" id="mcSuccess">
-          <div class="mc-success-title">✓ Запис збережено</div>
-          <div class="mc-success-sub" id="mcSuccessText">Дані залишаться на цьому пристрої. Пізніше можемо підключити запис до «Подій» або Supabase.</div>
-        </div>
-      </div>
-      <div class="mc-nav"><button type="button" class="btn secondary mc-back" data-mc-back="3">Назад</button><button type="button" class="btn secondary" id="mcRestartBtn">Почати заново</button></div>
-    </section>
-
-    <div class="mc-summary" id="mcSummary">
-      <div class="mc-summary-head"><span class="mc-summary-title">Твій майстер-клас</span><button type="button" class="mc-summary-edit" id="mcSummaryEdit">Змінити</button></div>
-      <div class="mc-summary-grid">
-        <div class="mc-summary-item"><span>Фігурка</span><strong id="mcSummaryFigure">—</strong></div>
-        <div class="mc-summary-item"><span>Стиль</span><strong id="mcSummaryStyle">—</strong></div>
-        <div class="mc-summary-item"><span>Рівень</span><strong id="mcSummaryLevel">—</strong></div>
-        <div class="mc-summary-item"><span>Дата</span><strong id="mcSummaryDate">—</strong></div>
-      </div>
-    </div>
-
-    <div class="mc-included-row" aria-label="Матеріали включено">
-      <span class="mc-chip">Фігурка</span><span class="mc-chip">Ґрунт</span><span class="mc-chip">Фарби</span><span class="mc-chip">Пензлі</span><span class="mc-chip">Палітра</span>
-    </div>
-
-    <div class="mc-bookings" id="mcBookingsPanel">
-      <div class="stats-section-title" id="mcBookingsTitle">Мої записи</div>
-      <div id="mcBookingsList"><div class="mc-booking-meta">Записи ще не завантажені.</div></div>
-    </div>
+<!-- ==================== ВКЛАДКА: ПРОФІЛЬ ==================== -->
+<div class="view" id="view-profile">
+  <header>Профіль</header>
+  <div class="profile-wrap">
+    <div id="profileContent" class="profile-loading">Завантажую профіль…</div>
   </div>
 </div>
+
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
 <div class="bottom-nav">
   <button class="nav-btn active" data-view="view-library">
@@ -1909,9 +2284,9 @@
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>
     <span>Ігрові додатки</span>
   </button>
-  <button class="nav-btn" data-view="view-masterclass">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 3.5a2.1 2.1 0 0 1 3 3L10 18 5 19l1-5Z"/><path d="M14 6l3 3"/></svg></span>
-    <span>Майстер-клас</span>
+  <button class="nav-btn" data-view="view-profile">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/></svg></span>
+    <span>Профіль</span>
   </button>
 </div>
 
@@ -4736,7 +5111,92 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && act
 window.addEventListener('beforeunload', () => { if (activeSession) captureActiveState(); });
 restoreActiveSessionState();
 
-initMasterclass();
+loadMyProfile();
+
+
+
+/* ==================== ПРОФІЛЬ УЧАСНИКА ==================== */
+function profileInitials(name) {
+  const parts = String(name || 'Гравець').trim().split(/\s+/).filter(Boolean);
+  return (parts.slice(0,2).map(p => p[0]?.toUpperCase() || '').join('') || 'Г').slice(0,2);
+}
+
+function renderMyProfile(data) {
+  const root = document.getElementById('profileContent');
+  if (!root) return;
+  if (!data || data.error) {
+    root.className = 'profile-loading';
+    root.textContent = 'Не вдалося завантажити профіль. Відкрий Mini App через Telegram і спробуй ще раз.';
+    return;
+  }
+  const stats = data.stats || {};
+  const achievements = Array.isArray(data.achievements) ? data.achievements : [];
+  const displayName = data.display_name || username || 'Гравець';
+  const photo = data.photo_url ? `<img src="${escapeHtml(data.photo_url)}" alt="Аватар ${escapeHtml(displayName)}">` : escapeHtml(profileInitials(displayName));
+  const progress = Math.max(0, Math.min(100, Number(data.level_progress_percent) || 0));
+  const userLabel = data.username ? `@${escapeHtml(data.username)}` : 'Telegram-профіль';
+  const fav = stats.favorite_game || '—';
+  root.className = '';
+  root.innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-avatar">${photo}</div>
+      <div class="profile-main">
+        <div class="profile-name">${escapeHtml(displayName)}</div>
+        <div class="profile-username">${userLabel}</div>
+        <div class="profile-title-row">
+          <span class="profile-title">${escapeHtml(data.title || 'Новачок')}</span>
+          <span class="profile-level-badge">Рівень ${Number(data.level) || 1}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-xp-card">
+      <div class="profile-xp-head">
+        <div class="profile-xp-label">Досвід</div>
+        <div class="profile-xp-value">${Number(data.level_xp) || 0} / ${Number(data.xp_per_level) || 250} XP</div>
+      </div>
+      <div class="profile-xp-track"><div class="profile-xp-fill" style="width:${progress}%"></div></div>
+    </div>
+
+    <div class="profile-section-title">Статистика</div>
+    <div class="profile-stats-grid">
+      <div class="profile-stat"><strong>${Number(stats.games_played) || 0}</strong><span>зіграних партій</span></div>
+      <div class="profile-stat"><strong>${Number(stats.wins) || 0}</strong><span>перемог</span></div>
+      <div class="profile-stat"><strong>${Number(stats.events_attended) || 0}</strong><span>відвіданих подій</span></div>
+      <div class="profile-stat"><strong class="profile-favorite">${escapeHtml(fav)}</strong><span>найчастіша гра</span></div>
+    </div>
+
+    <div class="profile-section-title">Досягнення</div>
+    <div class="profile-achievements">
+      ${achievements.map(a => `
+        <div class="achievement-card ${a.unlocked ? 'unlocked' : 'locked'}">
+          <div class="achievement-icon">${a.unlocked ? escapeHtml(a.icon || '🏆') : '🔒'}</div>
+          <div><div class="achievement-name">${escapeHtml(a.name || '')}</div><div class="achievement-desc">${escapeHtml(a.description || '')}</div></div>
+        </div>`).join('')}
+    </div>
+    <div class="profile-note">Профіль прив’язаний до твого Telegram ID, тому зміна @username не створить новий акаунт.</div>
+  `;
+}
+
+async function loadMyProfile() {
+  const root = document.getElementById('profileContent');
+  if (!root) return;
+  if (!root.dataset.loaded) root.innerHTML = '<div class="profile-loading">Завантажую профіль…</div>';
+  try {
+    const res = await fetch('/api/profile/me', { headers: telegramAuthHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'profile_error');
+    root.dataset.loaded = '1';
+    renderMyProfile(data);
+  } catch (e) {
+    renderMyProfile({ error: String(e) });
+  }
+}
+
+document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
+  if (btn.dataset.view === 'view-profile') loadMyProfile();
+}));
+
 
 async function applyInitialDeepLink() {
   try {

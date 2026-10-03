@@ -7,7 +7,9 @@ import hashlib
 import hmac
 import json
 import time
+import re
 from threading import Thread
+from datetime import datetime, timezone
 from urllib.parse import quote, parse_qsl
 
 import requests
@@ -46,6 +48,7 @@ RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
 TELEGRAM_GROUPS_REST = f"{SUPABASE_URL}/rest/v1/telegram_groups"
+PROFILES_REST = f"{SUPABASE_URL}/rest/v1/profiles"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -691,6 +694,159 @@ def _admin_required_response():
     return None
 
 
+
+
+# ==================== ПРОФІЛЬ УЧАСНИКА ====================
+def _profile_norm(value):
+    return re.sub(r"\s+", " ", str(value or "").strip().lstrip("@").lower())
+
+
+def _profile_history_stats(user):
+    username = _profile_norm(user.get("username"))
+    full_name = _profile_norm(" ".join(x for x in [user.get("first_name"), user.get("last_name")] if x))
+    first_name = _profile_norm(user.get("first_name"))
+    aliases = {x for x in [username, full_name, first_name] if x}
+
+    games_played = 0
+    wins = 0
+    game_counts = {}
+    try:
+        resp = requests.get(
+            HISTORY_REST,
+            headers=HEADERS,
+            params={"select": "game_name,players,winner,played_at"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        for row in resp.json():
+            raw_players = str(row.get("players") or "")
+            players = [_profile_norm(p) for p in re.split(r"[,;\n|]+", raw_players) if _profile_norm(p)]
+            winner = _profile_norm(row.get("winner"))
+            is_player = bool(aliases.intersection(players))
+            # Старі записи іноді містять лише переможця без списку гравців.
+            if not is_player and winner and winner in aliases:
+                is_player = True
+            if not is_player:
+                continue
+            games_played += 1
+            game = str(row.get("game_name") or "Без назви").strip() or "Без назви"
+            game_counts[game] = game_counts.get(game, 0) + 1
+            if winner and winner in aliases:
+                wins += 1
+    except Exception:
+        logging.exception("Не вдалося порахувати статистику профілю з історії")
+
+    events_attended = 0
+    if username:
+        try:
+            rr = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={"username": f"eq.{username}", "status": "eq.going", "select": "id"},
+                timeout=20,
+            )
+            if rr.ok:
+                events_attended = len(rr.json())
+        except Exception:
+            logging.exception("Не вдалося порахувати події профілю")
+
+    favorite_game = "—"
+    if game_counts:
+        favorite_game = sorted(game_counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
+
+    return {
+        "games_played": games_played,
+        "wins": wins,
+        "events_attended": events_attended,
+        "favorite_game": favorite_game,
+        "unique_games": len(game_counts),
+    }
+
+
+def _profile_achievements(stats):
+    games = int(stats.get("games_played") or 0)
+    wins = int(stats.get("wins") or 0)
+    events = int(stats.get("events_attended") or 0)
+    unique_games = int(stats.get("unique_games") or 0)
+    return [
+        {"id": "first_game", "icon": "🎲", "name": "Перша партія", "description": "Зіграно першу записану партію", "unlocked": games >= 1},
+        {"id": "first_win", "icon": "🏆", "name": "Перша перемога", "description": "Здобуто першу перемогу", "unlocked": wins >= 1},
+        {"id": "regular", "icon": "🔥", "name": "Завсідник", "description": "Зіграно 10 партій", "unlocked": games >= 10},
+        {"id": "explorer", "icon": "🧭", "name": "Дослідник", "description": "Зіграно у 5 різних ігор", "unlocked": unique_games >= 5},
+        {"id": "event_guest", "icon": "👥", "name": "У компанії", "description": "Відвідано 5 подій", "unlocked": events >= 5},
+        {"id": "champion", "icon": "👑", "name": "Чемпіон", "description": "Здобуто 10 перемог", "unlocked": wins >= 10},
+    ]
+
+
+def _profile_title(level):
+    if level >= 15:
+        return "Легенда клубу"
+    if level >= 10:
+        return "Ветеран"
+    if level >= 5:
+        return "Досвідчений"
+    if level >= 3:
+        return "Гравець"
+    return "Новачок"
+
+
+@app.route("/api/profile/me", methods=["GET"])
+def get_my_profile():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    username = (user.get("username") or "").lstrip("@").lower()
+    display_name = " ".join(x for x in [user.get("first_name"), user.get("last_name")] if x).strip() or username or "Гравець"
+    photo_url = user.get("photo_url") or ""
+
+    # Зберігаємо базовий профіль за незмінним Telegram user_id.
+    profile_payload = {
+        "telegram_user_id": user_id,
+        "username": username,
+        "display_name": display_name,
+        "photo_url": photo_url,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        up = requests.post(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=representation"},
+            params={"on_conflict": "telegram_user_id"},
+            json=profile_payload,
+            timeout=30,
+        )
+        # Якщо SQL ще не виконано, профіль все одно показуємо з Telegram-даних.
+        if not up.ok:
+            logging.warning("Профіль не збережено в Supabase: %s", up.text[:500])
+    except Exception:
+        logging.exception("Не вдалося зберегти профіль")
+
+    stats = _profile_history_stats(user)
+    # XP нараховується за фактичну активність, а не лише за перемоги.
+    xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
+    xp_per_level = 250
+    level = max(1, xp // xp_per_level + 1)
+    level_xp = xp % xp_per_level
+    progress = round((level_xp / xp_per_level) * 100) if xp_per_level else 0
+
+    return jsonify({
+        "telegram_user_id": user_id,
+        "username": username,
+        "display_name": display_name,
+        "photo_url": photo_url,
+        "xp": xp,
+        "level": level,
+        "level_xp": level_xp,
+        "xp_per_level": xp_per_level,
+        "level_progress_percent": progress,
+        "title": _profile_title(level),
+        "stats": stats,
+        "achievements": _profile_achievements(stats),
+    })
+
+
 # ==================== АДМІНИ ====================
 @app.route("/api/admins/check", methods=["POST"])
 def check_admin():
@@ -855,7 +1011,7 @@ def remove_event_rsvp(event_id, username):
 # ==================== ПОДІЇ ====================
 @app.route("/api/events", methods=["GET"])
 def get_events():
-    from datetime import date
+    from datetime import date, timezone
     resp = requests.get(
         EVENTS_REST,
         headers=HEADERS,
