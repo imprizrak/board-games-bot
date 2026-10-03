@@ -314,6 +314,20 @@
   .mc-success-title { font-weight: 800; color: #8dd8a9; font-size: 13px; }
   .mc-success-sub { color: var(--muted); font-size: 11px; line-height: 1.35; margin-top: 3px; }
 
+  .event-cover-wrap {
+    margin: 10px 0 12px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+  }
+  .event-cover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
   /* ---------- Вкладка "Події" ---------- */
   .events-list {
     display: flex;
@@ -2494,6 +2508,7 @@ function renderEvents(events) {
           <div class="ev-title">${ev.title}</div>
           ${ev.game_name ? `<div class="ev-game">🎲 ${ev.game_name}</div>` : ""}
           ${ev.description ? `<div class="ev-description">${ev.description}</div>` : ""}
+          ${ev.cover_url ? `<div class="event-cover-wrap"><img class="event-cover" src="${ev.cover_url}" alt="Обкладинка події ${ev.title}"></div>` : ""}
         </div>
         ${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ""}
       </div>
@@ -2582,6 +2597,7 @@ function openEventModal() {
   document.getElementById("eventDate").value = "";
   document.getElementById("eventTime").value = "";
   document.getElementById("eventDescription").value = "";
+  const eventCover = document.getElementById("eventCover"); if (eventCover) eventCover.value = "";
 
   const select = document.getElementById("eventGameSelect");
   select.innerHTML = '<option value="">— без гри —</option>';
@@ -2602,17 +2618,19 @@ async function submitEvent() {
     tg.showAlert("Введи назву і дату події");
     return;
   }
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("event_date", date);
+  formData.append("event_time", document.getElementById("eventTime").value.trim());
+  formData.append("game_name", document.getElementById("eventGameSelect").value);
+  formData.append("description", document.getElementById("eventDescription").value.trim());
+  formData.append("created_by", username);
+  const coverFile = document.getElementById("eventCover")?.files?.[0];
+  if (coverFile) formData.append("cover", coverFile);
+
   await fetch("/api/events", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title,
-      event_date: date,
-      event_time: document.getElementById("eventTime").value.trim(),
-      game_name: document.getElementById("eventGameSelect").value,
-      description: document.getElementById("eventDescription").value.trim(),
-      created_by: username,
-    }),
+    body: formData,
   });
   closeModal("eventModal");
   loadEvents();
@@ -4615,7 +4633,7 @@ function renderEvents(events) {
 }
 
 function openEventModal() {
-  document.getElementById('eventTitle').value=''; document.getElementById('eventDate').value=''; document.getElementById('eventTime').value=''; document.getElementById('eventDescription').value=''; document.getElementById('eventCapacity').value='0';
+  document.getElementById('eventTitle').value=''; document.getElementById('eventDate').value=''; document.getElementById('eventTime').value=''; document.getElementById('eventDescription').value=''; document.getElementById('eventCapacity').value='0'; const eventCover=document.getElementById('eventCover'); if(eventCover) eventCover.value='';
   const select = document.getElementById('eventGameSelect'); select.innerHTML='<option value="">— без гри —</option>';
   allGames.forEach(g => { const opt=document.createElement('option'); opt.value=g.name; opt.textContent=g.name; select.appendChild(opt); });
   document.getElementById('eventModal').classList.add('open');
@@ -4624,7 +4642,17 @@ function openEventModal() {
 async function submitEvent() {
   const title=document.getElementById('eventTitle').value.trim(); const date=document.getElementById('eventDate').value.trim();
   if (!title || !date) { tg.showAlert('Введи назву і дату події'); return; }
-  await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,event_date:date,event_time:document.getElementById('eventTime').value.trim(),game_name:document.getElementById('eventGameSelect').value,max_participants:parseInt(document.getElementById('eventCapacity').value,10)||0,description:document.getElementById('eventDescription').value.trim(),created_by:username})});
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('event_date', date);
+  formData.append('event_time', document.getElementById('eventTime').value.trim());
+  formData.append('game_name', document.getElementById('eventGameSelect').value);
+  formData.append('max_participants', parseInt(document.getElementById('eventCapacity').value,10)||0);
+  formData.append('description', document.getElementById('eventDescription').value.trim());
+  formData.append('created_by', username);
+  const coverFile = document.getElementById('eventCover')?.files?.[0];
+  if (coverFile) formData.append('cover', coverFile);
+  await fetch('/api/events',{method:'POST',body:formData});
   closeModal('eventModal'); loadEvents();
 }
 

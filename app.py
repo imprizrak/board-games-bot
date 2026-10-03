@@ -791,7 +791,16 @@ def get_events():
 
 @app.route("/api/events", methods=["POST"])
 def add_event():
-    data = request.get_json(silent=True, force=True) or {}
+    content_type = (request.content_type or "").lower()
+    if "multipart/form-data" in content_type:
+        data = request.form.to_dict(flat=True)
+        cover_file = request.files.get("cover")
+    else:
+        data = request.get_json(silent=True, force=True) or {}
+        cover_file = None
+
+    uploaded_cover_url = upload_file(cover_file, "event-covers") if cover_file and getattr(cover_file, "filename", "") else None
+
     payload = {
         "title": data.get("title", ""),
         "event_date": data.get("event_date"),
@@ -800,6 +809,7 @@ def add_event():
         "description": data.get("description", ""),
         "created_by": data.get("created_by", "невідомо"),
         "max_participants": max(0, int(data.get("max_participants") or 0)),
+        "cover_url": uploaded_cover_url,
     }
     resp = requests.post(
         EVENTS_REST,
@@ -807,21 +817,25 @@ def add_event():
         json=payload,
         timeout=30,
     )
-    if resp.status_code >= 400 and "max_participants" in resp.text:
-        payload.pop("max_participants", None)
+    if resp.status_code >= 400 and ("max_participants" in resp.text or "cover_url" in resp.text):
+        fallback = dict(payload)
+        if "max_participants" in resp.text:
+            fallback.pop("max_participants", None)
+        if "cover_url" in resp.text:
+            fallback.pop("cover_url", None)
         resp = requests.post(
             EVENTS_REST,
             headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
-            json=payload,
+            json=fallback,
             timeout=30,
         )
     resp.raise_for_status()
     created_rows = resp.json() if resp.content else []
     event_id = created_rows[0].get("id") if created_rows else None
 
-    event_photo = None
+    event_photo = uploaded_cover_url
     game_name = data.get("game_name", "")
-    if game_name:
+    if not event_photo and game_name:
         try:
             gresp = requests.get(
                 REST,
@@ -847,7 +861,8 @@ def add_event():
         notify_lines.append(f"👥 Місць: {max_participants}")
     if data.get("description"):
         notify_lines.append(data.get("description"))
-    notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
+    notify_subscribers_async("
+".join(notify_lines), photo_url=event_photo)
 
     if event_id:
         notify_groups_async(event_id, photo_url=event_photo)
@@ -857,6 +872,18 @@ def add_event():
 
 @app.route("/api/events/<int:event_id>", methods=["DELETE"])
 def delete_event(event_id):
+    try:
+        current = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={"id": f"eq.{event_id}", "select": "cover_url"},
+            timeout=20,
+        )
+        if current.ok and current.json():
+            delete_file(current.json()[0].get("cover_url"))
+    except Exception:
+        logging.exception("Не вдалось видалити обкладинку події")
+
     resp = requests.delete(EVENTS_REST, headers=HEADERS, params={"id": f"eq.{event_id}"}, timeout=30)
     resp.raise_for_status()
     return jsonify({"status": "deleted"})
