@@ -1468,6 +1468,65 @@
     touch-action: none;
   }
 
+
+
+  /* ---------- Активна сесія / швидкий старт ---------- */
+  .session-banner { display:none; margin: 0 12px 10px; padding: 12px 14px; border:1px solid var(--accent); border-radius:14px; background:var(--card-bg); }
+  .session-banner.show { display:block; }
+  .session-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .session-title { font-family:'Cinzel',serif; color:var(--accent); font-size:14px; }
+  .session-meta { color:var(--muted); font-size:12px; margin-top:3px; }
+  .session-actions { display:flex; gap:8px; margin-top:10px; }
+  .session-actions button { flex:1; margin:0; padding:9px 10px; font-size:13px; }
+
+  .quick-start { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+  .quick-start-title { font-family:'Cinzel',serif; font-size:12px; color:var(--accent); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px; }
+  .quick-start-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quick-start-btn { border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:11px; padding:10px 8px; font-size:13px; font-weight:700; min-height:44px; }
+  .quick-start-btn.primary { background:var(--accent); color:#1a1024; border-color:var(--accent); }
+
+  /* ---------- Статистика ---------- */
+  .stats-wrap { padding:12px 12px 86px; }
+  .stats-summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+  .stats-card { background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .stats-card strong { display:block; font-family:'Cinzel',serif; color:var(--accent); font-size:20px; line-height:1.1; }
+  .stats-card span { display:block; color:var(--muted); font-size:11px; margin-top:4px; }
+  .stats-section-title { font-family:'Cinzel',serif; color:var(--accent); font-size:13px; margin:16px 0 8px; }
+  .player-profiles { display:flex; flex-direction:column; gap:8px; }
+  .player-profile { background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:12px 14px; }
+  .player-profile-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .player-profile-name { font-family:'Cinzel',serif; color:var(--text); font-size:15px; }
+  .player-profile-rate { color:var(--accent); font-weight:800; font-size:13px; }
+  .player-profile-meta { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.4; }
+  .stats-game-row { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .stats-game-row:last-child { border-bottom:none; }
+  .stats-game-row span:last-child { color:var(--accent); font-weight:700; }
+
+  /* ---------- Події: місця та черга ---------- */
+  .ev-capacity { font-size:12px; color:var(--accent); margin-top:7px; font-weight:700; }
+  .participant-chip.waitlist { opacity:.72; border-style:dashed; }
+  .participant-chip .wait-tag { font-size:9px; color:var(--accent); text-transform:uppercase; }
+  .ev-start-session-btn { flex:1; padding:9px 4px; border-radius:999px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-size:13px; font-weight:700; }
+
+  /* ---------- Майстер-клас: слоти та записи ---------- */
+  .mc-slot-label { color:var(--muted); font-size:11px; margin:10px 0 6px; text-transform:uppercase; letter-spacing:.5px; }
+  .mc-slots { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+  .mc-slot { border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:10px; min-height:40px; font-weight:700; }
+  .mc-slot.selected { background:var(--accent); color:#1a1024; border-color:var(--accent); }
+  .mc-slot:disabled { opacity:.35; text-decoration:line-through; }
+  .mc-bookings { margin-top:16px; }
+  .mc-booking-item { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-top:8px; }
+  .mc-booking-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .mc-booking-title { color:var(--text); font-weight:700; }
+  .mc-booking-status { font-size:10px; padding:3px 7px; border-radius:999px; background:var(--bg); color:var(--accent); text-transform:uppercase; }
+  .mc-booking-meta { color:var(--muted); font-size:11px; margin-top:4px; }
+  .mc-booking-actions { display:flex; gap:6px; margin-top:8px; }
+  .mc-booking-actions button { flex:1; border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:9px; padding:7px; font-size:11px; }
+
+  .sheet input[type=number], .sheet input[type=date], .sheet input[type=time], .sheet select {
+    width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); font-size:16px; background:#fff; color:var(--parchment-text);
+  }
+
 </style>
 </head>
 <body>
@@ -1480,6 +1539,7 @@
     <button class="lib-subtab-btn active" data-lib="games">Бібліотека</button>
     <button class="lib-subtab-btn" data-lib="wishlist">Вішліст</button>
     <button class="lib-subtab-btn" data-lib="history">Історія</button>
+    <button class="lib-subtab-btn" data-lib="stats">Статистика</button>
   </div>
 
   <div class="lib-mode active" id="libmode-games">
@@ -1513,11 +1573,27 @@
       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </div>
+
+  <div class="lib-mode" id="libmode-stats">
+    <div class="stats-wrap" id="statsWrap">
+      <div class="empty">Відкрий статистику — і я зберу дані з історії партій.</div>
+    </div>
+  </div>
 </div>
 
 <!-- ==================== ВКЛАДКА: ІГРОВІ ДОДАТКИ ==================== -->
 <div class="view" id="view-tools">
   <header>Ігрові додатки</header>
+
+  <div class="session-banner" id="activeSessionBanner">
+    <div class="session-top">
+      <div><div class="session-title" id="activeSessionTitle">Незавершена сесія</div><div class="session-meta" id="activeSessionMeta"></div></div>
+    </div>
+    <div class="session-actions">
+      <button class="btn" type="button" id="resumeSessionBtn">Продовжити</button>
+      <button class="btn secondary" type="button" id="finishSessionBtn">Завершити</button>
+    </div>
+  </div>
 
   <div class="tools-tabs">
     <button class="tool-tab-btn active" data-tool="dice">
@@ -1767,8 +1843,10 @@
         <div class="mc-form-grid">
           <div class="mc-field full"><label for="mcName">Ім’я</label><input id="mcName" type="text" autocomplete="name" placeholder="Як до тебе звертатися"></div>
           <div class="mc-field"><label for="mcDate">Дата</label><input id="mcDate" type="date"></div>
-          <div class="mc-field"><label for="mcTime">Час</label><input id="mcTime" type="time"></div>
+          <div class="mc-field"><label for="mcTime">Час</label><input id="mcTime" type="time" readonly></div>
         </div>
+        <div class="mc-slot-label">Доступний час</div>
+        <div class="mc-slots" id="mcSlots"><button type="button" class="mc-slot" data-time="11:00">11:00</button><button type="button" class="mc-slot" data-time="14:00">14:00</button><button type="button" class="mc-slot" data-time="17:00">17:00</button><button type="button" class="mc-slot" data-time="19:00">19:00</button></div>
         <button type="button" class="btn" id="mcBookBtn" disabled>Записатися</button>
         <div class="mc-success" id="mcSuccess">
           <div class="mc-success-title">✓ Запис збережено</div>
@@ -1790,6 +1868,11 @@
 
     <div class="mc-included-row" aria-label="Матеріали включено">
       <span class="mc-chip">Фігурка</span><span class="mc-chip">Ґрунт</span><span class="mc-chip">Фарби</span><span class="mc-chip">Пензлі</span><span class="mc-chip">Палітра</span>
+    </div>
+
+    <div class="mc-bookings" id="mcBookingsPanel">
+      <div class="stats-section-title" id="mcBookingsTitle">Мої записи</div>
+      <div id="mcBookingsList"><div class="mc-booking-meta">Записи ще не завантажені.</div></div>
     </div>
   </div>
 </div>
@@ -1821,6 +1904,10 @@
     <p id="viewDescription"></p>
     <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила (PDF)</a>
     <p id="viewNoRules" style="color:var(--muted);"></p>
+    <div class="quick-start" id="quickStartSection">
+      <div class="quick-start-title">Швидкий старт</div>
+      <div class="quick-start-grid" id="quickStartGrid"></div>
+    </div>
     <button class="btn secondary icon-inline" style="margin-top:20px; justify-content:center;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
     <button class="btn icon-inline" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button>
   </div>
@@ -2020,8 +2107,14 @@
     <label>Дата</label>
     <input type="text" id="historyDate" placeholder="РРРР-ММ-ДД">
 
+    <label>Гравці (через кому)</label>
+    <input type="text" id="historyPlayers" placeholder="Дар'я, Діма, Роза">
+
     <label>Переможець (необов'язково)</label>
     <input type="text" id="historyWinner" placeholder="Хто переміг">
+
+    <label>Тривалість, хвилин (необов'язково)</label>
+    <input type="number" id="historyDuration" min="0" step="5" placeholder="60">
 
     <label>Нотатка (необов'язково)</label>
     <textarea id="historyNote" rows="2" placeholder="Як пройшов вечір"></textarea>
@@ -2062,6 +2155,9 @@
     <select id="eventGameSelect" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:#fff; color:var(--parchment-text); font-size:15px;">
       <option value="">— без гри —</option>
     </select>
+
+    <label>Максимум учасників (0 = без ліміту)</label>
+    <input type="number" id="eventCapacity" min="0" max="99" value="0" inputmode="numeric">
 
     <label>Опис (необов'язково)</label>
     <textarea id="eventDescription" rows="2" placeholder="Деталі, місце, що принести"></textarea>
@@ -4132,6 +4228,446 @@ function initMasterclass() {
 
   renderMasterclass();
 }
+
+
+/* ==================== ПОКРАЩЕННЯ 2/4/6/7 ==================== */
+const ACTIVE_SESSION_KEY = "boardgames_active_session_v1";
+let activeSession = null;
+let historyFromSession = false;
+
+function safeJsonParse(raw, fallback = null) {
+  try { return JSON.parse(raw); } catch (_) { return fallback; }
+}
+
+function loadActiveSessionRecord() {
+  try { activeSession = safeJsonParse(localStorage.getItem(ACTIVE_SESSION_KEY), null); } catch (_) { activeSession = null; }
+  return activeSession;
+}
+
+function currentCountersMode() {
+  const active = document.querySelector('.counters-subtab-btn.active');
+  return active ? active.dataset.mode : 'simple';
+}
+
+function captureActiveState() {
+  if (!activeSession) return;
+  activeSession.updatedAt = Date.now();
+  activeSession.state = {
+    counters: { players: counterPlayers, nextId: nextCounterId },
+    flip7: { players: flip7Players, nextId: nextFlip7Id, round: flip7Round, activeId: flip7ActiveId, builder: flip7Builder },
+    timer: { players: timerPlayers, nextId: nextTimerId, activeIndex: timerActiveIndex },
+    initiative: { combatants: initiativeCombatants, nextId: nextInitiativeId, currentIndex: initiativeCurrentIndex, round: initiativeRound }
+  };
+  try { localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(activeSession)); } catch (_) {}
+  renderActiveSessionBanner();
+}
+
+function ensureActiveSession(tool = 'counters', gameName = null, mode = null) {
+  if (!activeSession) {
+    activeSession = { gameName: gameName || 'Ігрова сесія', tool, mode: mode || null, startedAt: Date.now(), updatedAt: Date.now(), state: {} };
+  } else {
+    if (gameName) activeSession.gameName = gameName;
+    if (tool) activeSession.tool = tool;
+    if (mode !== null) activeSession.mode = mode;
+  }
+  captureActiveState();
+}
+
+function restoreActiveSessionState() {
+  loadActiveSessionRecord();
+  if (!activeSession || !activeSession.state) { renderActiveSessionBanner(); return; }
+  const st = activeSession.state;
+  if (st.counters?.players?.length) {
+    counterPlayers = st.counters.players;
+    nextCounterId = Number(st.counters.nextId) || (Math.max(...counterPlayers.map(p => Number(p.id) || 0)) + 1);
+    renderCounters();
+  }
+  if (st.flip7?.players?.length) {
+    flip7Players = st.flip7.players;
+    nextFlip7Id = Number(st.flip7.nextId) || (Math.max(...flip7Players.map(p => Number(p.id) || 0)) + 1);
+    flip7Round = Number(st.flip7.round) || 1;
+    flip7ActiveId = st.flip7.activeId ?? flip7Players[0]?.id ?? null;
+    flip7Builder = st.flip7.builder || { numbers: [], x2: false, mods: {}, flip7: false };
+    renderFlip7();
+  }
+  if (st.timer?.players?.length) {
+    timerPlayers = st.timer.players;
+    nextTimerId = Number(st.timer.nextId) || (Math.max(...timerPlayers.map(p => Number(p.id) || 0)) + 1);
+    timerActiveIndex = Math.min(Number(st.timer.activeIndex) || 0, Math.max(0, timerPlayers.length - 1));
+    timerRunning = false;
+    clearInterval(timerInterval);
+    renderTimers();
+  }
+  if (st.initiative?.combatants?.length) {
+    initiativeCombatants = st.initiative.combatants;
+    nextInitiativeId = Number(st.initiative.nextId) || (Math.max(...initiativeCombatants.map(p => Number(p.id) || 0)) + 1);
+    initiativeCurrentIndex = Math.min(Number(st.initiative.currentIndex) || 0, Math.max(0, initiativeCombatants.length - 1));
+    initiativeRound = Number(st.initiative.round) || 1;
+    renderInitiative();
+  }
+  renderActiveSessionBanner();
+}
+
+function sessionToolLabel(session) {
+  if (!session) return '';
+  if (session.tool === 'counters' && session.mode === 'flip7') return `Flip Seven · раунд ${session.state?.flip7?.round || flip7Round || 1}`;
+  const labels = { dice:'Кубики', picker:'Вибір гравця', counters:'Лічильники', timer:'Таймер', wheel:'Колесо', initiative:'Ініціатива', character:'Чарник' };
+  return labels[session.tool] || 'Ігрові додатки';
+}
+
+function renderActiveSessionBanner() {
+  const banner = document.getElementById('activeSessionBanner');
+  if (!banner) return;
+  banner.classList.toggle('show', !!activeSession);
+  if (!activeSession) return;
+  document.getElementById('activeSessionTitle').textContent = activeSession.gameName || 'Незавершена сесія';
+  const mins = activeSession.startedAt ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000)) : 0;
+  document.getElementById('activeSessionMeta').textContent = `${sessionToolLabel(activeSession)}${mins ? ` · ${mins} хв` : ''} · автозбереження увімкнено`;
+}
+
+function openToolPanel(tool, mode = null) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-tools'));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-tools'));
+  document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tool));
+  if (tool === 'counters' && mode) {
+    document.querySelectorAll('.counters-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.querySelectorAll('.counters-mode').forEach(m => m.classList.toggle('active', m.id === 'mode-' + mode));
+  }
+  if (tool === 'picker') enterPickerFullscreen();
+  else if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openGameTool(gameName, tool, mode = null) {
+  closeModal('viewModal');
+  activeSession = { gameName: gameName || 'Ігрова сесія', tool, mode, startedAt: Date.now(), updatedAt: Date.now(), state: {} };
+  captureActiveState();
+  openToolPanel(tool, mode);
+}
+
+function quickToolsForGame(game) {
+  const hay = `${game?.name || ''} ${game?.tags || ''} ${game?.description || ''}`.toLowerCase();
+  const tools = [];
+  if (/flip\s*7|flip\s*seven/.test(hay)) tools.push({ label:'Flip Seven', tool:'counters', mode:'flip7', primary:true });
+  if (/d&d|dnd|dungeons|dragon|rpg|рольов/.test(hay)) {
+    tools.push({ label:'Кубики', tool:'dice', primary:true }, { label:'Ініціатива', tool:'initiative' }, { label:'Чарник', tool:'character' });
+  }
+  if (!tools.some(t => t.tool === 'picker')) tools.push({ label:'Перший гравець', tool:'picker' });
+  if (!tools.some(t => t.tool === 'counters')) tools.push({ label:'Лічильники', tool:'counters', mode:'simple' });
+  if (!tools.some(t => t.tool === 'timer')) tools.push({ label:'Таймер', tool:'timer' });
+  return tools.slice(0, 6);
+}
+
+function renderQuickStart(game) {
+  const grid = document.getElementById('quickStartGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  quickToolsForGame(game).forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'quick-start-btn' + (t.primary ? ' primary' : '');
+    btn.textContent = t.label;
+    btn.addEventListener('click', () => openGameTool(game.name, t.tool, t.mode || null));
+    grid.appendChild(btn);
+  });
+}
+
+function openViewModal(game) {
+  currentGame = game;
+  document.getElementById('viewName').textContent = game.name;
+  document.getElementById('viewDescription').textContent = game.description || '';
+  const rulesLink = document.getElementById('viewRules');
+  const noRules = document.getElementById('viewNoRules');
+  if (game.rules_url) { rulesLink.href = game.rules_url; rulesLink.style.display = 'inline-block'; noRules.textContent = ''; }
+  else { rulesLink.style.display = 'none'; noRules.textContent = 'Правила ще не додані.'; }
+  renderQuickStart(game);
+  document.getElementById('viewModal').classList.add('open');
+}
+
+function activeSessionPlayers() {
+  if (!activeSession) return [];
+  if (activeSession.tool === 'counters' && activeSession.mode === 'flip7') return (flip7Players || []).map(p => p.name).filter(Boolean);
+  if (activeSession.tool === 'counters') return (counterPlayers || []).map(p => p.name).filter(Boolean);
+  if (activeSession.tool === 'timer') return (timerPlayers || []).map(p => p.name).filter(Boolean);
+  if (activeSession.tool === 'initiative') return (initiativeCombatants || []).map(p => p.name).filter(Boolean);
+  return [];
+}
+
+function activeSessionWinner() {
+  if (activeSession?.tool === 'counters' && activeSession?.mode === 'flip7' && flip7Players?.length) {
+    const max = Math.max(...flip7Players.map(p => Number(p.total) || 0));
+    const winners = flip7Players.filter(p => (Number(p.total) || 0) === max);
+    return winners.length === 1 ? winners[0].name : '';
+  }
+  if (activeSession?.tool === 'counters' && counterPlayers?.length) {
+    const max = Math.max(...counterPlayers.map(p => Number(p.score) || 0));
+    const winners = counterPlayers.filter(p => (Number(p.score) || 0) === max);
+    return winners.length === 1 ? winners[0].name : '';
+  }
+  return '';
+}
+
+function finishActiveSession() {
+  if (!activeSession) return;
+  captureActiveState();
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('historyGameName').value = activeSession.gameName || '';
+  document.getElementById('historyDate').value = today;
+  document.getElementById('historyPlayers').value = activeSessionPlayers().join(', ');
+  document.getElementById('historyWinner').value = activeSessionWinner();
+  document.getElementById('historyDuration').value = activeSession.startedAt ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000)) : '';
+  document.getElementById('historyNote').value = '';
+  historyFromSession = true;
+  document.getElementById('historyModal').classList.add('open');
+}
+
+function clearActiveSession() {
+  activeSession = null;
+  try { localStorage.removeItem(ACTIVE_SESSION_KEY); } catch (_) {}
+  renderActiveSessionBanner();
+}
+
+function openHistoryModal() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('historyGameName').value = '';
+  document.getElementById('historyDate').value = today;
+  document.getElementById('historyPlayers').value = '';
+  document.getElementById('historyWinner').value = '';
+  document.getElementById('historyDuration').value = '';
+  document.getElementById('historyNote').value = '';
+  historyFromSession = false;
+  document.getElementById('historyModal').classList.add('open');
+}
+
+function parsePlayers(value) {
+  return (value || '').split(',').map(x => x.trim()).filter(Boolean);
+}
+
+async function submitHistory() {
+  const gameName = document.getElementById('historyGameName').value.trim();
+  if (!gameName) { tg.showAlert('Введи назву гри'); return; }
+  const payload = {
+    game_name: gameName,
+    played_at: document.getElementById('historyDate').value || null,
+    players: document.getElementById('historyPlayers').value.trim(),
+    winner: document.getElementById('historyWinner').value.trim(),
+    duration_minutes: parseInt(document.getElementById('historyDuration').value, 10) || 0,
+    note: document.getElementById('historyNote').value,
+    added_by: username,
+  };
+  const res = await fetch('/api/history', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  if (!res.ok) { tg.showAlert('Не вдалося зберегти партію.'); return; }
+  closeModal('historyModal');
+  if (historyFromSession) clearActiveSession();
+  historyFromSession = false;
+  loadHistory();
+  loadStats();
+}
+
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '<div class="empty">Завантаження...</div>';
+  try {
+    const res = await fetch('/api/history');
+    const items = await res.json();
+    list.innerHTML = '';
+    if (!items.length) { list.innerHTML = '<div class="empty">Історія поки порожня.<br>Запиши перший ігровий вечір!</div>'; return; }
+    items.forEach(item => {
+      const row = document.createElement('div'); row.className = 'history-item';
+      const metaParts = [item.played_at];
+      if (item.players) metaParts.push(`гравці: ${item.players}`);
+      if (item.winner) metaParts.push(`переміг: ${item.winner}`);
+      if (Number(item.duration_minutes) > 0) metaParts.push(`${item.duration_minutes} хв`);
+      row.innerHTML = `<div><div class="hi-name">${escapeHtml(item.game_name || '')}</div><div class="hi-meta">${escapeHtml(metaParts.filter(Boolean).join(' · '))}</div>${item.note ? `<div class="hi-meta">${escapeHtml(item.note)}</div>` : ''}</div><button class="item-remove" data-id="${item.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>`;
+      row.querySelector('.item-remove').addEventListener('click', () => tg.showConfirm('Видалити цей запис з історії?', async (confirmed) => { if (!confirmed) return; await fetch(`/api/history/${item.id}`, {method:'DELETE'}); loadHistory(); loadStats(); }));
+      list.appendChild(row);
+    });
+  } catch (_) { list.innerHTML = '<div class="empty">Не вдалось завантажити історію.</div>'; }
+}
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function loadStats() {
+  const wrap = document.getElementById('statsWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="empty">Рахую статистику...</div>';
+  try {
+    const res = await fetch('/api/history');
+    const items = await res.json();
+    if (!items.length) { wrap.innerHTML = '<div class="empty">Статистика з’явиться після першої записаної партії.</div>'; return; }
+    const gameCounts = {};
+    const playerMap = {};
+    let totalMinutes = 0;
+    items.forEach(item => {
+      const game = (item.game_name || 'Без назви').trim();
+      gameCounts[game] = (gameCounts[game] || 0) + 1;
+      totalMinutes += Number(item.duration_minutes) || 0;
+      let players = parsePlayers(item.players);
+      const winner = (item.winner || '').trim();
+      if (!players.length && winner) players = [winner];
+      if (winner && !players.some(p => p.toLowerCase() === winner.toLowerCase())) players.push(winner);
+      players.forEach(name => {
+        const key = name.toLowerCase();
+        const p = playerMap[key] ||= { name, games:0, wins:0, gameCounts:{}, last:item.played_at || '' };
+        p.games++; p.gameCounts[game] = (p.gameCounts[game] || 0) + 1;
+        if (winner && winner.toLowerCase() === key) p.wins++;
+        if ((item.played_at || '') > (p.last || '')) p.last = item.played_at;
+      });
+    });
+    const sortedGames = Object.entries(gameCounts).sort((a,b) => b[1]-a[1]);
+    const players = Object.values(playerMap).sort((a,b) => b.games-a.games || b.wins-a.wins);
+    const topGame = sortedGames[0]?.[0] || '—';
+    const hours = totalMinutes ? (totalMinutes / 60).toFixed(totalMinutes >= 600 ? 0 : 1) : '—';
+    wrap.innerHTML = `
+      <div class="stats-summary">
+        <div class="stats-card"><strong>${items.length}</strong><span>зіграних партій</span></div>
+        <div class="stats-card"><strong>${Object.keys(gameCounts).length}</strong><span>різних ігор</span></div>
+        <div class="stats-card"><strong>${players.length}</strong><span>гравців у записах</span></div>
+        <div class="stats-card"><strong>${hours}</strong><span>${totalMinutes ? 'годин за столом' : 'час ще не записувався'}</span></div>
+      </div>
+      <div class="stats-section-title">Найчастіше граєте</div>
+      <div class="stats-card">${sortedGames.slice(0,5).map(([g,c]) => `<div class="stats-game-row"><span>${escapeHtml(g)}</span><span>${c}</span></div>`).join('')}</div>
+      <div class="stats-section-title">Профілі гравців</div>
+      <div class="player-profiles">${players.length ? players.map(p => {
+        const fav = Object.entries(p.gameCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+        const rate = p.games ? Math.round((p.wins/p.games)*100) : 0;
+        return `<div class="player-profile"><div class="player-profile-head"><div class="player-profile-name">${escapeHtml(p.name)}</div><div class="player-profile-rate">${p.wins} перемог</div></div><div class="player-profile-meta">${p.games} партій · ${rate}% перемог · найчастіше: ${escapeHtml(fav)}${p.last ? ` · остання: ${escapeHtml(p.last)}` : ''}</div></div>`;
+      }).join('') : '<div class="mc-booking-meta">Додай імена гравців у нові записи історії — тут з’являться профілі.</div>'}</div>`;
+  } catch (_) { wrap.innerHTML = '<div class="empty">Не вдалося завантажити статистику.</div>'; }
+}
+
+function formatStatusUk(status) {
+  return ({pending:'очікує підтвердження', confirmed:'підтверджено', completed:'завершено', cancelled:'скасовано'}[status] || status || 'очікує');
+}
+
+async function loadMasterclassSlots() {
+  const date = document.getElementById('mcDate')?.value;
+  const buttons = Array.from(document.querySelectorAll('#mcSlots .mc-slot'));
+  buttons.forEach(b => { b.disabled = false; b.classList.toggle('selected', b.dataset.time === mcState.time); });
+  if (!date) return;
+  try {
+    const res = await fetch(`/api/masterclass/slots?date=${encodeURIComponent(date)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const busy = new Set(data.unavailable || []);
+    buttons.forEach(b => { b.disabled = busy.has(b.dataset.time) && b.dataset.time !== mcState.time; });
+  } catch (_) {}
+}
+
+async function loadMasterclassBookings() {
+  const list = document.getElementById('mcBookingsList');
+  const title = document.getElementById('mcBookingsTitle');
+  if (!list || !title) return;
+  const uname = telegramUsername || '';
+  if (!uname && !isAdmin) { list.innerHTML = '<div class="mc-booking-meta">Для синхронізації записів потрібен Telegram @username.</div>'; return; }
+  title.textContent = isAdmin ? 'Записи на майстер-клас' : 'Мої записи';
+  try {
+    const res = await fetch(`/api/masterclass/bookings?username=${encodeURIComponent(uname)}`);
+    if (!res.ok) throw new Error();
+    const items = await res.json();
+    if (!items.length) { list.innerHTML = '<div class="mc-booking-meta">Записів поки немає.</div>'; return; }
+    list.innerHTML = items.map(b => `<div class="mc-booking-item"><div class="mc-booking-head"><div class="mc-booking-title">${escapeHtml(b.display_name || b.telegram_username || 'Гість')}</div><span class="mc-booking-status">${escapeHtml(formatStatusUk(b.status))}</span></div><div class="mc-booking-meta">${escapeHtml(b.booking_date || '')} · ${escapeHtml((b.booking_time || '').slice(0,5))} · ${escapeHtml(b.figure || '')} · ${escapeHtml(b.style || '')}</div>${isAdmin ? `<div class="mc-booking-actions"><button type="button" data-booking="${b.id}" data-status="confirmed">Підтвердити</button><button type="button" data-booking="${b.id}" data-status="completed">Завершено</button><button type="button" data-booking="${b.id}" data-status="cancelled">Скасувати</button></div>` : ''}</div>`).join('');
+    if (isAdmin) list.querySelectorAll('[data-booking]').forEach(btn => btn.addEventListener('click', async () => {
+      await fetch(`/api/masterclass/bookings/${btn.dataset.booking}/status`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:btn.dataset.status, admin_username:telegramUsername }) });
+      loadMasterclassBookings(); loadMasterclassSlots();
+    }));
+  } catch (_) { list.innerHTML = '<div class="mc-booking-meta">Підключи таблицю masterclass_bookings у Supabase (SQL-файл додається).</div>'; }
+}
+
+async function checkAdminStatus() {
+  if (!telegramUsername) { isAdmin = false; document.getElementById('eventsFab').style.display = 'none'; renderEvents(lastEventsData); loadMasterclassBookings(); return; }
+  try {
+    const res = await fetch('/api/admins/check', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:telegramUsername}) });
+    const data = await res.json(); isAdmin = !!data.is_admin;
+  } catch (_) { isAdmin = false; }
+  document.getElementById('eventsFab').style.display = isAdmin ? 'flex' : 'none';
+  renderEvents(lastEventsData); loadMasterclassBookings();
+}
+
+function renderEvents(events) {
+  const list = document.getElementById('eventsList'); list.innerHTML = '';
+  if (!events || !events.length) { list.innerHTML = '<div class="events-empty">Найближчих подій поки немає.<br>' + (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') + '</div>'; return; }
+  events.forEach(ev => {
+    const rsvps = ev.rsvps || [];
+    const going = rsvps.filter(r => (r.status || 'going') === 'going');
+    const waiting = rsvps.filter(r => r.status === 'waitlist');
+    const mine = telegramUsername ? rsvps.find(r => r.username === telegramUsername) : null;
+    const cap = Number(ev.max_participants) || 0;
+    const participantHtml = [...going, ...waiting].map(r => `<span class="participant-chip ${r.status === 'waitlist' ? 'waitlist' : ''}">${escapeHtml(r.display_name || r.username)}${r.status === 'waitlist' ? '<span class="wait-tag">черга</span>' : ''}${isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${escapeHtml(r.username)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}</span>`).join('') || '<div class="ev-no-participants">Поки ніхто не записався</div>';
+    const card = document.createElement('div'); card.className = 'event-card';
+    card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+ev.event_time : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${ev.game_name ? `<div class="ev-game">🎲 ${escapeHtml(ev.game_name)}</div>` : ''}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div></div>${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">Учасники та черга</div><div class="ev-participants">${participantHtml}</div><div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}`;
+    card.querySelector('.ev-rsvp-btn').addEventListener('click', () => toggleRsvp(ev.id, !!mine));
+    card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE'}); loadEvents(); }));
+    card.querySelector('.ev-add-participant-btn')?.addEventListener('click', () => openAddParticipantModal(ev.id));
+    card.querySelector('.ev-start-session-btn')?.addEventListener('click', () => { const game = allGames.find(g => g.name === ev.game_name) || {name:ev.game_name,tags:'',description:''}; const q = quickToolsForGame(game)[0]; openGameTool(ev.game_name, q?.tool || 'counters', q?.mode || 'simple'); });
+    card.querySelectorAll('.pc-remove').forEach(btn => btn.addEventListener('click', async () => { await fetch(`/api/events/${btn.dataset.event}/rsvp/${encodeURIComponent(btn.dataset.username)}`, {method:'DELETE'}); loadEvents(); }));
+    list.appendChild(card);
+  });
+}
+
+function openEventModal() {
+  document.getElementById('eventTitle').value=''; document.getElementById('eventDate').value=''; document.getElementById('eventTime').value=''; document.getElementById('eventDescription').value=''; document.getElementById('eventCapacity').value='0';
+  const select = document.getElementById('eventGameSelect'); select.innerHTML='<option value="">— без гри —</option>';
+  allGames.forEach(g => { const opt=document.createElement('option'); opt.value=g.name; opt.textContent=g.name; select.appendChild(opt); });
+  document.getElementById('eventModal').classList.add('open');
+}
+
+async function submitEvent() {
+  const title=document.getElementById('eventTitle').value.trim(); const date=document.getElementById('eventDate').value.trim();
+  if (!title || !date) { tg.showAlert('Введи назву і дату події'); return; }
+  await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,event_date:date,event_time:document.getElementById('eventTime').value.trim(),game_name:document.getElementById('eventGameSelect').value,max_participants:parseInt(document.getElementById('eventCapacity').value,10)||0,description:document.getElementById('eventDescription').value.trim(),created_by:username})});
+  closeModal('eventModal'); loadEvents();
+}
+
+async function toggleRsvp(eventId, currentlyJoined) {
+  if (!telegramUsername) { tg.showAlert('Щоб записатись, встанови собі @username у налаштуваннях Telegram.'); return; }
+  if (currentlyJoined) await fetch(`/api/events/${eventId}/rsvp/${encodeURIComponent(telegramUsername)}`, {method:'DELETE'});
+  else {
+    const res = await fetch(`/api/events/${eventId}/rsvp`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:telegramUsername,display_name:username})});
+    const data = await res.json().catch(()=>({}));
+    if (data.status === 'waitlist' && tg.showAlert) tg.showAlert('Вільних місць немає — тебе додано в чергу.');
+  }
+  loadEvents();
+}
+
+function initMasterclass() {
+  const root = document.getElementById('view-masterclass');
+  if (!root || root.dataset.mcInit === '1') return;
+  root.dataset.mcInit = '1'; mcLoad();
+  const today = new Date(); const minDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const dateInput=document.getElementById('mcDate'), nameInput=document.getElementById('mcName'), timeInput=document.getElementById('mcTime'); if (dateInput) dateInput.min=minDate;
+  root.querySelectorAll('[data-mc-figure]').forEach(btn=>btn.addEventListener('click',()=>{mcState.figure=btn.dataset.mcFigure;mcState.confirmed=false;mcSave();renderMasterclass();mcHaptic();}));
+  root.querySelectorAll('[data-mc-style]').forEach(btn=>btn.addEventListener('click',()=>{mcState.style=btn.dataset.mcStyle;mcState.confirmed=false;mcSave();renderMasterclass();mcHaptic();}));
+  root.querySelectorAll('[data-mc-level]').forEach(btn=>btn.addEventListener('click',()=>{mcState.level=btn.dataset.mcLevel;mcState.confirmed=false;mcSave();renderMasterclass();mcHaptic();}));
+  root.querySelectorAll('[data-mc-next]').forEach(btn=>btn.addEventListener('click',()=>{const next=Number(btn.dataset.mcNext);if(!mcCanContinue(next-1))return;setMasterclassStep(next);mcHaptic(); if(next===4) loadMasterclassSlots();}));
+  root.querySelectorAll('[data-mc-back]').forEach(btn=>btn.addEventListener('click',()=>{setMasterclassStep(btn.dataset.mcBack);mcHaptic();}));
+  document.getElementById('mcRandomBtn')?.addEventListener('click',()=>{mcRandomize();loadMasterclassSlots();});
+  document.getElementById('mcRestartBtn')?.addEventListener('click',mcReset);
+  document.getElementById('mcSummaryEdit')?.addEventListener('click',()=>setMasterclassStep(1));
+  [nameInput,dateInput].forEach(input=>input?.addEventListener('input',()=>{mcState.name=nameInput?.value||'';mcState.date=dateInput?.value||''; if(input===dateInput){mcState.time=''; if(timeInput)timeInput.value=''; loadMasterclassSlots();} mcState.confirmed=false;mcSave();renderMasterclass();}));
+  document.querySelectorAll('#mcSlots .mc-slot').forEach(btn=>btn.addEventListener('click',()=>{ if(btn.disabled)return; mcState.time=btn.dataset.time; if(timeInput)timeInput.value=btn.dataset.time; mcState.confirmed=false; mcSave(); renderMasterclass(); loadMasterclassSlots(); mcHaptic(); }));
+  document.getElementById('mcBookBtn')?.addEventListener('click', async () => {
+    if (!(mcState.figure&&mcState.style&&mcState.level&&(mcState.name||'').trim()&&mcState.date&&mcState.time)) return;
+    const res = await fetch('/api/masterclass/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telegram_username:telegramUsername||'',display_name:mcState.name,figure:mcState.figure,style:mcState.style,level:mcState.level,booking_date:mcState.date,booking_time:mcState.time})});
+    if (!res.ok) { tg.showAlert('Не вдалося зберегти запис. Перевір Supabase та спробуй ще раз.'); return; }
+    const data=await res.json().catch(()=>({})); mcState.confirmed=true; mcState.bookingId=data.id||null; mcSave();renderMasterclass();mcHaptic('success'); loadMasterclassBookings();loadMasterclassSlots(); if(tg.showAlert)tg.showAlert('Запис відправлено. Статус: очікує підтвердження.');
+  });
+  renderMasterclass(); loadMasterclassBookings(); if(mcState.date)loadMasterclassSlots();
+}
+
+/* Додаткові слухачі автозбереження */
+document.querySelectorAll('.tool-tab-btn').forEach(btn => btn.addEventListener('click', () => { ensureActiveSession(btn.dataset.tool, activeSession?.gameName || null, btn.dataset.tool === 'counters' ? currentCountersMode() : null); }));
+document.querySelectorAll('.counters-subtab-btn').forEach(btn => btn.addEventListener('click', () => { ensureActiveSession('counters', activeSession?.gameName || null, btn.dataset.mode); }));
+document.querySelectorAll('.lib-subtab-btn').forEach(btn => btn.addEventListener('click', () => { if (btn.dataset.lib === 'stats') loadStats(); }));
+document.getElementById('resumeSessionBtn')?.addEventListener('click', () => { if (activeSession) openToolPanel(activeSession.tool || 'counters', activeSession.mode || null); });
+document.getElementById('finishSessionBtn')?.addEventListener('click', finishActiveSession);
+setInterval(() => { if (activeSession) captureActiveState(); }, 1500);
+document.addEventListener('visibilitychange', () => { if (document.hidden && activeSession) captureActiveState(); });
+window.addEventListener('beforeunload', () => { if (activeSession) captureActiveState(); });
+restoreActiveSessionState();
 
 initMasterclass();
 

@@ -39,6 +39,7 @@ WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
 EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
+MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -496,18 +497,32 @@ def get_history():
 @app.route("/api/history", methods=["POST"])
 def add_history():
     data = request.get_json(silent=True, force=True) or {}
+    payload = {
+        "game_name": data.get("game_name", ""),
+        "played_at": data.get("played_at"),
+        "winner": data.get("winner", ""),
+        "note": data.get("note", ""),
+        "added_by": data.get("added_by", "невідомо"),
+        "players": data.get("players", ""),
+        "duration_minutes": int(data.get("duration_minutes") or 0),
+    }
     resp = requests.post(
         HISTORY_REST,
         headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
-        json={
-            "game_name": data.get("game_name", ""),
-            "played_at": data.get("played_at"),
-            "winner": data.get("winner", ""),
-            "note": data.get("note", ""),
-            "added_by": data.get("added_by", "невідомо"),
-        },
+        json=payload,
         timeout=30,
     )
+    # До виконання SQL-міграції старі таблиці можуть не мати нових колонок.
+    # У такому випадку не ламаємо старий функціонал, а зберігаємо базові поля.
+    if resp.status_code >= 400 and ("players" in resp.text or "duration_minutes" in resp.text):
+        payload.pop("players", None)
+        payload.pop("duration_minutes", None)
+        resp = requests.post(
+            HISTORY_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            json=payload,
+            timeout=30,
+        )
     resp.raise_for_status()
     return jsonify({"status": "ok"})
 
@@ -587,6 +602,20 @@ def check_admin():
     return jsonify({"is_admin": len(resp.json()) > 0})
 
 
+def _is_admin_username(username):
+    uname = (username or "").lstrip("@").lower()
+    if not uname:
+        return False
+    resp = requests.get(
+        ADMINS_REST,
+        headers=HEADERS,
+        params={"username": f"eq.{uname}", "select": "username", "limit": 1},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    return bool(resp.json())
+
+
 # ==================== ПОДІЇ ====================
 @app.route("/api/events", methods=["GET"])
 def get_events():
@@ -622,19 +651,29 @@ def get_events():
 @app.route("/api/events", methods=["POST"])
 def add_event():
     data = request.get_json(silent=True, force=True) or {}
+    payload = {
+        "title": data.get("title", ""),
+        "event_date": data.get("event_date"),
+        "event_time": data.get("event_time", ""),
+        "game_name": data.get("game_name", ""),
+        "description": data.get("description", ""),
+        "created_by": data.get("created_by", "невідомо"),
+        "max_participants": max(0, int(data.get("max_participants") or 0)),
+    }
     resp = requests.post(
         EVENTS_REST,
         headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
-        json={
-            "title": data.get("title", ""),
-            "event_date": data.get("event_date"),
-            "event_time": data.get("event_time", ""),
-            "game_name": data.get("game_name", ""),
-            "description": data.get("description", ""),
-            "created_by": data.get("created_by", "невідомо"),
-        },
+        json=payload,
         timeout=30,
     )
+    if resp.status_code >= 400 and "max_participants" in resp.text:
+        payload.pop("max_participants", None)
+        resp = requests.post(
+            EVENTS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            json=payload,
+            timeout=30,
+        )
     resp.raise_for_status()
 
     event_photo = None
@@ -660,6 +699,9 @@ def add_event():
         notify_lines.append(date_time)
     if game_name:
         notify_lines.append(f"Гра: {game_name}")
+    max_participants = max(0, int(data.get("max_participants") or 0))
+    if max_participants:
+        notify_lines.append(f"Місць: {max_participants}")
     if data.get("description"):
         notify_lines.append(data.get("description"))
     notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
@@ -681,6 +723,30 @@ def rsvp_event(event_id):
     if not username:
         return jsonify({"status": "no_username"}), 400
 
+    status = "going"
+    try:
+        eresp = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={"id": f"eq.{event_id}", "select": "id,max_participants", "limit": 1},
+            timeout=20,
+        )
+        if eresp.ok and eresp.json():
+            cap = int(eresp.json()[0].get("max_participants") or 0)
+            if cap > 0:
+                cresp = requests.get(
+                    RSVPS_REST,
+                    headers=HEADERS,
+                    params={"event_id": f"eq.{event_id}", "status": "eq.going", "select": "id"},
+                    timeout=20,
+                )
+                cresp.raise_for_status()
+                if len(cresp.json()) >= cap:
+                    status = "waitlist"
+    except Exception:
+        # Якщо колонка max_participants ще не додана, працюємо як раніше.
+        status = "going"
+
     resp = requests.post(
         RSVPS_REST,
         headers={
@@ -693,24 +759,165 @@ def rsvp_event(event_id):
             "event_id": event_id,
             "username": username,
             "display_name": data.get("display_name", username),
-            "status": "going",
+            "status": status,
         },
         timeout=30,
     )
     resp.raise_for_status()
-    return jsonify({"status": "ok"})
+    return jsonify({"status": status})
 
 
 @app.route("/api/events/<int:event_id>/rsvp/<username>", methods=["DELETE"])
 def cancel_rsvp(event_id, username):
+    uname = username.lstrip("@").lower()
+    old_status = None
+    try:
+        before = requests.get(
+            RSVPS_REST,
+            headers=HEADERS,
+            params={"event_id": f"eq.{event_id}", "username": f"eq.{uname}", "select": "status", "limit": 1},
+            timeout=20,
+        )
+        if before.ok and before.json():
+            old_status = before.json()[0].get("status")
+    except Exception:
+        pass
+
     resp = requests.delete(
         RSVPS_REST,
         headers=HEADERS,
-        params={"event_id": f"eq.{event_id}", "username": f"eq.{username.lstrip('@').lower()}"},
+        params={"event_id": f"eq.{event_id}", "username": f"eq.{uname}"},
         timeout=30,
     )
     resp.raise_for_status()
+
+    # Якщо звільнилось звичайне місце — автоматично піднімаємо першого з черги.
+    if old_status in (None, "going"):
+        try:
+            wait = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={"event_id": f"eq.{event_id}", "status": "eq.waitlist", "select": "id", "order": "id.asc", "limit": 1},
+                timeout=20,
+            )
+            wait.raise_for_status()
+            rows = wait.json()
+            if rows:
+                promote = requests.patch(
+                    RSVPS_REST,
+                    headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+                    params={"id": f"eq.{rows[0]['id']}"},
+                    json={"status": "going"},
+                    timeout=20,
+                )
+                promote.raise_for_status()
+        except Exception:
+            logging.exception("Не вдалось автоматично підняти учасника з черги")
+
     return jsonify({"status": "deleted"})
+
+
+# ==================== МАЙСТЕР-КЛАС: ЗАПИСИ ====================
+@app.route("/api/masterclass/slots", methods=["GET"])
+def masterclass_slots():
+    booking_date = request.args.get("date", "").strip()
+    if not booking_date:
+        return jsonify({"unavailable": []})
+    try:
+        resp = requests.get(
+            MASTERCLASS_REST,
+            headers=HEADERS,
+            params={
+                "booking_date": f"eq.{booking_date}",
+                "status": "in.(pending,confirmed)",
+                "select": "booking_time",
+            },
+            timeout=20,
+        )
+        resp.raise_for_status()
+        unavailable = sorted({str(r.get("booking_time") or "")[:5] for r in resp.json() if r.get("booking_time")})
+        return jsonify({"unavailable": unavailable})
+    except requests.HTTPError as e:
+        return jsonify({"unavailable": [], "error": "masterclass_table_missing"}), 503
+
+
+@app.route("/api/masterclass/bookings", methods=["GET"])
+def get_masterclass_bookings():
+    username = (request.args.get("username") or "").lstrip("@").lower()
+    params = {"select": "*", "order": "booking_date.asc,booking_time.asc,id.desc"}
+    try:
+        if not _is_admin_username(username):
+            if not username:
+                return jsonify([])
+            params["telegram_username"] = f"eq.{username}"
+        resp = requests.get(MASTERCLASS_REST, headers=HEADERS, params=params, timeout=30)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except requests.HTTPError:
+        return jsonify({"error": "masterclass_table_missing"}), 503
+
+
+@app.route("/api/masterclass/bookings", methods=["POST"])
+def add_masterclass_booking():
+    data = request.get_json(silent=True, force=True) or {}
+    if not data.get("booking_date") or not data.get("booking_time"):
+        return jsonify({"error": "date_and_time_required"}), 400
+    booking_time = str(data.get("booking_time"))[:5]
+    # Один активний запис на слот.
+    existing = requests.get(
+        MASTERCLASS_REST,
+        headers=HEADERS,
+        params={
+            "booking_date": f"eq.{data.get('booking_date')}",
+            "booking_time": f"eq.{booking_time}",
+            "status": "in.(pending,confirmed)",
+            "select": "id",
+            "limit": 1,
+        },
+        timeout=20,
+    )
+    if existing.ok and existing.json():
+        return jsonify({"error": "slot_taken"}), 409
+
+    payload = {
+        "telegram_username": (data.get("telegram_username") or "").lstrip("@").lower(),
+        "display_name": data.get("display_name", ""),
+        "figure": data.get("figure", ""),
+        "style": data.get("style", ""),
+        "level": data.get("level", ""),
+        "booking_date": data.get("booking_date"),
+        "booking_time": booking_time,
+        "status": "pending",
+    }
+    resp = requests.post(
+        MASTERCLASS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+        json=payload,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    rows = resp.json()
+    row = rows[0] if rows else {}
+    return jsonify({"status": "pending", "id": row.get("id")})
+
+
+@app.route("/api/masterclass/bookings/<int:booking_id>/status", methods=["PATCH"])
+def update_masterclass_booking_status(booking_id):
+    data = request.get_json(silent=True, force=True) or {}
+    if not _is_admin_username(data.get("admin_username")):
+        return jsonify({"error": "forbidden"}), 403
+    status = data.get("status")
+    if status not in {"pending", "confirmed", "completed", "cancelled"}:
+        return jsonify({"error": "bad_status"}), 400
+    resp = requests.patch(
+        MASTERCLASS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        params={"id": f"eq.{booking_id}"},
+        json={"status": status},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return jsonify({"status": "ok"})
 
 
 # ==================== TELEGRAM BOT ====================
