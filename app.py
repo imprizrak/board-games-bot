@@ -801,14 +801,66 @@ def get_my_profile():
     display_name = " ".join(x for x in [user.get("first_name"), user.get("last_name")] if x).strip() or username or "Гравець"
     photo_url = user.get("photo_url") or ""
 
-    # Зберігаємо базовий профіль за незмінним Telegram user_id.
+    # Читаємо вже зароблені досягнення ДО оновлення профілю.
+    existing_profile = None
+    try:
+        old = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{user_id}",
+                "select": "telegram_user_id,earned_achievements,achievements_initialized",
+                "limit": 1,
+            },
+            timeout=20,
+        )
+        if old.ok and old.json():
+            existing_profile = old.json()[0]
+    except Exception:
+        logging.exception("Не вдалося прочитати поточні досягнення профілю")
+
+    previous_earned = set()
+    achievements_initialized = False
+    if existing_profile:
+        raw_earned = existing_profile.get("earned_achievements") or []
+        if isinstance(raw_earned, list):
+            previous_earned = {str(x) for x in raw_earned if x}
+        achievements_initialized = bool(existing_profile.get("achievements_initialized"))
+
+    stats = _profile_history_stats(user)
+    xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
+    xp_per_level = 250
+    level = max(1, xp // xp_per_level + 1)
+    level_xp = xp % xp_per_level
+    progress = round((level_xp / xp_per_level) * 100) if xp_per_level else 0
+
+    achievements = _profile_achievements(stats)
+    currently_unlocked = {a["id"] for a in achievements if a.get("unlocked")}
+
+    # Після першого запуску нової системи старі досягнення просто фіксуємо,
+    # щоб не засипати групу повідомленнями про історичні нагороди.
+    if achievements_initialized:
+        newly_earned_ids = currently_unlocked - previous_earned
+    else:
+        newly_earned_ids = set()
+
+    earned_ids = previous_earned | currently_unlocked
+
+    # Досягнення назавжди лишається відкритим після першого отримання.
+    for achievement in achievements:
+        achievement["unlocked"] = achievement["id"] in earned_ids
+
     profile_payload = {
         "telegram_user_id": user_id,
         "username": username,
         "display_name": display_name,
         "photo_url": photo_url,
+        "xp": xp,
+        "earned_achievements": sorted(earned_ids),
+        "achievements_initialized": True,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+
     try:
         up = requests.post(
             PROFILES_REST,
@@ -817,19 +869,19 @@ def get_my_profile():
             json=profile_payload,
             timeout=30,
         )
-        # Якщо SQL ще не виконано, профіль все одно показуємо з Telegram-даних.
         if not up.ok:
             logging.warning("Профіль не збережено в Supabase: %s", up.text[:500])
     except Exception:
         logging.exception("Не вдалося зберегти профіль")
 
-    stats = _profile_history_stats(user)
-    # XP нараховується за фактичну активність, а не лише за перемоги.
-    xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
-    xp_per_level = 250
-    level = max(1, xp // xp_per_level + 1)
-    level_xp = xp % xp_per_level
-    progress = round((level_xp / xp_per_level) * 100) if xp_per_level else 0
+    # Спочатку фіксуємо нагороду в Supabase, потім публікуємо анонс.
+    # Так повторне відкриття профілю не створить повторне повідомлення.
+    if achievements_initialized and newly_earned_ids:
+        by_id = {a["id"]: a for a in achievements}
+        for achievement_id in sorted(newly_earned_ids):
+            achievement = by_id.get(achievement_id)
+            if achievement:
+                notify_achievement_groups_async(display_name, achievement, level, xp)
 
     return jsonify({
         "telegram_user_id": user_id,
@@ -843,7 +895,7 @@ def get_my_profile():
         "level_progress_percent": progress,
         "title": _profile_title(level),
         "stats": stats,
-        "achievements": _profile_achievements(stats),
+        "achievements": achievements,
     })
 
 
@@ -1470,6 +1522,68 @@ def notify_game_groups_async(name, description="", cover_url=None):
     Thread(
         target=notify_game_groups_sync,
         args=(name, description, cover_url),
+        daemon=True,
+    ).start()
+
+
+
+def profile_group_keyboard_payload():
+    rows = []
+    if WEBAPP_URL:
+        sep = "&" if "?" in WEBAPP_URL else "?"
+        rows.append([{
+            "text": "👤 Відкрити профіль",
+            "url": f"{WEBAPP_URL}{sep}view=profile",
+        }])
+    return {"inline_keyboard": rows} if rows else None
+
+
+def notify_achievement_groups_sync(display_name, achievement, level, xp):
+    """Публікує нове досягнення учасника у всіх активних Telegram-групах."""
+    try:
+        group_ids = get_active_group_ids_sync()
+        if not group_ids:
+            logging.warning("Немає активних Telegram-груп для анонсу досягнення")
+            return
+
+        icon = achievement.get("icon") or "🏆"
+        name = achievement.get("name") or "Досягнення"
+        description = (achievement.get("description") or "").strip()
+        lines = [
+            "🏆 Нове досягнення!",
+            "",
+            f"👤 {display_name}",
+            f"{icon} {name}",
+        ]
+        if description:
+            lines.append(description)
+        lines.extend(["", f"⭐ Рівень {level} · {xp} XP"])
+        text = "\n".join(lines)
+        keyboard = profile_group_keyboard_payload()
+
+        for chat_id in group_ids:
+            payload = {"chat_id": chat_id, "text": text[:4096]}
+            if keyboard:
+                payload["reply_markup"] = keyboard
+            ok, err = telegram_api_post("sendMessage", payload)
+            if ok:
+                logging.info(
+                    "Досягнення '%s' користувача '%s' опубліковано в групі %s",
+                    name, display_name, chat_id
+                )
+            else:
+                logging.error(
+                    "Не вдалось опублікувати досягнення '%s' в групі %s: %s",
+                    name, chat_id, err
+                )
+    except Exception:
+        logging.exception("Не вдалось опублікувати групове сповіщення про досягнення")
+
+
+def notify_achievement_groups_async(display_name, achievement, level, xp):
+    Thread(
+        target=notify_achievement_groups_sync,
+        args=(display_name, achievement, level, xp),
         daemon=True,
     ).start()
 

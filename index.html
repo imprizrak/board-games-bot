@@ -4894,6 +4894,7 @@ async function submitHistory() {
   historyFromSession = false;
   loadHistory();
   loadStats();
+  checkMyAchievements();
 }
 
 async function loadHistory() {
@@ -5073,6 +5074,7 @@ async function toggleRsvp(eventId, currentlyJoined) {
     if (data.status === 'waitlist' && tg.showAlert) tg.showAlert('Вільних місць немає — тебе додано в чергу.');
   }
   loadEvents();
+  checkMyAchievements();
 }
 
 function initMasterclass() {
@@ -5178,6 +5180,15 @@ function renderMyProfile(data) {
   `;
 }
 
+
+async function checkMyAchievements() {
+  try {
+    await fetch('/api/profile/me', { headers: telegramAuthHeaders() });
+  } catch (e) {
+    console.warn('Achievement check failed', e);
+  }
+}
+
 async function loadMyProfile() {
   const root = document.getElementById('profileContent');
   if (!root) return;
@@ -5216,6 +5227,7 @@ async function applyInitialDeepLink() {
   } catch (_) {}
 }
 applyInitialDeepLink();
+checkMyAchievements(); // background achievement check
 
 renderCharacters();
 </script>
