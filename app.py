@@ -8,9 +8,10 @@ from urllib.parse import quote
 
 import requests
 from flask import Flask, request, jsonify, send_from_directory, send_file
-from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandStart
-from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import CommandStart, Command
+from aiogram.enums import ChatMemberStatus
+from aiogram.types import Message, CallbackQuery, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -40,6 +41,7 @@ EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
+TELEGRAM_GROUPS_REST = f"{SUPABASE_URL}/rest/v1/telegram_groups"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -616,6 +618,145 @@ def _is_admin_username(username):
     return bool(resp.json())
 
 
+# ==================== ДОПОМІЖНА ЛОГІКА ПОДІЙ ====================
+def get_event_snapshot(event_id):
+    """Повертає подію разом зі списком RSVP або None."""
+    eresp = requests.get(
+        EVENTS_REST,
+        headers=HEADERS,
+        params={"id": f"eq.{event_id}", "select": "*", "limit": 1},
+        timeout=20,
+    )
+    eresp.raise_for_status()
+    rows = eresp.json()
+    if not rows:
+        return None
+    event = rows[0]
+    rr = requests.get(
+        RSVPS_REST,
+        headers=HEADERS,
+        params={"event_id": f"eq.{event_id}", "select": "*", "order": "id.asc"},
+        timeout=20,
+    )
+    rr.raise_for_status()
+    event["rsvps"] = rr.json()
+    return event
+
+
+def add_event_rsvp(event_id, username, display_name):
+    """Записує користувача на подію. Повертає going або waitlist."""
+    username = (username or "").lstrip("@").lower()
+    if not username:
+        raise ValueError("username is required")
+
+    status = "going"
+    try:
+        eresp = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={"id": f"eq.{event_id}", "select": "id,max_participants", "limit": 1},
+            timeout=20,
+        )
+        eresp.raise_for_status()
+        rows = eresp.json()
+        if not rows:
+            raise ValueError("event not found")
+        cap = int(rows[0].get("max_participants") or 0)
+        if cap > 0:
+            cresp = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={"event_id": f"eq.{event_id}", "status": "eq.going", "select": "id"},
+                timeout=20,
+            )
+            cresp.raise_for_status()
+            # Якщо користувач уже "going", не відправляємо його в чергу через власне місце.
+            mine = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={"event_id": f"eq.{event_id}", "username": f"eq.{username}", "select": "status", "limit": 1},
+                timeout=20,
+            )
+            mine_rows = mine.json() if mine.ok else []
+            already_going = bool(mine_rows and (mine_rows[0].get("status") or "going") == "going")
+            if len(cresp.json()) >= cap and not already_going:
+                status = "waitlist"
+    except ValueError:
+        raise
+    except Exception:
+        # Сумісність зі старою схемою, якщо max_participants ще не додано.
+        status = "going"
+
+    resp = requests.post(
+        RSVPS_REST,
+        headers={
+            **HEADERS,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        params={"on_conflict": "event_id,username"},
+        json={
+            "event_id": event_id,
+            "username": username,
+            "display_name": display_name or username,
+            "status": status,
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return status
+
+
+def remove_event_rsvp(event_id, username):
+    """Скасовує RSVP і піднімає першого з waitlist, якщо звільнилось місце."""
+    uname = (username or "").lstrip("@").lower()
+    if not uname:
+        return False
+    old_status = None
+    try:
+        before = requests.get(
+            RSVPS_REST,
+            headers=HEADERS,
+            params={"event_id": f"eq.{event_id}", "username": f"eq.{uname}", "select": "status", "limit": 1},
+            timeout=20,
+        )
+        if before.ok and before.json():
+            old_status = before.json()[0].get("status")
+    except Exception:
+        pass
+
+    resp = requests.delete(
+        RSVPS_REST,
+        headers=HEADERS,
+        params={"event_id": f"eq.{event_id}", "username": f"eq.{uname}"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+
+    if old_status in (None, "going"):
+        try:
+            wait = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={"event_id": f"eq.{event_id}", "status": "eq.waitlist", "select": "id", "order": "id.asc", "limit": 1},
+                timeout=20,
+            )
+            wait.raise_for_status()
+            rows = wait.json()
+            if rows:
+                promote = requests.patch(
+                    RSVPS_REST,
+                    headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+                    params={"id": f"eq.{rows[0]['id']}"},
+                    json={"status": "going"},
+                    timeout=20,
+                )
+                promote.raise_for_status()
+        except Exception:
+            logging.exception("Не вдалось автоматично підняти учасника з черги")
+    return old_status is not None
+
+
 # ==================== ПОДІЇ ====================
 @app.route("/api/events", methods=["GET"])
 def get_events():
@@ -662,7 +803,7 @@ def add_event():
     }
     resp = requests.post(
         EVENTS_REST,
-        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
         json=payload,
         timeout=30,
     )
@@ -670,11 +811,13 @@ def add_event():
         payload.pop("max_participants", None)
         resp = requests.post(
             EVENTS_REST,
-            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
             json=payload,
             timeout=30,
         )
     resp.raise_for_status()
+    created_rows = resp.json() if resp.content else []
+    event_id = created_rows[0].get("id") if created_rows else None
 
     event_photo = None
     game_name = data.get("game_name", "")
@@ -698,15 +841,18 @@ def add_event():
     if date_time:
         notify_lines.append(date_time)
     if game_name:
-        notify_lines.append(f"Гра: {game_name}")
+        notify_lines.append(f"🎲 Гра: {game_name}")
     max_participants = max(0, int(data.get("max_participants") or 0))
     if max_participants:
-        notify_lines.append(f"Місць: {max_participants}")
+        notify_lines.append(f"👥 Місць: {max_participants}")
     if data.get("description"):
         notify_lines.append(data.get("description"))
     notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
 
-    return jsonify({"status": "ok"})
+    if event_id:
+        notify_groups_async(event_id, photo_url=event_photo)
+
+    return jsonify({"status": "ok", "event_id": event_id})
 
 
 @app.route("/api/events/<int:event_id>", methods=["DELETE"])
@@ -722,98 +868,16 @@ def rsvp_event(event_id):
     username = (data.get("username") or "").lstrip("@").lower()
     if not username:
         return jsonify({"status": "no_username"}), 400
-
-    status = "going"
     try:
-        eresp = requests.get(
-            EVENTS_REST,
-            headers=HEADERS,
-            params={"id": f"eq.{event_id}", "select": "id,max_participants", "limit": 1},
-            timeout=20,
-        )
-        if eresp.ok and eresp.json():
-            cap = int(eresp.json()[0].get("max_participants") or 0)
-            if cap > 0:
-                cresp = requests.get(
-                    RSVPS_REST,
-                    headers=HEADERS,
-                    params={"event_id": f"eq.{event_id}", "status": "eq.going", "select": "id"},
-                    timeout=20,
-                )
-                cresp.raise_for_status()
-                if len(cresp.json()) >= cap:
-                    status = "waitlist"
-    except Exception:
-        # Якщо колонка max_participants ще не додана, працюємо як раніше.
-        status = "going"
-
-    resp = requests.post(
-        RSVPS_REST,
-        headers={
-            **HEADERS,
-            "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates,return=minimal",
-        },
-        params={"on_conflict": "event_id,username"},
-        json={
-            "event_id": event_id,
-            "username": username,
-            "display_name": data.get("display_name", username),
-            "status": status,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
+        status = add_event_rsvp(event_id, username, data.get("display_name", username))
+    except ValueError:
+        return jsonify({"status": "not_found"}), 404
     return jsonify({"status": status})
 
 
 @app.route("/api/events/<int:event_id>/rsvp/<username>", methods=["DELETE"])
 def cancel_rsvp(event_id, username):
-    uname = username.lstrip("@").lower()
-    old_status = None
-    try:
-        before = requests.get(
-            RSVPS_REST,
-            headers=HEADERS,
-            params={"event_id": f"eq.{event_id}", "username": f"eq.{uname}", "select": "status", "limit": 1},
-            timeout=20,
-        )
-        if before.ok and before.json():
-            old_status = before.json()[0].get("status")
-    except Exception:
-        pass
-
-    resp = requests.delete(
-        RSVPS_REST,
-        headers=HEADERS,
-        params={"event_id": f"eq.{event_id}", "username": f"eq.{uname}"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-
-    # Якщо звільнилось звичайне місце — автоматично піднімаємо першого з черги.
-    if old_status in (None, "going"):
-        try:
-            wait = requests.get(
-                RSVPS_REST,
-                headers=HEADERS,
-                params={"event_id": f"eq.{event_id}", "status": "eq.waitlist", "select": "id", "order": "id.asc", "limit": 1},
-                timeout=20,
-            )
-            wait.raise_for_status()
-            rows = wait.json()
-            if rows:
-                promote = requests.patch(
-                    RSVPS_REST,
-                    headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
-                    params={"id": f"eq.{rows[0]['id']}"},
-                    json={"status": "going"},
-                    timeout=20,
-                )
-                promote.raise_for_status()
-        except Exception:
-            logging.exception("Не вдалось автоматично підняти учасника з черги")
-
+    remove_event_rsvp(event_id, username)
     return jsonify({"status": "deleted"})
 
 
@@ -998,6 +1062,204 @@ def notify_subscribers_async(text, photo_url=None):
         asyncio.run_coroutine_threadsafe(notify_subscribers(text, photo_url), bot_loop)
     except Exception:
         logging.exception("Не вдалось запланувати розсилку")
+
+
+def event_group_keyboard(event_id):
+    rows = [[
+        InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
+        InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
+    ]]
+    if WEBAPP_URL:
+        sep = "&" if "?" in WEBAPP_URL else "?"
+        rows.append([
+            InlineKeyboardButton(text="📅 Відкрити подію", url=f"{WEBAPP_URL}{sep}view=events&event={event_id}")
+        ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def format_group_event(event):
+    rsvps = event.get("rsvps") or []
+    going = [r for r in rsvps if (r.get("status") or "going") == "going"]
+    waiting = [r for r in rsvps if r.get("status") == "waitlist"]
+    title = event.get("title") or "Ігрова подія"
+    lines = [f"📅 {title}"]
+    dt = event.get("event_date") or ""
+    if event.get("event_time"):
+        dt += f" · {str(event.get('event_time'))[:5]}"
+    if dt:
+        lines.append(f"🗓 {dt}")
+    if event.get("game_name"):
+        lines.append(f"🎲 {event.get('game_name')}")
+    cap = int(event.get("max_participants") or 0)
+    if cap:
+        places = f"👥 {len(going)}/{cap} місць"
+    else:
+        places = f"👥 Учасників: {len(going)}"
+    if waiting:
+        places += f" · черга: {len(waiting)}"
+    lines.append(places)
+    desc = (event.get("description") or "").strip()
+    if desc:
+        lines.extend(["", desc[:500]])
+    lines.extend(["", "Натисни кнопку нижче, щоб записатися."])
+    return "\n".join(lines)
+
+
+async def get_active_group_ids():
+    try:
+        resp = requests.get(
+            TELEGRAM_GROUPS_REST,
+            headers=HEADERS,
+            params={"select": "chat_id", "active": "eq.true"},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return [int(row["chat_id"]) for row in resp.json() if row.get("chat_id")]
+    except Exception:
+        logging.exception("Не вдалось отримати Telegram-групи. Чи виконано SQL для telegram_groups?")
+        return []
+
+
+async def notify_groups(event_id, photo_url=None):
+    """Публікує нову подію у всіх активних Telegram-групах."""
+    try:
+        event = get_event_snapshot(event_id)
+        if not event:
+            return
+        text = format_group_event(event)
+        keyboard = event_group_keyboard(event_id)
+        for chat_id in await get_active_group_ids():
+            try:
+                if photo_url:
+                    await bot.send_photo(chat_id, photo=photo_url, caption=text[:1024], reply_markup=keyboard)
+                else:
+                    await bot.send_message(chat_id, text[:4096], reply_markup=keyboard)
+            except Exception:
+                logging.exception("Не вдалось опублікувати подію в групі %s", chat_id)
+    except Exception:
+        logging.exception("Не вдалось опублікувати групове сповіщення про подію")
+
+
+def notify_groups_async(event_id, photo_url=None):
+    if bot_loop is None:
+        return
+    try:
+        asyncio.run_coroutine_threadsafe(notify_groups(event_id, photo_url), bot_loop)
+    except Exception:
+        logging.exception("Не вдалось запланувати групове сповіщення")
+
+
+async def refresh_group_event_message(callback: CallbackQuery, event_id: int):
+    """Оновлює лічильник місць прямо в повідомленні групи після RSVP."""
+    try:
+        event = get_event_snapshot(event_id)
+        if not event or not callback.message:
+            return
+        text = format_group_event(event)
+        keyboard = event_group_keyboard(event_id)
+        if callback.message.photo:
+            await callback.message.edit_caption(caption=text[:1024], reply_markup=keyboard)
+        else:
+            await callback.message.edit_text(text[:4096], reply_markup=keyboard)
+    except Exception as exc:
+        # "message is not modified" та старі повідомлення не повинні ламати callback.
+        logging.info("Не вдалося оновити повідомлення події: %s", exc)
+
+
+def telegram_rsvp_identity(user):
+    username = (user.username or "").lstrip("@").lower()
+    if not username:
+        username = f"tg_{user.id}"
+    display_name = (user.full_name or user.username or "Гравець").strip()
+    return username, display_name
+
+
+@dp.message(Command("setgroup"))
+async def cmd_setgroup(message: Message):
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("Цю команду потрібно надіслати в групі, де бот має публікувати події.")
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Зареєструвати групу може лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+
+    try:
+        resp = requests.post(
+            TELEGRAM_GROUPS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"},
+            params={"on_conflict": "chat_id"},
+            json={"chat_id": message.chat.id, "title": message.chat.title or "", "active": True},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        await message.answer("✅ Готово. Нові події тепер автоматично публікуватимуться в цій групі.")
+    except Exception:
+        logging.exception("Не вдалось зареєструвати групу")
+        await message.answer("Не вдалося зберегти групу. Перевір, чи виконано SQL-оновлення в Supabase.")
+
+
+@dp.message(Command("unsetgroup"))
+async def cmd_unsetgroup(message: Message):
+    if message.chat.type not in ("group", "supergroup"):
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Вимкнути сповіщення може лише адміністратор групи.")
+            return
+        resp = requests.patch(
+            TELEGRAM_GROUPS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"chat_id": f"eq.{message.chat.id}"},
+            json={"active": False},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        await message.answer("🔕 Автоматичні анонси подій у цій групі вимкнено.")
+    except Exception:
+        logging.exception("Не вдалось вимкнути групу")
+        await message.answer("Не вдалося змінити налаштування групи.")
+
+
+@dp.message(Command("chatid"))
+async def cmd_chatid(message: Message):
+    await message.answer(f"ID цього чату: {message.chat.id}")
+
+
+@dp.callback_query(F.data.startswith("ev_go:"))
+async def callback_event_go(callback: CallbackQuery):
+    try:
+        event_id = int(callback.data.split(":", 1)[1])
+        username, display_name = telegram_rsvp_identity(callback.from_user)
+        status = add_event_rsvp(event_id, username, display_name)
+        if status == "waitlist":
+            await callback.answer("Місць немає — тебе додано в чергу ⏳", show_alert=True)
+        else:
+            await callback.answer("Ти записаний ✅")
+        await refresh_group_event_message(callback, event_id)
+    except ValueError:
+        await callback.answer("Подію вже не знайдено.", show_alert=True)
+    except Exception:
+        logging.exception("Помилка RSVP із Telegram-групи")
+        await callback.answer("Не вдалося записатися. Спробуй ще раз.", show_alert=True)
+
+
+@dp.callback_query(F.data.startswith("ev_no:"))
+async def callback_event_no(callback: CallbackQuery):
+    try:
+        event_id = int(callback.data.split(":", 1)[1])
+        username, _ = telegram_rsvp_identity(callback.from_user)
+        existed = remove_event_rsvp(event_id, username)
+        await callback.answer("Запис скасовано ❌" if existed else "Ти не був записаний на цю подію.")
+        await refresh_group_event_message(callback, event_id)
+    except Exception:
+        logging.exception("Помилка скасування RSVP із Telegram-групи")
+        await callback.answer("Не вдалося скасувати запис.", show_alert=True)
 
 
 def run_bot_polling():

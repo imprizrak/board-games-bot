@@ -327,6 +327,11 @@
     border-radius: 16px;
     padding: 14px 16px;
   }
+  .event-card.deep-linked-event {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.35), 0 0 22px rgba(212, 175, 55, 0.18);
+  }
+
   .event-card .ev-top-row {
     display: flex;
     justify-content: space-between;
@@ -4597,7 +4602,8 @@ function renderEvents(events) {
     const mine = telegramUsername ? rsvps.find(r => r.username === telegramUsername) : null;
     const cap = Number(ev.max_participants) || 0;
     const participantHtml = [...going, ...waiting].map(r => `<span class="participant-chip ${r.status === 'waitlist' ? 'waitlist' : ''}">${escapeHtml(r.display_name || r.username)}${r.status === 'waitlist' ? '<span class="wait-tag">черга</span>' : ''}${isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${escapeHtml(r.username)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}</span>`).join('') || '<div class="ev-no-participants">Поки ніхто не записався</div>';
-    const card = document.createElement('div'); card.className = 'event-card';
+    const card = document.createElement('div'); card.className = 'event-card'; card.dataset.eventId = String(ev.id);
+    if (window.__deepLinkedEventId && String(ev.id) === String(window.__deepLinkedEventId)) card.classList.add('deep-linked-event');
     card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+ev.event_time : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${ev.game_name ? `<div class="ev-game">🎲 ${escapeHtml(ev.game_name)}</div>` : ''}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div></div>${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">Учасники та черга</div><div class="ev-participants">${participantHtml}</div><div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}`;
     card.querySelector('.ev-rsvp-btn').addEventListener('click', () => toggleRsvp(ev.id, !!mine));
     card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE'}); loadEvents(); }));
@@ -4670,6 +4676,25 @@ window.addEventListener('beforeunload', () => { if (activeSession) captureActive
 restoreActiveSessionState();
 
 initMasterclass();
+
+async function applyInitialDeepLink() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') !== 'events') return;
+    window.__deepLinkedEventId = params.get('event') || '';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-events'));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-events'));
+    await loadEvents();
+    requestAnimationFrame(() => {
+      const target = window.__deepLinkedEventId
+        ? document.querySelector(`.event-card[data-event-id="${CSS.escape(String(window.__deepLinkedEventId))}"]`)
+        : null;
+      if (target) target.scrollIntoView({ behavior:'smooth', block:'center' });
+      else window.scrollTo({ top:0, behavior:'smooth' });
+    });
+  } catch (_) {}
+}
+applyInitialDeepLink();
 
 renderCharacters();
 </script>
