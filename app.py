@@ -2078,6 +2078,7 @@ def add_event():
         "title": data.get("title", ""),
         "event_date": data.get("event_date"),
         "event_time": data.get("event_time", ""),
+        "location_text": (data.get("location_text") or "").strip(),
         "game_name": primary_game,
         "game_names": game_names,
         "description": data.get("description", ""),
@@ -2095,7 +2096,7 @@ def add_event():
         timeout=30,
     )
 
-    if resp.status_code >= 400 and any(field in resp.text for field in ("max_participants", "cover_url", "game_names")):
+    if resp.status_code >= 400 and any(field in resp.text for field in ("max_participants", "cover_url", "game_names", "location_text")):
         fallback = dict(payload)
         if "max_participants" in resp.text:
             fallback.pop("max_participants", None)
@@ -2103,6 +2104,8 @@ def add_event():
             fallback.pop("cover_url", None)
         if "game_names" in resp.text:
             fallback.pop("game_names", None)
+        if "location_text" in resp.text:
+            fallback.pop("location_text", None)
         resp = requests.post(
             EVENTS_REST,
             headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
@@ -2136,6 +2139,9 @@ def add_event():
         notify_lines.append(date_time)
     if game_names:
         notify_lines.append(f"🎲 Ігри: {', '.join(game_names)}")
+    location_text = (data.get("location_text") or "").strip()
+    if location_text:
+        notify_lines.append(f"📍 {location_text}")
 
     max_participants = max(0, int(data.get("max_participants") or 0))
     if max_participants:
@@ -2152,7 +2158,11 @@ def add_event():
     log_activity(
         "event_created",
         f"Створено нову подію: {data.get('title', '')}",
-        (f"Ігри: {game_label}" if game_label else data.get("description", "")),
+        (
+            f"Ігри: {game_label}" + (f" · 📍 {(data.get('location_text') or '').strip()}" if (data.get("location_text") or "").strip() else "")
+            if game_label
+            else ((data.get("location_text") or "").strip() or data.get("description", ""))
+        ),
         actor_name=data.get("created_by", ""),
         image_url=event_photo,
         metadata={"event_id": event_id, "games": game_names},
@@ -2394,11 +2404,17 @@ def telegram_api_post(method, payload):
         return False, str(exc)
 
 
-def telegram_keyboard_payload(event_id):
+def telegram_keyboard_payload(event_id, location_text=""):
     rows = [[
         {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
         {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
     ]]
+    location_text = (location_text or "").strip()
+    if location_text:
+        rows.append([{
+            "text": "📍 Google Maps",
+            "url": f"https://www.google.com/maps/search/?api=1&query={quote(location_text)}",
+        }])
     if WEBAPP_URL:
         sep = "&" if "?" in WEBAPP_URL else "?"
         rows.append([{
@@ -2598,7 +2614,7 @@ def notify_groups_sync(event_id, photo_url=None):
             return
 
         text = format_group_event(event)
-        keyboard = telegram_keyboard_payload(event_id)
+        keyboard = telegram_keyboard_payload(event_id, event.get('location_text') or '')
         group_ids = get_active_group_ids_sync()
 
         if not group_ids:
@@ -2671,11 +2687,19 @@ def notify_subscribers_async(text, photo_url=None):
     ).start()
 
 
-def event_group_keyboard(event_id):
+def event_group_keyboard(event_id, location_text=""):
     rows = [[
         InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
         InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
     ]]
+    location_text = (location_text or "").strip()
+    if location_text:
+        rows.append([
+            InlineKeyboardButton(
+                text="📍 Google Maps",
+                url=f"https://www.google.com/maps/search/?api=1&query={quote(location_text)}",
+            )
+        ])
     if WEBAPP_URL:
         sep = "&" if "?" in WEBAPP_URL else "?"
         rows.append([
@@ -2704,6 +2728,10 @@ def format_group_event(event):
         game_names = [str(event.get("game_name")).strip()]
     if game_names:
         lines.append(f"🎲 Ігри: {', '.join(game_names)}")
+
+    location_text = (event.get("location_text") or "").strip()
+    if location_text:
+        lines.append(f"📍 {location_text}")
 
     cap = int(event.get("max_participants") or 0)
     if cap:
@@ -2742,7 +2770,7 @@ async def notify_groups(event_id, photo_url=None):
         if not event:
             return
         text = format_group_event(event)
-        keyboard = event_group_keyboard(event_id)
+        keyboard = event_group_keyboard(event_id, event.get('location_text') or '')
         for chat_id in await get_active_group_ids():
             try:
                 if photo_url:
@@ -2771,7 +2799,7 @@ async def refresh_group_event_message(callback: CallbackQuery, event_id: int):
         if not event or not callback.message:
             return
         text = format_group_event(event)
-        keyboard = event_group_keyboard(event_id)
+        keyboard = event_group_keyboard(event_id, event.get('location_text') or '')
         if callback.message.photo:
             await callback.message.edit_caption(caption=text[:1024], reply_markup=keyboard)
         else:
