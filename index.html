@@ -2991,6 +2991,17 @@
     font-weight: 850;
   }
 
+
+  /* Date picker must appear above the already-open event modal */
+  #eventDatePickerModal {
+    z-index: 60;
+  }
+
+  #eventDatePickerModal .date-wheel-sheet {
+    position: relative;
+    z-index: 61;
+  }
+
 </style>
 </head>
 <body>
@@ -3654,7 +3665,7 @@
 
     <label>Дата</label>
     <input type="hidden" id="eventDate">
-    <button type="button" class="date-wheel-trigger" id="eventDateDisplay" onclick="openEventDatePicker()">
+    <button type="button" class="date-wheel-trigger" id="eventDateDisplay" onclick="openEventDatePicker(); return false;">
       <span id="eventDateDisplayText">Оберіть дату</span>
       <span class="date-wheel-arrow">›</span>
     </button>
@@ -4306,7 +4317,11 @@ function openEventDatePicker() {
   attachEventDateWheel('eventMonthWheel', 'month');
   attachEventDateWheel('eventYearWheel', 'year');
 
-  document.getElementById('eventDatePickerModal')?.classList.add('open');
+  const pickerModal = document.getElementById('eventDatePickerModal');
+  if (pickerModal) {
+    pickerModal.style.zIndex = '60';
+    pickerModal.classList.add('open');
+  }
 
   requestAnimationFrame(() => {
     scrollEventWheelToValue('eventDayWheel', eventDateWheelState.day);
