@@ -3308,6 +3308,11 @@ async function loadGames() {
   } catch (e) {
     console.error("Не вдалося завантажити бібліотеку ігор", e);
     allGames = [];
+    const grid = document.getElementById("gamesGrid");
+    if (grid) {
+      grid.innerHTML = '<div class="empty">Не вдалося завантажити бібліотеку. Спробуй відкрити вкладку ще раз.</div>';
+      return;
+    }
   }
   renderGamesGrid();
 }
@@ -5179,7 +5184,9 @@ function submitCharacter() {
 
   saveCharactersToStorage();
   closeModal("characterModal");
-  
+  renderCharacters();
+}
+
 /* ==================== STEAM-LIKE HUB ==================== */
 let homeHistoryCache = [];
 let homeActivityCache = [];
@@ -5191,6 +5198,7 @@ function showMainView(viewId) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
   if (viewId === 'view-home') loadHomeHub();
   if (viewId === 'view-community') loadCommunity();
+  if (viewId === 'view-library') loadGames();
   if (viewId === 'view-profile') loadMyProfile();
   if (viewId === 'view-events') loadEvents();
   window.scrollTo({top:0, behavior:'smooth'});
@@ -5537,13 +5545,13 @@ document.getElementById('homeFinishBtn')?.addEventListener('click', async () => 
 
 document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
   if (btn.dataset.view === 'view-home') loadHomeHub();
+  if (btn.dataset.view === 'view-library') loadGames();
   if (btn.dataset.view === 'view-community') loadCommunity();
 }));
 
 
-loadHomeHub();
-renderCharacters();
-}
+// Запускаємо після завершення синхронної ініціалізації всього скрипта.
+setTimeout(() => loadHomeHub(), 0);
 
 async function downloadCharacterPdf() {
   const formData = collectCharacterFormData();
