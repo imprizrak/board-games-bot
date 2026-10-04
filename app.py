@@ -3311,6 +3311,85 @@ def telegram_rsvp_identity(user):
     return username, display_name
 
 
+
+
+@dp.message(Command("fixapp"))
+async def cmd_fixapp(message: Message):
+    """Оновлює кнопку в уже існуючому повідомленні, не створюючи нове."""
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("Команда /fixapp працює у групі.")
+        return
+
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Оновити кнопку може лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+
+    # Найнадійніше: відповісти командою /fixapp саме на старе повідомлення Styloteka.
+    target = message.reply_to_message
+
+    # Якщо команда не є відповіддю, пробуємо поточне закріплене повідомлення.
+    if target is None:
+        try:
+            chat_info = await bot.get_chat(message.chat.id)
+            target = getattr(chat_info, "pinned_message", None)
+        except Exception:
+            target = None
+
+    if target is None:
+        await message.answer(
+            "Не знайшла повідомлення для оновлення.\n"
+            "Відповідай командою /fixapp саме на старе повідомлення Styloteka з кнопкою."
+        )
+        return
+
+    try:
+        me = await bot.get_me()
+        if not target.from_user or target.from_user.id != me.id:
+            await message.answer(
+                "Це повідомлення надіслане не Styloteka, тому я не можу змінити його кнопку.\n"
+                "Відповідай /fixapp на старе повідомлення саме від бота."
+            )
+            return
+
+        bot_username = (me.username or "").lstrip("@")
+        if not bot_username:
+            await message.answer("Не вдалося визначити username бота.")
+            return
+
+        # Main Mini App URL — без short_name.
+        launch_url = f"https://t.me/{bot_username}?startapp=home"
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🎲 Відкрити Styloteka",
+                        url=launch_url,
+                    )
+                ]
+            ]
+        )
+
+        await bot.edit_message_reply_markup(
+            chat_id=message.chat.id,
+            message_id=target.message_id,
+            reply_markup=keyboard,
+        )
+
+        await message.answer(
+            "✅ Стару кнопку оновлено. Саме повідомлення і його закріплення залишилися."
+        )
+    except Exception:
+        logging.exception("Не вдалося оновити стару кнопку Mini App")
+        await message.answer(
+            "Не вдалося змінити кнопку. Спробуй відповісти /fixapp прямо на старе повідомлення Styloteka."
+        )
+
 @dp.message(Command("setgroup"))
 async def cmd_setgroup(message: Message):
     if message.chat.type not in ("group", "supergroup"):
