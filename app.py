@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.INFO)
 # ==== НАЛАШТУВАННЯ (беруться зі змінних середовища на Render) ====
 API_TOKEN = os.environ.get("BOT_TOKEN", "")
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
+TELEGRAM_APP_SHORT_NAME = os.environ.get("TELEGRAM_APP_SHORT_NAME", "").strip().strip("/")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 BUCKET = "files"
@@ -2550,6 +2551,61 @@ async def cmd_testgroup(message: Message):
 @dp.message(Command("chatid"))
 async def cmd_chatid(message: Message):
     await message.answer(f"ID цього чату: {message.chat.id}")
+
+
+@dp.message(Command("app"))
+async def cmd_app(message: Message):
+    """Надсилає в групу постійну кнопку запуску Styloteka Mini App."""
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer(
+            "У групі команда /app створить кнопку запуску Styloteka."
+        )
+        return
+
+    # Щоб учасники не засмічували групу однаковими кнопками,
+    # публікувати її можуть лише адміністратор або власник групи.
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Кнопку запуску може опублікувати лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+
+    try:
+        me = await bot.get_me()
+        bot_username = (me.username or "").lstrip("@")
+        if not bot_username:
+            await message.answer("Не вдалося визначити username бота.")
+            return
+
+        if TELEGRAM_APP_SHORT_NAME:
+            launch_url = f"https://t.me/{bot_username}/{TELEGRAM_APP_SHORT_NAME}?startapp=home"
+        else:
+            # Працює для Main Mini App, налаштованого в BotFather.
+            launch_url = f"https://t.me/{bot_username}?startapp=home"
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🎲 Відкрити Styloteka",
+                        url=launch_url,
+                    )
+                ]
+            ]
+        )
+
+        await message.answer(
+            "🎲 <b>Styloteka</b>\n"
+            "Бібліотека настільних ігор, події, профілі, досягнення та ігрові інструменти.",
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
+    except Exception:
+        logging.exception("Не вдалося створити кнопку запуску Mini App")
+        await message.answer("Не вдалося створити кнопку запуску Styloteka.")
 
 
 @dp.callback_query(F.data.startswith("ev_go:"))
