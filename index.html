@@ -4140,6 +4140,226 @@ async function submitManualParticipant() {
 }
 
 
+
+/* ==================== DATE WHEEL PICKER JS ==================== */
+const EVENT_DATE_WHEEL_ITEM_HEIGHT = 48;
+let eventDateWheelState = { day: 1, month: 1, year: new Date().getFullYear() };
+let eventDateWheelScrollTimers = {};
+
+function daysInEventMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function padEventDate(n) {
+  return String(n).padStart(2, '0');
+}
+
+function eventDateIso(day, month, year) {
+  return `${year}-${padEventDate(month)}-${padEventDate(day)}`;
+}
+
+function eventDateDisplay(day, month, year) {
+  return `${padEventDate(day)}.${padEventDate(month)}.${year}`;
+}
+
+function renderEventDateWheel(columnId, values, selectedValue) {
+  const column = document.getElementById(columnId);
+  if (!column) return;
+
+  column.innerHTML = values.map(value =>
+    `<div class="date-wheel-item${Number(value) === Number(selectedValue) ? ' selected' : ''}" data-value="${value}">${padEventDate(value)}</div>`
+  ).join('');
+}
+
+function renderEventYearWheel(years, selectedYear) {
+  const column = document.getElementById('eventYearWheel');
+  if (!column) return;
+
+  column.innerHTML = years.map(value =>
+    `<div class="date-wheel-item${Number(value) === Number(selectedYear) ? ' selected' : ''}" data-value="${value}">${value}</div>`
+  ).join('');
+}
+
+function scrollEventWheelToValue(columnId, value, smooth = false) {
+  const column = document.getElementById(columnId);
+  if (!column) return;
+
+  const item = column.querySelector(`[data-value="${CSS.escape(String(value))}"]`);
+  if (!item) return;
+
+  const index = Array.from(column.children).indexOf(item);
+  column.scrollTo({
+    top: index * EVENT_DATE_WHEEL_ITEM_HEIGHT,
+    behavior: smooth ? 'smooth' : 'auto'
+  });
+}
+
+function selectedEventWheelValue(columnId) {
+  const column = document.getElementById(columnId);
+  if (!column || !column.children.length) return null;
+
+  const index = Math.max(
+    0,
+    Math.min(
+      column.children.length - 1,
+      Math.round(column.scrollTop / EVENT_DATE_WHEEL_ITEM_HEIGHT)
+    )
+  );
+
+  return Number(column.children[index]?.dataset.value || 0);
+}
+
+function updateEventDateWheelSelection(columnId) {
+  const column = document.getElementById(columnId);
+  if (!column) return null;
+
+  const value = selectedEventWheelValue(columnId);
+  column.querySelectorAll('.date-wheel-item').forEach(item => {
+    item.classList.toggle('selected', Number(item.dataset.value) === Number(value));
+  });
+
+  return value;
+}
+
+function rebuildEventDayWheel() {
+  const maxDay = daysInEventMonth(eventDateWheelState.year, eventDateWheelState.month);
+  eventDateWheelState.day = Math.min(eventDateWheelState.day, maxDay);
+
+  renderEventDateWheel(
+    'eventDayWheel',
+    Array.from({ length: maxDay }, (_, i) => i + 1),
+    eventDateWheelState.day
+  );
+
+  requestAnimationFrame(() => {
+    scrollEventWheelToValue('eventDayWheel', eventDateWheelState.day);
+  });
+}
+
+function attachEventDateWheel(columnId, key) {
+  const column = document.getElementById(columnId);
+  if (!column || column.dataset.bound === '1') return;
+
+  column.dataset.bound = '1';
+
+  column.addEventListener('scroll', () => {
+    clearTimeout(eventDateWheelScrollTimers[columnId]);
+
+    eventDateWheelScrollTimers[columnId] = setTimeout(() => {
+      const value = updateEventDateWheelSelection(columnId);
+      if (!value) return;
+
+      eventDateWheelState[key] = value;
+
+      if (key === 'month' || key === 'year') {
+        const maxDay = daysInEventMonth(eventDateWheelState.year, eventDateWheelState.month);
+        if (eventDateWheelState.day > maxDay) {
+          eventDateWheelState.day = maxDay;
+          rebuildEventDayWheel();
+        }
+      }
+
+      if (navigator.vibrate) navigator.vibrate(4);
+    }, 70);
+  }, { passive: true });
+
+  column.addEventListener('click', event => {
+    const item = event.target.closest('.date-wheel-item');
+    if (!item) return;
+
+    const value = Number(item.dataset.value);
+    eventDateWheelState[key] = value;
+    scrollEventWheelToValue(columnId, value, true);
+  });
+}
+
+function openEventDatePicker() {
+  const hidden = document.getElementById('eventDate');
+  const current = hidden?.value?.trim();
+
+  let base = new Date();
+
+  if (current && /^\d{4}-\d{2}-\d{2}$/.test(current)) {
+    const [year, month, day] = current.split('-').map(Number);
+    base = new Date(year, month - 1, day);
+  }
+
+  eventDateWheelState = {
+    day: base.getDate(),
+    month: base.getMonth() + 1,
+    year: base.getFullYear()
+  };
+
+  const currentYear = new Date().getFullYear();
+  const startYear = Math.min(currentYear, eventDateWheelState.year);
+  const years = Array.from({ length: 8 }, (_, i) => startYear + i);
+
+  renderEventDateWheel(
+    'eventMonthWheel',
+    Array.from({ length: 12 }, (_, i) => i + 1),
+    eventDateWheelState.month
+  );
+  renderEventYearWheel(years, eventDateWheelState.year);
+  rebuildEventDayWheel();
+
+  attachEventDateWheel('eventDayWheel', 'day');
+  attachEventDateWheel('eventMonthWheel', 'month');
+  attachEventDateWheel('eventYearWheel', 'year');
+
+  document.getElementById('eventDatePickerModal')?.classList.add('open');
+
+  requestAnimationFrame(() => {
+    scrollEventWheelToValue('eventDayWheel', eventDateWheelState.day);
+    scrollEventWheelToValue('eventMonthWheel', eventDateWheelState.month);
+    scrollEventWheelToValue('eventYearWheel', eventDateWheelState.year);
+  });
+}
+
+function confirmEventDatePicker() {
+  eventDateWheelState.day =
+    selectedEventWheelValue('eventDayWheel') || eventDateWheelState.day;
+  eventDateWheelState.month =
+    selectedEventWheelValue('eventMonthWheel') || eventDateWheelState.month;
+  eventDateWheelState.year =
+    selectedEventWheelValue('eventYearWheel') || eventDateWheelState.year;
+
+  const maxDay = daysInEventMonth(eventDateWheelState.year, eventDateWheelState.month);
+  eventDateWheelState.day = Math.min(eventDateWheelState.day, maxDay);
+
+  const iso = eventDateIso(
+    eventDateWheelState.day,
+    eventDateWheelState.month,
+    eventDateWheelState.year
+  );
+
+  const display = eventDateDisplay(
+    eventDateWheelState.day,
+    eventDateWheelState.month,
+    eventDateWheelState.year
+  );
+
+  const hidden = document.getElementById('eventDate');
+  const displayText = document.getElementById('eventDateDisplayText');
+  const trigger = document.getElementById('eventDateDisplay');
+
+  if (hidden) hidden.value = iso;
+  if (displayText) displayText.textContent = display;
+  if (trigger) trigger.classList.add('has-value');
+
+  closeModal('eventDatePickerModal');
+}
+
+function resetEventDatePickerField() {
+  const hidden = document.getElementById('eventDate');
+  const displayText = document.getElementById('eventDateDisplayText');
+  const trigger = document.getElementById('eventDateDisplay');
+
+  if (hidden) hidden.value = '';
+  if (displayText) displayText.textContent = 'Оберіть дату';
+  if (trigger) trigger.classList.remove('has-value');
+}
+
+
 function getSelectedEventGames() {
   return Array.from(document.querySelectorAll('#eventGameChoices input[type="checkbox"]:checked'))
     .map(input => input.value)
