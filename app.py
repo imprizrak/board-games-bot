@@ -3424,11 +3424,9 @@ async def cmd_app(message: Message):
             await message.answer("Не вдалося визначити username бота.")
             return
 
-        if TELEGRAM_APP_SHORT_NAME:
-            launch_url = f"https://t.me/{bot_username}/{TELEGRAM_APP_SHORT_NAME}?startapp=home"
-        else:
-            # Працює для Main Mini App, налаштованого в BotFather.
-            launch_url = f"https://t.me/{bot_username}?startapp=home"
+        # Використовуємо тільки Main Mini App.
+        # Це уникає BOT_INVALID / BOT_APP_SHORTNAME_INVALID через застарілий short_name.
+        launch_url = f"https://t.me/{bot_username}?startapp=home"
 
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
