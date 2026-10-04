@@ -3191,6 +3191,70 @@
     line-height: 1.35;
   }
 
+
+  /* ==================== STABILIZATION ==================== */
+  .history-profile-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    max-height: 190px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+  }
+  .history-profile-chip {
+    min-width: 0;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    margin: 0 !important;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card-bg);
+    color: var(--text) !important;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+  .history-profile-chip input {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+    accent-color: var(--accent);
+  }
+  .history-profile-chip span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .history-profile-select {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: #f7f3ec;
+    color: #28231f;
+    font: inherit;
+    font-size: 15px;
+  }
+  .ev-rsvp-btn.vote-locked,
+  .ev-rsvp-btn:disabled {
+    opacity: .72;
+    cursor: default;
+    filter: saturate(.75);
+  }
+  .ev-my-vote {
+    margin-top: 7px;
+    color: #aebed3;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  @media (max-width: 370px) {
+    .history-profile-picker { grid-template-columns: 1fr; }
+  }
+
 </style>
 </head>
 <body>
@@ -3789,11 +3853,20 @@
     <label>Дата</label>
     <input type="text" id="historyDate" placeholder="РРРР-ММ-ДД">
 
-    <label>Гравці (через кому)</label>
-    <input type="text" id="historyPlayers" placeholder="Дар'я, Діма, Роза">
+    <label>Гравці з профілями Styloteka</label>
+    <div class="history-profile-picker" id="historyProfilePlayers"></div>
+    <div class="event-form-hint">Обирай профілі тут — тоді партії, перемоги та XP надійно зарахуються саме цим людям.</div>
 
-    <label>Переможець (необов'язково)</label>
-    <input type="text" id="historyWinner" placeholder="Хто переміг">
+    <label>Інші гравці без профілю (необов'язково)</label>
+    <input type="text" id="historyPlayers" placeholder="Імена гостей через кому">
+
+    <label>Переможець з профілем (необов'язково)</label>
+    <select id="historyWinnerProfile" class="history-profile-select">
+      <option value="">— не обрано —</option>
+    </select>
+
+    <label>Переможець без профілю (необов'язково)</label>
+    <input type="text" id="historyWinner" placeholder="Ім'я гостя">
 
     <label>Тривалість, хвилин (необов'язково)</label>
     <input type="number" id="historyDuration" min="0" step="5" placeholder="60">
@@ -4056,26 +4129,6 @@ document.querySelectorAll(".lib-genre-chip").forEach(chip => {
 
 let currentGame = null;
 
-function openViewModal(game) {
-  // Перегляд гри та правил доступний усім учасникам.
-  currentGame = game;
-  document.getElementById("viewName").textContent = game.name;
-  document.getElementById("viewDescription").textContent = game.description || "";
-
-  const rulesLink = document.getElementById("viewRules");
-  const noRules = document.getElementById("viewNoRules");
-
-  if (game.rules_url) {
-    rulesLink.href = game.rules_url;
-    rulesLink.style.display = "inline-block";
-    noRules.textContent = "";
-  } else {
-    rulesLink.style.display = "none";
-    noRules.textContent = "Правила ще не додані.";
-  }
-
-  document.getElementById("viewModal").classList.add("open");
-}
 
 function openAddModal() {
   if (!isAdmin) { tg.showAlert("Додавати ігри можуть лише адміністратори Telegram-групи."); return; }
@@ -4182,21 +4235,6 @@ async function submitGame() {
 loadGames();
 
 /* ==================== АДМІНКА ТА ПОДІЇ ==================== */
-async function checkAdminStatus() {
-  try {
-    const res = await fetch("/api/admins/check", {
-      method: "POST",
-      headers: telegramAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({_tg_init_data: telegramInitData}),
-    });
-    const data = await res.json();
-    isAdmin = !!data.is_admin;
-  } catch (e) {
-    isAdmin = false;
-  }
-  applyAdminPermissionsUi();
-  renderEvents(lastEventsData);
-}
 
 function formatEventDate(iso) {
   if (!iso) return "";
@@ -4225,101 +4263,7 @@ document.querySelectorAll('.events-subtab-btn').forEach(btn => {
   btn.addEventListener('click', () => loadEvents(btn.dataset.eventsMode));
 });
 
-function renderEvents(events) {
-  const list = document.getElementById("eventsList");
-  list.innerHTML = "";
 
-  if (!events || events.length === 0) {
-    list.innerHTML = '<div class="events-empty">Найближчих подій поки немає.<br>' +
-      (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') + '</div>';
-    return;
-  }
-
-  events.forEach(ev => {
-    const rsvps = ev.rsvps || [];
-    const joined = telegramUsername && rsvps.some(r => r.username === telegramUsername);
-
-    const card = document.createElement("div");
-    card.className = "event-card";
-
-    const participantsHtml = rsvps.length === 0
-      ? '<div class="ev-no-participants">Поки ніхто не записався</div>'
-      : rsvps.map(r => `
-          <span class="participant-chip">
-            ${r.display_name || r.username}
-            ${isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${r.username}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ""}
-          </span>
-        `).join("");
-
-    card.innerHTML = `
-      <div class="ev-top-row">
-        <div>
-          <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? " · " + ev.event_time : ""}</div>
-          <div class="ev-title">${ev.title}</div>
-          ${eventGamesHtml(ev)}
-          ${ev.description ? `<div class="ev-description">${ev.description}</div>` : ""}
-          ${eventLocationHtml(ev)}
-          ${ev.cover_url ? `<div class="event-cover-wrap"><img class="event-cover" src="${ev.cover_url}" alt="Обкладинка події ${ev.title}"></div>` : ""}
-        </div>
-        ${isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ""}
-      </div>
-
-      <div class="ev-participants-label">Учасники (${rsvps.length})</div>
-      <div class="ev-participants">${participantsHtml}</div>
-
-      <div class="ev-buttons">
-        <button class="ev-rsvp-btn ${joined ? 'joined' : ''}" data-id="${ev.id}">
-          ${joined ? "Я йду ✓" : "Записатись"}
-        </button>
-        ${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ""}
-      </div>
-    `;
-
-    card.querySelector(".ev-rsvp-btn").addEventListener("click", () => toggleRsvp(ev.id, joined));
-
-    const delBtn = card.querySelector(".ev-admin-del");
-    if (delBtn) {
-      delBtn.addEventListener("click", () => {
-        tg.showConfirm(`Видалити подію "${ev.title}"?`, async (confirmed) => {
-          if (!confirmed) return;
-          await fetch(`/api/events/${ev.id}`, { method: "DELETE", headers: telegramAuthHeaders({"Content-Type":"application/json"}), body: JSON.stringify({_tg_init_data: telegramInitData}) });
-          loadEvents();
-        });
-      });
-    }
-
-    const addPartBtn = card.querySelector(".ev-add-participant-btn");
-    if (addPartBtn) {
-      addPartBtn.addEventListener("click", () => openAddParticipantModal(ev.id));
-    }
-
-    card.querySelectorAll(".pc-remove").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        await fetch(`/api/events/${btn.dataset.event}/rsvp/${btn.dataset.username}`, { method: "DELETE" });
-        loadEvents();
-      });
-    });
-
-    list.appendChild(card);
-  });
-}
-
-async function toggleRsvp(eventId, currentlyJoined) {
-  if (!telegramUsername) {
-    tg.showAlert("Щоб записатись, встанови собі @username у налаштуваннях Telegram.");
-    return;
-  }
-  if (currentlyJoined) {
-    await fetch(`/api/events/${eventId}/rsvp/${telegramUsername}`, { method: "DELETE" });
-  } else {
-    await fetch(`/api/events/${eventId}/rsvp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: telegramUsername, display_name: username }),
-    });
-  }
-  loadEvents();
-}
 
 function openAddParticipantModal(eventId) {
   currentParticipantEventId = eventId;
@@ -4501,39 +4445,64 @@ function resetEventDatePickerField() {
   if (trigger) trigger.classList.remove('has-value');
 }
 
-function googleMapsSearchUrl(location) {
-  const value = String(location || '').trim();
-  return value
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(value)}`
-    : '';
+function isGoogleMapsUrl(value) {
+  try {
+    const u = new URL(String(value || '').trim());
+    const host = u.hostname.toLowerCase();
+    return host === 'maps.app.goo.gl' ||
+      host === 'goo.gl' ||
+      host === 'google.com' ||
+      host === 'www.google.com' ||
+      host === 'maps.google.com';
+  } catch (_) {
+    return false;
+  }
 }
 
-function googleMapsEmbedUrl(location) {
-  const value = String(location || '').trim();
-  return value
-    ? `https://www.google.com/maps?q=${encodeURIComponent(value)}&output=embed`
-    : '';
+function eventGoogleMapsUrl(ev) {
+  const saved = String(ev?.location_map_url || '').trim();
+  if (saved) return saved;
+
+  const location = String(ev?.location_text || '').trim();
+  if (!location) return '';
+  if (isGoogleMapsUrl(location)) return location;
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+}
+
+function eventGoogleMapsEmbedUrl(ev) {
+  const lat = Number(ev?.location_lat);
+  const lng = Number(ev?.location_lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
+    return `https://www.google.com/maps?q=${lat},${lng}&output=embed`;
+  }
+
+  const location = String(ev?.location_text || '').trim();
+  if (!location || isGoogleMapsUrl(location)) return '';
+
+  return `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`;
 }
 
 function eventLocationHtml(ev) {
   const location = String(ev?.location_text || '').trim();
   if (!location) return '';
 
-  const mapsUrl = googleMapsSearchUrl(location);
-  const embedUrl = googleMapsEmbedUrl(location);
+  const mapsUrl = eventGoogleMapsUrl(ev);
+  const embedUrl = eventGoogleMapsEmbedUrl(ev);
+  const readableLocation = isGoogleMapsUrl(location) ? 'Місце на Google Maps' : location;
 
   return `<div class="event-location-block">
     <div class="event-location-head">
-      <div class="event-location-text">📍 ${escapeHtml(location)}</div>
-      <a class="event-location-link" href="${mapsUrl}" target="_blank" rel="noopener">Google Maps ↗</a>
+      <div class="event-location-text">📍 ${escapeHtml(readableLocation)}</div>
+      ${mapsUrl ? `<a class="event-location-link" href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener">Google Maps ↗</a>` : ''}
     </div>
-    <iframe
+    ${embedUrl ? `<iframe
       class="event-map-frame"
-      src="${embedUrl}"
+      src="${escapeHtml(embedUrl)}"
       loading="lazy"
       referrerpolicy="no-referrer-when-downgrade"
       allowfullscreen
-      title="Місце події"></iframe>
+      title="Місце події"></iframe>` : ''}
   </div>`;
 }
 
@@ -4606,64 +4575,7 @@ function eventGamesHtml(ev) {
   return names.length ? `<div class="ev-game">🎲 ${names.map(escapeHtml).join(' · ')}</div>` : '';
 }
 
-function openEventModal() {
-  document.getElementById('eventTitle').value = '';
-  resetEventDatePickerField();
-  document.getElementById('eventTime').value = '';
-  const locationInput = document.getElementById('eventLocation');
-  if (locationInput) locationInput.value = '';
-  document.getElementById('eventDescription').value = '';
-  const capacity = document.getElementById('eventCapacity');
-  if (capacity) capacity.value = '0';
-  renderEventGameChoices();
-  resetEventCoverPreview();
-  initEventCoverPreview();
-  document.getElementById('eventModal').classList.add('open');
-}
 
-async function submitEvent() {
-  const title = document.getElementById('eventTitle').value.trim();
-  const date = document.getElementById('eventDate').value.trim();
-  if (!title || !date) {
-    tg.showAlert('Введи назву і дату події');
-    return;
-  }
-
-  const selectedGames = getSelectedEventGames();
-  const formData = new FormData();
-  formData.append('_tg_init_data', telegramInitData);
-  formData.append('title', title);
-  formData.append('event_date', date);
-  formData.append('event_time', document.getElementById('eventTime').value.trim());
-  formData.append('location_text', document.getElementById('eventLocation')?.value.trim() || '');
-  formData.append('game_name', selectedGames[0] || '');
-  formData.append('game_names_json', JSON.stringify(selectedGames));
-  formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
-  formData.append('description', document.getElementById('eventDescription').value.trim());
-  formData.append('created_by', username);
-
-  const coverFile = document.getElementById('eventCover')?.files?.[0];
-  if (coverFile) formData.append('cover', coverFile);
-
-  const res = await fetch('/api/events', {
-    method: 'POST',
-    headers: telegramAuthHeaders(),
-    body: formData,
-  });
-
-  if (res.status === 403) {
-    tg.showAlert('Створювати події можуть лише адміністратори Telegram-групи.');
-    return;
-  }
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    tg.showAlert(data.error || 'Не вдалося створити подію.');
-    return;
-  }
-
-  closeModal('eventModal');
-  loadEvents();
-}
 
 checkAdminStatus();
 loadEvents();
@@ -4746,78 +4658,8 @@ async function submitWishlist() {
 }
 
 /* ==================== ІСТОРІЯ ІГРОВИХ ВЕЧОРІВ ==================== */
-async function loadHistory() {
-  const list = document.getElementById("historyList");
-  list.innerHTML = '<div class="empty">Завантаження...</div>';
-  try {
-    const res = await fetch("/api/history");
-    const items = await res.json();
-    list.innerHTML = "";
 
-    if (items.length === 0) {
-      list.innerHTML = '<div class="empty">Історія поки порожня.<br>Запиши перший ігровий вечір!</div>';
-      return;
-    }
 
-    items.forEach(item => {
-      const row = document.createElement("div");
-      row.className = "history-item";
-      const metaParts = [item.played_at];
-      if (item.winner) metaParts.push(`переміг: ${item.winner}`);
-      row.innerHTML = `
-        <div>
-          <div class="hi-name">${item.game_name}</div>
-          <div class="hi-meta">${metaParts.join(" · ")}</div>
-          ${item.note ? `<div class="hi-meta">${item.note}</div>` : ""}
-        </div>
-        <button class="item-remove" data-id="${item.id}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
-        </button>
-      `;
-      row.querySelector(".item-remove").addEventListener("click", () => {
-        tg.showConfirm("Видалити цей запис з історії?", async (confirmed) => {
-          if (!confirmed) return;
-          await fetch(`/api/history/${item.id}`, { method: "DELETE" });
-          loadHistory();
-        });
-      });
-      list.appendChild(row);
-    });
-  } catch (e) {
-    list.innerHTML = '<div class="empty">Не вдалось завантажити історію.</div>';
-  }
-}
-
-function openHistoryModal() {
-  document.getElementById("historyGameName").value = "";
-  const today = new Date();
-  const iso = today.toISOString().slice(0, 10);
-  document.getElementById("historyDate").value = iso;
-  document.getElementById("historyWinner").value = "";
-  document.getElementById("historyNote").value = "";
-  document.getElementById("historyModal").classList.add("open");
-}
-
-async function submitHistory() {
-  const gameName = document.getElementById("historyGameName").value.trim();
-  if (!gameName) {
-    tg.showAlert("Введи назву гри");
-    return;
-  }
-  await fetch("/api/history", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      game_name: gameName,
-      played_at: document.getElementById("historyDate").value || null,
-      winner: document.getElementById("historyWinner").value,
-      note: document.getElementById("historyNote").value,
-      added_by: username,
-    }),
-  });
-  closeModal("historyModal");
-  loadHistory();
-}
 
 /* ==================== ТАЙМЕР ХОДУ (ШАХОВИЙ ГОДИННИК) ==================== */
 let timerPlayers = [
@@ -6520,24 +6362,6 @@ function renderGameDetailStats(game) {
   }
 }
 
-function openViewModal(game) {
-  currentGame = game;
-  document.getElementById('viewName').textContent = game.name;
-  document.getElementById('viewDescription').textContent = game.description || '';
-  const rulesLink = document.getElementById('viewRules');
-  const noRules = document.getElementById('viewNoRules');
-  if (game.rules_url) {
-    rulesLink.href = game.rules_url;
-    rulesLink.style.display = 'inline-block';
-    noRules.textContent = '';
-  } else {
-    rulesLink.style.display = 'none';
-    noRules.textContent = 'Правила ще не додані.';
-  }
-  renderGameDetailStats(game);
-  renderQuickStart(game);
-  document.getElementById('viewModal').classList.add('open');
-}
 
 document.getElementById('homeResumeBtn')?.addEventListener('click', () => {
   if (activeSession) openToolPanel(activeSession.tool || 'counters', activeSession.mode || null);
@@ -6733,78 +6557,6 @@ function mcRandomize() {
   if (tg.showAlert) tg.showAlert(`Готово! ${mcState.figure} · ${mcState.style} · ${mcState.level}`);
 }
 
-function initMasterclass() {
-  const root = document.getElementById("view-masterclass");
-  if (!root || root.dataset.mcInit === "1") return;
-  root.dataset.mcInit = "1";
-  mcLoad();
-
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  const dateInput = document.getElementById("mcDate");
-  if (dateInput) dateInput.min = `${yyyy}-${mm}-${dd}`;
-
-  root.querySelectorAll("[data-mc-figure]").forEach(btn => btn.addEventListener("click", () => {
-    mcState.figure = btn.dataset.mcFigure;
-    mcState.confirmed = false;
-    mcSave(); renderMasterclass(); mcHaptic();
-  }));
-  root.querySelectorAll("[data-mc-style]").forEach(btn => btn.addEventListener("click", () => {
-    mcState.style = btn.dataset.mcStyle;
-    mcState.confirmed = false;
-    mcSave(); renderMasterclass(); mcHaptic();
-  }));
-  root.querySelectorAll("[data-mc-level]").forEach(btn => btn.addEventListener("click", () => {
-    mcState.level = btn.dataset.mcLevel;
-    mcState.confirmed = false;
-    mcSave(); renderMasterclass(); mcHaptic();
-  }));
-  root.querySelectorAll("[data-mc-next]").forEach(btn => btn.addEventListener("click", () => {
-    const next = Number(btn.dataset.mcNext);
-    if (!mcCanContinue(next - 1)) return;
-    setMasterclassStep(next); mcHaptic();
-  }));
-  root.querySelectorAll("[data-mc-back]").forEach(btn => btn.addEventListener("click", () => { setMasterclassStep(btn.dataset.mcBack); mcHaptic(); }));
-
-  const randomBtn = document.getElementById("mcRandomBtn");
-  if (randomBtn) randomBtn.addEventListener("click", mcRandomize);
-  const restartBtn = document.getElementById("mcRestartBtn");
-  if (restartBtn) restartBtn.addEventListener("click", mcReset);
-  const editBtn = document.getElementById("mcSummaryEdit");
-  if (editBtn) editBtn.addEventListener("click", () => setMasterclassStep(1));
-
-  const nameInput = document.getElementById("mcName");
-  const timeInput = document.getElementById("mcTime");
-  [nameInput, dateInput, timeInput].forEach(input => {
-    if (!input) return;
-    input.addEventListener("input", () => {
-      mcState.name = nameInput ? nameInput.value : mcState.name;
-      mcState.date = dateInput ? dateInput.value : mcState.date;
-      mcState.time = timeInput ? timeInput.value : mcState.time;
-      mcState.confirmed = false;
-      mcSave(); renderMasterclass();
-    });
-    input.addEventListener("change", () => {
-      mcState.name = nameInput ? nameInput.value : mcState.name;
-      mcState.date = dateInput ? dateInput.value : mcState.date;
-      mcState.time = timeInput ? timeInput.value : mcState.time;
-      mcState.confirmed = false;
-      mcSave(); renderMasterclass();
-    });
-  });
-
-  const bookBtn = document.getElementById("mcBookBtn");
-  if (bookBtn) bookBtn.addEventListener("click", () => {
-    if (bookBtn.disabled) return;
-    mcState.confirmed = true;
-    mcSave(); renderMasterclass(); mcHaptic("success");
-    if (tg.showAlert) tg.showAlert("Запис на майстер-клас збережено.");
-  });
-
-  renderMasterclass();
-}
 
 
 /* ==================== ПОКРАЩЕННЯ 2/4/6/7 ==================== */
@@ -6963,6 +6715,74 @@ function openViewModal(game) {
   document.getElementById('viewModal').classList.add('open');
 }
 
+
+/* ==================== STABLE HISTORY PROFILE BINDING ==================== */
+function historyProfileName(profile) {
+  return profile?.display_name || profile?.username || 'Гравець';
+}
+
+function normalizeHistoryPerson(value) {
+  return String(value || '').trim().replace(/^@/, '').toLowerCase();
+}
+
+function selectedHistoryProfiles() {
+  const selectedIds = new Set(
+    Array.from(document.querySelectorAll('#historyProfilePlayers input:checked'))
+      .map(input => String(input.value))
+  );
+  return toolProfilesCache.filter(p => selectedIds.has(String(p.telegram_user_id)));
+}
+
+function renderHistoryProfilePicker(preselectedNames = [], winnerName = '', defaultToMe = false) {
+  const root = document.getElementById('historyProfilePlayers');
+  const winnerSelect = document.getElementById('historyWinnerProfile');
+  if (!root || !winnerSelect) return;
+
+  const wantedNames = new Set((preselectedNames || []).map(normalizeHistoryPerson).filter(Boolean));
+  const winnerNorm = normalizeHistoryPerson(winnerName);
+
+  root.innerHTML = toolProfilesCache.length
+    ? toolProfilesCache.map(p => {
+        const id = String(p.telegram_user_id || '');
+        const pname = historyProfileName(p);
+        const aliases = [
+          normalizeHistoryPerson(pname),
+          normalizeHistoryPerson(p.username),
+          normalizeHistoryPerson('@' + (p.username || ''))
+        ];
+        const nameMatch = aliases.some(a => a && wantedNames.has(a));
+        const mine = currentToolProfileId && id === String(currentToolProfileId);
+        const checked = nameMatch || (!wantedNames.size && defaultToMe && mine);
+        return `<label class="history-profile-chip">
+          <input type="checkbox" value="${escapeHtml(id)}" ${checked ? 'checked' : ''}>
+          <span>${escapeHtml(pname)}</span>
+        </label>`;
+      }).join('')
+    : '<div class="event-form-hint">Профілі ще не створені.</div>';
+
+  winnerSelect.innerHTML = '<option value="">— не обрано —</option>' +
+    toolProfilesCache.map(p =>
+      `<option value="${escapeHtml(String(p.telegram_user_id || ''))}">${escapeHtml(historyProfileName(p))}</option>`
+    ).join('');
+
+  if (winnerNorm) {
+    const match = toolProfilesCache.find(p => {
+      const aliases = [
+        normalizeHistoryPerson(historyProfileName(p)),
+        normalizeHistoryPerson(p.username),
+        normalizeHistoryPerson('@' + (p.username || ''))
+      ];
+      return aliases.includes(winnerNorm);
+    });
+    if (match) winnerSelect.value = String(match.telegram_user_id);
+  }
+}
+
+async function prepareHistoryProfiles(preselectedNames = [], winnerName = '', defaultToMe = false) {
+  await ensureToolProfiles();
+  renderHistoryProfilePicker(preselectedNames, winnerName, defaultToMe);
+}
+
 function activeSessionPlayers() {
   if (!activeSession) return [];
   if (activeSession.tool === 'counters' && activeSession.mode === 'flip7') return (flip7Players || []).map(p => p.name).filter(Boolean);
@@ -6986,19 +6806,40 @@ function activeSessionWinner() {
   return '';
 }
 
-function finishActiveSession() {
+async function finishActiveSession() {
   if (!activeSession) return;
   captureActiveState();
   const today = new Date().toISOString().slice(0, 10);
+  const sessionPlayers = activeSessionPlayers();
+  const sessionWinner = activeSessionWinner();
+
   document.getElementById('historyGameName').value = activeSession.gameName || '';
   document.getElementById('historyDate').value = today;
-  document.getElementById('historyPlayers').value = activeSessionPlayers().join(', ');
-  document.getElementById('historyWinner').value = activeSessionWinner();
-  document.getElementById('historyDuration').value = activeSession.startedAt ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000)) : '';
+  document.getElementById('historyPlayers').value = '';
+  document.getElementById('historyWinner').value = '';
+  document.getElementById('historyDuration').value = activeSession.startedAt
+    ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000))
+    : '';
   document.getElementById('historyNote').value = '';
+
+  await prepareHistoryProfiles(sessionPlayers, sessionWinner, false);
+
+  // Якщо у сесії були гості без профілю — залишаємо їх у текстовому полі.
+  const profileNames = new Set(
+    selectedHistoryProfiles().map(p => normalizeHistoryPerson(historyProfileName(p)))
+  );
+  const guestNames = sessionPlayers.filter(name => !profileNames.has(normalizeHistoryPerson(name)));
+  document.getElementById('historyPlayers').value = guestNames.join(', ');
+
+  const selectedWinnerId = document.getElementById('historyWinnerProfile')?.value || '';
+  if (!selectedWinnerId && sessionWinner) {
+    document.getElementById('historyWinner').value = sessionWinner;
+  }
+
   historyFromSession = true;
   document.getElementById('historyModal').classList.add('open');
 }
+
 
 function clearActiveSession() {
   activeSession = null;
@@ -7006,7 +6847,7 @@ function clearActiveSession() {
   renderActiveSessionBanner();
 }
 
-function openHistoryModal() {
+async function openHistoryModal() {
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('historyGameName').value = '';
   document.getElementById('historyDate').value = today;
@@ -7015,8 +6856,11 @@ function openHistoryModal() {
   document.getElementById('historyDuration').value = '';
   document.getElementById('historyNote').value = '';
   historyFromSession = false;
+
+  await prepareHistoryProfiles([], '', true);
   document.getElementById('historyModal').classList.add('open');
 }
+
 
 function parsePlayers(value) {
   return (value || '').split(',').map(x => x.trim()).filter(Boolean);
@@ -7024,18 +6868,55 @@ function parsePlayers(value) {
 
 async function submitHistory() {
   const gameName = document.getElementById('historyGameName').value.trim();
-  if (!gameName) { tg.showAlert('Введи назву гри'); return; }
+  if (!gameName) {
+    tg.showAlert('Введи назву гри');
+    return;
+  }
+
+  const selectedProfiles = selectedHistoryProfiles();
+  const selectedIds = selectedProfiles
+    .map(p => Number(p.telegram_user_id))
+    .filter(Number.isFinite);
+
+  const guestPlayers = parsePlayers(document.getElementById('historyPlayers').value);
+  const profileNames = selectedProfiles.map(historyProfileName);
+  const allPlayerNames = [...profileNames, ...guestPlayers]
+    .filter((name, index, arr) => {
+      const key = normalizeHistoryPerson(name);
+      return key && arr.findIndex(x => normalizeHistoryPerson(x) === key) === index;
+    });
+
+  const winnerProfileId = Number(document.getElementById('historyWinnerProfile')?.value || 0) || null;
+  const winnerProfile = winnerProfileId
+    ? toolProfilesCache.find(p => Number(p.telegram_user_id) === winnerProfileId)
+    : null;
+  const guestWinner = document.getElementById('historyWinner').value.trim();
+  const winnerName = winnerProfile ? historyProfileName(winnerProfile) : guestWinner;
+
   const payload = {
     game_name: gameName,
     played_at: document.getElementById('historyDate').value || null,
-    players: document.getElementById('historyPlayers').value.trim(),
-    winner: document.getElementById('historyWinner').value.trim(),
+    players: allPlayerNames.join(', '),
+    player_telegram_ids: selectedIds,
+    winner: winnerName,
+    winner_telegram_user_id: winnerProfileId,
     duration_minutes: parseInt(document.getElementById('historyDuration').value, 10) || 0,
     note: document.getElementById('historyNote').value,
     added_by: username,
   };
-  const res = await fetch('/api/history', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-  if (!res.ok) { tg.showAlert('Не вдалося зберегти партію.'); return; }
+
+  const res = await fetch('/api/history', {
+    method: 'POST',
+    headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    tg.showAlert(data.error || 'Не вдалося зберегти партію.');
+    return;
+  }
+
   closeModal('historyModal');
   if (historyFromSession) clearActiveSession();
   historyFromSession = false;
@@ -7043,6 +6924,7 @@ async function submitHistory() {
   loadStats();
   checkMyAchievements();
 }
+
 
 async function loadHistory() {
   const list = document.getElementById('historyList');
@@ -7174,7 +7056,9 @@ function renderEvents(events) {
     if (historyMode) {
       list.innerHTML = '<div class="events-empty">Історія подій поки порожня.</div>';
     } else {
-      list.innerHTML = '<div class="events-empty">Найближчих подій поки немає.<br>' + (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') + '</div>';
+      list.innerHTML = '<div class="events-empty">Найближчих подій поки немає.<br>' +
+        (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') +
+        '</div>';
     }
     return;
   }
@@ -7183,32 +7067,142 @@ function renderEvents(events) {
     const rsvps = ev.rsvps || [];
     const going = rsvps.filter(r => (r.status || 'going') === 'going');
     const waiting = rsvps.filter(r => r.status === 'waitlist');
-    const mine = !historyMode && telegramUsername ? rsvps.find(r => r.username === telegramUsername) : null;
-    const cap = Number(ev.max_participants) || 0;
+    const declined = rsvps.filter(r => r.status === 'declined');
 
+    const mine = !historyMode
+      ? rsvps.find(r => {
+          if (telegramUserId && r.telegram_user_id) {
+            return String(r.telegram_user_id) === String(telegramUserId);
+          }
+          return telegramUsername && r.username === telegramUsername;
+        })
+      : null;
+
+    const cap = Number(ev.max_participants) || 0;
     const shownPeople = historyMode ? going : [...going, ...waiting];
-    const participantHtml = shownPeople.map(r => `<span class="participant-chip ${!historyMode && r.status === 'waitlist' ? 'waitlist' : ''}">${escapeHtml(r.display_name || r.username)}${!historyMode && r.status === 'waitlist' ? '<span class="wait-tag">черга</span>' : ''}${!historyMode && isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${escapeHtml(r.username)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}</span>`).join('') || `<div class="ev-no-participants">${historyMode ? 'Учасників не було' : 'Поки ніхто не записався'}</div>`;
+
+    const participantHtml = shownPeople.map(r =>
+      `<span class="participant-chip ${!historyMode && r.status === 'waitlist' ? 'waitlist' : ''}">
+        ${escapeHtml(r.display_name || r.username)}
+        ${!historyMode && r.status === 'waitlist' ? '<span class="wait-tag">черга</span>' : ''}
+        ${!historyMode && isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${escapeHtml(r.username)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
+      </span>`
+    ).join('') || `<div class="ev-no-participants">${historyMode ? 'Учасників не було' : 'Поки ніхто не записався'}</div>`;
+
+    let voteLabel = cap && going.length >= cap ? 'Стати в чергу' : 'Записатись';
+    let voteClass = '';
+    let voteNote = '';
+
+    if (mine) {
+      voteClass = 'joined vote-locked';
+      if (mine.status === 'declined') {
+        voteLabel = 'Не йду ❌';
+        voteNote = 'Ваша відповідь уже зафіксована.';
+      } else if (mine.status === 'waitlist') {
+        voteLabel = 'Я у черзі ⏳';
+        voteNote = 'Ваша відповідь уже зафіксована.';
+      } else {
+        voteLabel = 'Я йду ✅';
+        voteNote = 'Ваша відповідь уже зафіксована.';
+      }
+    }
 
     const card = document.createElement('div');
     card.className = 'event-card';
     card.dataset.eventId = String(ev.id);
-    if (!historyMode && window.__deepLinkedEventId && String(ev.id) === String(window.__deepLinkedEventId)) card.classList.add('deep-linked-event');
 
-    const completedAt = ev.completed_at ? new Date(ev.completed_at).toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
-    const cover = ev.cover_url ? `<div class="event-cover-wrap"><img class="event-cover" src="${escapeHtml(ev.cover_url)}" alt="Обкладинка події ${escapeHtml(ev.title || '')}"></div>` : '';
+    if (!historyMode && window.__deepLinkedEventId &&
+        String(ev.id) === String(window.__deepLinkedEventId)) {
+      card.classList.add('deep-linked-event');
+    }
 
-    card.innerHTML = `<div class="ev-top-row"><div><div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · '+String(ev.event_time).slice(0,5) : ''}</div><div class="ev-title">${escapeHtml(ev.title || '')}</div>${eventGamesHtml(ev)}${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}${eventLocationHtml(ev)}${cover}${historyMode ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · '+escapeHtml(completedAt) : ''}</div>` : `<div class="ev-capacity">${cap ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}` : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`}</div>`}</div>${!historyMode && isAdmin ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}</div><div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div><div class="ev-participants">${participantHtml}</div>${!historyMode ? `<div class="ev-buttons"><button class="ev-rsvp-btn ${mine ? 'joined' : ''}" data-id="${ev.id}">${mine ? (mine.status === 'waitlist' ? 'Я у черзі ✓' : 'Я йду ✓') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись')}</button>${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}</div>${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}` : ''}`;
+    const completedAt = ev.completed_at
+      ? new Date(ev.completed_at).toLocaleString('uk-UA', {
+          day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+        })
+      : '';
+
+    const cover = ev.cover_url
+      ? `<div class="event-cover-wrap"><img class="event-cover" src="${escapeHtml(ev.cover_url)}" alt="Обкладинка події ${escapeHtml(ev.title || '')}"></div>`
+      : '';
+
+    card.innerHTML = `
+      <div class="ev-top-row">
+        <div>
+          <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</div>
+          <div class="ev-title">${escapeHtml(ev.title || '')}</div>
+          ${eventGamesHtml(ev)}
+          ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
+          ${eventLocationHtml(ev)}
+          ${cover}
+          ${historyMode
+            ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · ' + escapeHtml(completedAt) : ''}</div>`
+            : `<div class="ev-capacity">${cap
+                ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}`
+                : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`
+              }${declined.length ? ` · не йдуть ${declined.length}` : ''}</div>`
+          }
+        </div>
+        ${!historyMode && isAdmin
+          ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>`
+          : ''}
+      </div>
+
+      <div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div>
+      <div class="ev-participants">${participantHtml}</div>
+
+      ${!historyMode ? `
+        <div class="ev-buttons">
+          <button class="ev-rsvp-btn ${voteClass}" data-id="${ev.id}" ${mine ? 'disabled' : ''}>${voteLabel}</button>
+          ${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}
+        </div>
+        ${voteNote ? `<div class="ev-my-vote">${voteNote}</div>` : ''}
+        ${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}
+      ` : ''}
+    `;
 
     if (!historyMode) {
-      card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => toggleRsvp(ev.id, !!mine));
-      card.querySelector('.ev-admin-del')?.addEventListener('click', () => tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => { if (!ok) return; await fetch(`/api/events/${ev.id}`,{method:'DELETE',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({_tg_init_data:telegramInitData})}); loadEvents(); }));
+      if (!mine) {
+        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => toggleRsvp(ev.id));
+      }
+
+      card.querySelector('.ev-admin-del')?.addEventListener('click', () =>
+        tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => {
+          if (!ok) return;
+          await fetch(`/api/events/${ev.id}`, {
+            method:'DELETE',
+            headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+            body:JSON.stringify({_tg_init_data:telegramInitData})
+          });
+          loadEvents();
+        })
+      );
+
       card.querySelector('.ev-add-participant-btn')?.addEventListener('click', () => openAddParticipantModal(ev.id));
-      card.querySelector('.ev-start-session-btn')?.addEventListener('click', () => { const game = allGames.find(g => g.name === ev.game_name) || {name:ev.game_name,tags:'',description:''}; const q = quickToolsForGame(game)[0]; openGameTool(ev.game_name, q?.tool || 'counters', q?.mode || 'simple'); });
-      card.querySelectorAll('.pc-remove').forEach(btn => btn.addEventListener('click', async () => { await fetch(`/api/events/${btn.dataset.event}/rsvp/${encodeURIComponent(btn.dataset.username)}`, {method:'DELETE'}); loadEvents(); }));
+
+      card.querySelector('.ev-start-session-btn')?.addEventListener('click', () => {
+        const game = allGames.find(g => g.name === ev.game_name) || {
+          name:ev.game_name, tags:'', description:''
+        };
+        const q = quickToolsForGame(game)[0];
+        openGameTool(ev.game_name, q?.tool || 'counters', q?.mode || 'simple');
+      });
+
+      card.querySelectorAll('.pc-remove').forEach(btn =>
+        btn.addEventListener('click', async () => {
+          await fetch(`/api/events/${btn.dataset.event}/rsvp/${encodeURIComponent(btn.dataset.username)}`, {
+            method:'DELETE',
+            headers:telegramAuthHeaders()
+          });
+          loadEvents();
+        })
+      );
     }
+
     list.appendChild(card);
   });
 }
+
 
 function openEventModal() {
   document.getElementById('eventTitle').value = '';
@@ -7269,20 +7263,46 @@ async function submitEvent() {
   loadEvents();
 }
 
-async function toggleRsvp(eventId, currentlyJoined) {
-  if (!telegramUsername) { tg.showAlert('Щоб записатись, встанови собі @username у налаштуваннях Telegram.'); return; }
-  if (currentlyJoined) {
-    const res = await fetch(`/api/events/${eventId}/rsvp/${encodeURIComponent(telegramUsername)}`, {method:'DELETE'});
-    if (res.status === 409) { tg.showAlert('Подія вже завершена — список учасників зафіксовано.'); loadEvents(); return; }
-  } else {
-    const res = await fetch(`/api/events/${eventId}/rsvp`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:telegramUsername,display_name:username,telegram_user_id:telegramUserId})});
-    const data = await res.json().catch(()=>({}));
-    if (res.status === 409 || data.status === 'completed') { tg.showAlert('Ця подія вже завершена.'); loadEvents(); return; }
-    if (data.status === 'waitlist' && tg.showAlert) tg.showAlert('Вільних місць немає — тебе додано в чергу.');
+async function toggleRsvp(eventId) {
+  if (!telegramUserId || !telegramInitData) {
+    tg.showAlert('Відкрий Styloteka всередині Telegram, щоб записатися на подію.');
+    return;
   }
+
+  const res = await fetch(`/api/events/${eventId}/rsvp`, {
+    method:'POST',
+    headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+    body:JSON.stringify({})
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (res.status === 409 || data.status === 'completed') {
+    tg.showAlert('Ця подія вже завершена.');
+    loadEvents();
+    return;
+  }
+
+  if (!res.ok) {
+    tg.showAlert(data.error || 'Не вдалося зберегти відповідь.');
+    return;
+  }
+
+  if (data.status === 'already_voted') {
+    const status = data.vote_status || 'going';
+    if (status === 'declined') tg.showAlert('Ви вже проголосували: не йдете ❌');
+    else if (status === 'waitlist') tg.showAlert('Ви вже проголосували: ви в черзі ⏳');
+    else tg.showAlert('Ви вже проголосували: ви йдете ✅');
+  } else if (data.status === 'waitlist') {
+    tg.showAlert('Вільних місць немає — тебе додано в чергу.');
+  } else {
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+  }
+
   loadEvents();
   checkMyAchievements();
 }
+
 
 function initMasterclass() {
   const root = document.getElementById('view-masterclass');

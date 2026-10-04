@@ -11,7 +11,7 @@ import re
 from threading import Thread
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-from urllib.parse import quote, parse_qsl
+from urllib.parse import quote, parse_qsl, urlparse, unquote, parse_qs
 
 import requests
 from flask import Flask, request, jsonify, send_from_directory, send_file
@@ -56,6 +56,126 @@ ACTIVITY_REST = f"{SUPABASE_URL}/rest/v1/activity_feed"
 PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
 PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
+
+
+
+
+# ==================== GOOGLE MAPS LOCATION ====================
+_GOOGLE_MAP_HOSTS = {
+    "maps.app.goo.gl",
+    "goo.gl",
+    "google.com",
+    "www.google.com",
+    "maps.google.com",
+}
+
+
+def _is_google_maps_url(value):
+    value = str(value or "").strip()
+    if not value:
+        return False
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in ("http", "https") and parsed.hostname and parsed.hostname.lower() in _GOOGLE_MAP_HOSTS
+    except Exception:
+        return False
+
+
+def _extract_google_maps_coords(url):
+    url = str(url or "")
+    patterns = [
+        r"@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)",
+        r"!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            try:
+                return float(match.group(1)), float(match.group(2))
+            except Exception:
+                pass
+
+    try:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        for key in ("query", "q", "ll"):
+            raw = (params.get(key) or [""])[0]
+            match = re.search(r"(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)", raw)
+            if match:
+                return float(match.group(1)), float(match.group(2))
+    except Exception:
+        pass
+
+    return None, None
+
+
+def _google_maps_label_from_url(url):
+    try:
+        parsed = urlparse(url)
+        match = re.search(r"/place/([^/]+)", parsed.path or "")
+        if match:
+            label = unquote(match.group(1)).replace("+", " ").strip()
+            if label and label.lower() not in ("maps", "google maps"):
+                return label
+    except Exception:
+        pass
+    return ""
+
+
+def _normalize_event_location(raw_value):
+    raw = str(raw_value or "").strip()
+    if not raw:
+        return {
+            "location_text": "",
+            "location_map_url": "",
+            "location_lat": None,
+            "location_lng": None,
+        }
+
+    # Звичайна адреса / назва місця.
+    if not _is_google_maps_url(raw):
+        return {
+            "location_text": raw,
+            "location_map_url": f"https://www.google.com/maps/search/?api=1&query={quote(raw)}",
+            "location_lat": None,
+            "location_lng": None,
+        }
+
+    # Короткі maps.app.goo.gl посилання резолвимо тільки всередині Google-доменів.
+    final_url = raw
+    try:
+        response = requests.get(
+            raw,
+            allow_redirects=True,
+            timeout=12,
+            headers={"User-Agent": "Mozilla/5.0 Styloteka/1.0"},
+        )
+        if response.url and _is_google_maps_url(response.url):
+            final_url = response.url
+    except Exception:
+        logging.info("Google Maps short link не вдалося розгорнути; використовую оригінальний URL")
+
+    lat, lng = _extract_google_maps_coords(final_url)
+    label = _google_maps_label_from_url(final_url)
+
+    return {
+        "location_text": label or raw,
+        "location_map_url": final_url,
+        "location_lat": lat,
+        "location_lng": lng,
+    }
+
+
+def _event_google_maps_url(event):
+    saved = str((event or {}).get("location_map_url") or "").strip()
+    if saved:
+        return saved
+    location = str((event or {}).get("location_text") or "").strip()
+    if not location:
+        return ""
+    if _is_google_maps_url(location):
+        return location
+    return f"https://www.google.com/maps/search/?api=1&query={quote(location)}"
 
 
 # ==================== Робота зі сховищем Supabase ====================
@@ -533,7 +653,35 @@ def get_history():
 
 @app.route("/api/history", methods=["POST"])
 def add_history():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
     data = request.get_json(silent=True, force=True) or {}
+
+    raw_ids = data.get("player_telegram_ids") or []
+    if not isinstance(raw_ids, list):
+        raw_ids = []
+    player_ids = []
+    for value in raw_ids:
+        try:
+            pid = int(value)
+            if pid > 0 and pid not in player_ids:
+                player_ids.append(pid)
+        except Exception:
+            pass
+
+    winner_user_id = None
+    try:
+        if data.get("winner_telegram_user_id"):
+            winner_user_id = int(data.get("winner_telegram_user_id"))
+    except Exception:
+        winner_user_id = None
+
+    # Переможець із профілем мусить бути серед учасників цієї партії.
+    if winner_user_id and winner_user_id not in player_ids:
+        return jsonify({"error": "winner_must_be_player"}), 400
+
     payload = {
         "game_name": data.get("game_name", ""),
         "played_at": data.get("played_at"),
@@ -542,37 +690,66 @@ def add_history():
         "added_by": data.get("added_by", "невідомо"),
         "players": data.get("players", ""),
         "duration_minutes": int(data.get("duration_minutes") or 0),
+        "player_telegram_ids": player_ids,
+        "winner_telegram_user_id": winner_user_id,
+        "added_by_telegram_user_id": int(user.get("id")),
     }
+
     resp = requests.post(
         HISTORY_REST,
         headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
         json=payload,
         timeout=30,
     )
-    # До виконання SQL-міграції старі таблиці можуть не мати нових колонок.
-    # У такому випадку не ламаємо старий функціонал, а зберігаємо базові поля.
-    if resp.status_code >= 400 and ("players" in resp.text or "duration_minutes" in resp.text):
-        payload.pop("players", None)
-        payload.pop("duration_minutes", None)
+
+    # Старі таблиці не повинні ламати базовий функціонал до виконання міграції.
+    if resp.status_code >= 400 and any(
+        field in resp.text
+        for field in (
+            "players",
+            "duration_minutes",
+            "player_telegram_ids",
+            "winner_telegram_user_id",
+            "added_by_telegram_user_id",
+        )
+    ):
+        fallback = dict(payload)
+        for field in (
+            "players",
+            "duration_minutes",
+            "player_telegram_ids",
+            "winner_telegram_user_id",
+            "added_by_telegram_user_id",
+        ):
+            if field in resp.text:
+                fallback.pop(field, None)
         resp = requests.post(
             HISTORY_REST,
             headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
-            json=payload,
+            json=fallback,
             timeout=30,
         )
+
     resp.raise_for_status()
+
     history_title = f"Зіграно партію: {payload.get('game_name') or 'Настільна гра'}"
     details = []
     if payload.get("winner"):
         details.append(f"Переможець: {payload.get('winner')}")
     if payload.get("players"):
         details.append(f"Гравці: {payload.get('players')}")
+
     log_activity(
         "game_played",
         history_title,
         " · ".join(details),
         actor_name=payload.get("added_by") or "",
-        metadata={"game_name": payload.get("game_name"), "winner": payload.get("winner")},
+        metadata={
+            "game_name": payload.get("game_name"),
+            "winner": payload.get("winner"),
+            "player_telegram_ids": player_ids,
+            "winner_telegram_user_id": winner_user_id,
+        },
     )
     return jsonify({"status": "ok"})
 
@@ -858,68 +1035,157 @@ def _profile_norm(value):
     return re.sub(r"\s+", " ", str(value or "").strip().lstrip("@").lower())
 
 
-def _profile_history_stats(user):
+def _profile_history_stats(user, telegram_user_id=None):
     username = _profile_norm(user.get("username"))
     full_name = _profile_norm(" ".join(x for x in [user.get("first_name"), user.get("last_name")] if x))
     first_name = _profile_norm(user.get("first_name"))
     aliases = {x for x in [username, full_name, first_name] if x}
 
+    try:
+        telegram_user_id = int(telegram_user_id or user.get("id") or 0) or None
+    except Exception:
+        telegram_user_id = None
+
     games_played = 0
     wins = 0
     game_counts = {}
+
     try:
         resp = requests.get(
             HISTORY_REST,
             headers=HEADERS,
-            params={"select": "game_name,players,winner,played_at"},
+            params={
+                "select": "game_name,players,winner,played_at,player_telegram_ids,winner_telegram_user_id"
+            },
             timeout=30,
         )
+
+        # Сумісність зі старою схемою до міграції.
+        if resp.status_code >= 400 and (
+            "player_telegram_ids" in resp.text or "winner_telegram_user_id" in resp.text
+        ):
+            resp = requests.get(
+                HISTORY_REST,
+                headers=HEADERS,
+                params={"select": "game_name,players,winner,played_at"},
+                timeout=30,
+            )
+
         resp.raise_for_status()
+
         for row in resp.json():
-            raw_players = str(row.get("players") or "")
-            players = [_profile_norm(p) for p in re.split(r"[,;\n|]+", raw_players) if _profile_norm(p)]
-            winner = _profile_norm(row.get("winner"))
-            is_player = bool(aliases.intersection(players))
-            # Старі записи іноді містять лише переможця без списку гравців.
-            if not is_player and winner and winner in aliases:
-                is_player = True
+            ids = row.get("player_telegram_ids") or []
+            if not isinstance(ids, list):
+                ids = []
+            normalized_ids = set()
+            for value in ids:
+                try:
+                    normalized_ids.add(int(value))
+                except Exception:
+                    pass
+
+            winner_id = None
+            try:
+                if row.get("winner_telegram_user_id"):
+                    winner_id = int(row.get("winner_telegram_user_id"))
+            except Exception:
+                winner_id = None
+
+            # Нова схема: ID має пріоритет.
+            is_player = bool(telegram_user_id and telegram_user_id in normalized_ids)
+            is_winner = bool(telegram_user_id and winner_id == telegram_user_id)
+
+            # Legacy fallback для старих записів без Telegram ID.
+            if not normalized_ids:
+                raw_players = str(row.get("players") or "")
+                players = [
+                    _profile_norm(p)
+                    for p in re.split(r"[,;\n|]+", raw_players)
+                    if _profile_norm(p)
+                ]
+                winner = _profile_norm(row.get("winner"))
+                is_player = bool(aliases.intersection(players))
+                if not is_player and winner and winner in aliases:
+                    is_player = True
+                if not winner_id:
+                    is_winner = bool(winner and winner in aliases)
+
             if not is_player:
                 continue
+
             games_played += 1
             game = str(row.get("game_name") or "Без назви").strip() or "Без назви"
             game_counts[game] = game_counts.get(game, 0) + 1
-            if winner and winner in aliases:
+            if is_winner:
                 wins += 1
+
     except Exception:
         logging.exception("Не вдалося порахувати статистику профілю з історії")
 
-    # Відвідування зараховується тільки після автоматичного завершення події.
+    # Відвідування зараховується тільки після завершення події.
     events_attended = 0
-    if username:
-        try:
-            completed = requests.get(
-                EVENTS_REST,
+    try:
+        completed = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={"status": "eq.completed", "select": "id"},
+            timeout=20,
+        )
+        completed.raise_for_status()
+        completed_ids = {row.get("id") for row in completed.json()}
+
+        attended_event_ids = set()
+
+        if completed_ids and telegram_user_id:
+            rr = requests.get(
+                RSVPS_REST,
                 headers=HEADERS,
-                params={"status": "eq.completed", "select": "id"},
+                params={
+                    "telegram_user_id": f"eq.{telegram_user_id}",
+                    "status": "eq.going",
+                    "select": "id,event_id",
+                },
                 timeout=20,
             )
-            completed.raise_for_status()
-            completed_ids = {row.get("id") for row in completed.json()}
-            if completed_ids:
-                rr = requests.get(
-                    RSVPS_REST,
-                    headers=HEADERS,
-                    params={"username": f"eq.{username}", "status": "eq.going", "select": "id,event_id"},
-                    timeout=20,
+            if rr.ok:
+                attended_event_ids.update(
+                    row.get("event_id")
+                    for row in rr.json()
+                    if row.get("event_id") in completed_ids
                 )
-                rr.raise_for_status()
-                events_attended = sum(1 for row in rr.json() if row.get("event_id") in completed_ids)
-        except Exception:
-            logging.exception("Не вдалося порахувати завершені події профілю")
+
+        # Legacy RSVP fallback by username.
+        if completed_ids and username:
+            rr_old = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={
+                    "username": f"eq.{username}",
+                    "status": "eq.going",
+                    "select": "id,event_id,telegram_user_id",
+                },
+                timeout=20,
+            )
+            if rr_old.ok:
+                for row in rr_old.json():
+                    if row.get("event_id") not in completed_ids:
+                        continue
+                    # Якщо рядок уже належить іншому відомому Telegram ID — не беремо його.
+                    row_tid = row.get("telegram_user_id")
+                    if row_tid and telegram_user_id and str(row_tid) != str(telegram_user_id):
+                        continue
+                    attended_event_ids.add(row.get("event_id"))
+
+        events_attended = len(attended_event_ids)
+    except Exception:
+        logging.exception("Не вдалося порахувати завершені події профілю")
 
     favorite_game = "—"
     if game_counts:
-        favorite_game = sorted(game_counts.items(), key=lambda item: (-item[1], item[0].lower()))[0][0]
+        favorite_game = sorted(
+            game_counts.items(),
+            key=lambda item: (-item[1], item[0].lower())
+        )[0][0]
 
     return {
         "games_played": games_played,
@@ -961,7 +1227,7 @@ def _profile_tool_stats(telegram_user_id):
 
 
 def _merge_profile_stats(user, telegram_user_id):
-    stats = _profile_history_stats(user)
+    stats = _profile_history_stats(user, telegram_user_id)
     stats.update(_profile_tool_stats(telegram_user_id))
     return stats
 
@@ -2316,11 +2582,16 @@ def add_event():
         else None
     )
 
+    location = _normalize_event_location(data.get("location_text"))
+
     payload = {
         "title": data.get("title", ""),
         "event_date": data.get("event_date"),
         "event_time": data.get("event_time", ""),
-        "location_text": (data.get("location_text") or "").strip(),
+        "location_text": location["location_text"],
+        "location_map_url": location["location_map_url"],
+        "location_lat": location["location_lat"],
+        "location_lng": location["location_lng"],
         "game_name": primary_game,
         "game_names": game_names,
         "description": data.get("description", ""),
@@ -2338,7 +2609,7 @@ def add_event():
         timeout=30,
     )
 
-    if resp.status_code >= 400 and any(field in resp.text for field in ("max_participants", "cover_url", "game_names", "location_text")):
+    if resp.status_code >= 400 and any(field in resp.text for field in ("max_participants", "cover_url", "game_names", "location_text", "location_map_url", "location_lat", "location_lng")):
         fallback = dict(payload)
         if "max_participants" in resp.text:
             fallback.pop("max_participants", None)
@@ -2348,6 +2619,12 @@ def add_event():
             fallback.pop("game_names", None)
         if "location_text" in resp.text:
             fallback.pop("location_text", None)
+        if "location_map_url" in resp.text:
+            fallback.pop("location_map_url", None)
+        if "location_lat" in resp.text:
+            fallback.pop("location_lat", None)
+        if "location_lng" in resp.text:
+            fallback.pop("location_lng", None)
         resp = requests.post(
             EVENTS_REST,
             headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
@@ -2381,7 +2658,7 @@ def add_event():
         notify_lines.append(date_time)
     if game_names:
         notify_lines.append(f"🎲 Ігри: {', '.join(game_names)}")
-    location_text = (data.get("location_text") or "").strip()
+    location_text = location.get("location_text") or ""
     if location_text:
         notify_lines.append(f"📍 {location_text}")
 
@@ -2401,9 +2678,9 @@ def add_event():
         "event_created",
         f"Створено нову подію: {data.get('title', '')}",
         (
-            f"Ігри: {game_label}" + (f" · 📍 {(data.get('location_text') or '').strip()}" if (data.get("location_text") or "").strip() else "")
+            f"Ігри: {game_label}" + (f" · 📍 {location.get('location_text')}" if location.get("location_text") else "")
             if game_label
-            else ((data.get("location_text") or "").strip() or data.get("description", ""))
+            else (location.get("location_text") or data.get("description", ""))
         ),
         actor_name=data.get("created_by", ""),
         image_url=event_photo,
@@ -2437,26 +2714,46 @@ def delete_event(event_id):
 
 @app.route("/api/events/<int:event_id>/rsvp", methods=["POST"])
 def rsvp_event(event_id):
-    data = request.get_json(silent=True, force=True) or {}
-    username = (data.get("username") or "").lstrip("@").lower()
-    if not username:
-        return jsonify({"status": "no_username"}), 400
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    username = (user.get("username") or "").lstrip("@").lower() or f"tg_{user_id}"
+    display_name = " ".join(
+        x for x in [user.get("first_name"), user.get("last_name")] if x
+    ).strip() or user.get("username") or "Гравець"
+
+    existing = get_event_rsvp_response(event_id, username, user_id)
+    if existing:
+        return jsonify({
+            "status": "already_voted",
+            "vote_status": existing.get("status") or "going",
+        })
+
     try:
         status = add_event_rsvp(
             event_id,
             username,
-            data.get("display_name", username),
-            data.get("telegram_user_id"),
+            display_name,
+            user_id,
         )
     except ValueError as exc:
         if str(exc) == "event_closed":
             return jsonify({"status": "completed"}), 409
         return jsonify({"status": "not_found"}), 404
+
     return jsonify({"status": status})
 
 
 @app.route("/api/events/<int:event_id>/rsvp/<username>", methods=["DELETE"])
 def cancel_rsvp(event_id, username):
+    # Звичайний користувач після голосування не може міняти відповідь.
+    # Видалення RSVP лишається тільки інструментом адміністратора.
+    denied = _admin_required_response()
+    if denied:
+        return denied
+
     try:
         remove_event_rsvp(event_id, username)
     except ValueError as exc:
@@ -2646,16 +2943,16 @@ def telegram_api_post(method, payload):
         return False, str(exc)
 
 
-def telegram_keyboard_payload(event_id, location_text=""):
+def telegram_keyboard_payload(event_id, map_url=""):
     rows = [[
         {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
         {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
     ]]
-    location_text = (location_text or "").strip()
-    if location_text:
+    map_url = str(map_url or "").strip()
+    if map_url:
         rows.append([{
             "text": "📍 Google Maps",
-            "url": f"https://www.google.com/maps/search/?api=1&query={quote(location_text)}",
+            "url": map_url,
         }])
     if WEBAPP_URL:
         sep = "&" if "?" in WEBAPP_URL else "?"
@@ -2856,7 +3153,7 @@ def notify_groups_sync(event_id, photo_url=None):
             return
 
         text = format_group_event(event)
-        keyboard = telegram_keyboard_payload(event_id, event.get('location_text') or '')
+        keyboard = telegram_keyboard_payload(event_id, _event_google_maps_url(event))
         group_ids = get_active_group_ids_sync()
 
         if not group_ids:
@@ -2929,18 +3226,15 @@ def notify_subscribers_async(text, photo_url=None):
     ).start()
 
 
-def event_group_keyboard(event_id, location_text=""):
+def event_group_keyboard(event_id, map_url=""):
     rows = [[
         InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
         InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
     ]]
-    location_text = (location_text or "").strip()
-    if location_text:
+    map_url = str(map_url or "").strip()
+    if map_url:
         rows.append([
-            InlineKeyboardButton(
-                text="📍 Google Maps",
-                url=f"https://www.google.com/maps/search/?api=1&query={quote(location_text)}",
-            )
+            InlineKeyboardButton(text="📍 Google Maps", url=map_url)
         ])
     if WEBAPP_URL:
         sep = "&" if "?" in WEBAPP_URL else "?"
@@ -3013,7 +3307,7 @@ async def notify_groups(event_id, photo_url=None):
         if not event:
             return
         text = format_group_event(event)
-        keyboard = event_group_keyboard(event_id, event.get('location_text') or '')
+        keyboard = event_group_keyboard(event_id, _event_google_maps_url(event))
         for chat_id in await get_active_group_ids():
             try:
                 if photo_url:
@@ -3042,7 +3336,7 @@ async def refresh_group_event_message(callback: CallbackQuery, event_id: int):
         if not event or not callback.message:
             return
         text = format_group_event(event)
-        keyboard = event_group_keyboard(event_id, event.get('location_text') or '')
+        keyboard = event_group_keyboard(event_id, _event_google_maps_url(event))
         if callback.message.photo:
             await callback.message.edit_caption(caption=text[:1024], reply_markup=keyboard)
         else:
