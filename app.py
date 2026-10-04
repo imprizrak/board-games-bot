@@ -52,6 +52,8 @@ MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
 TELEGRAM_GROUPS_REST = f"{SUPABASE_URL}/rest/v1/telegram_groups"
 PROFILES_REST = f"{SUPABASE_URL}/rest/v1/profiles"
 ACTIVITY_REST = f"{SUPABASE_URL}/rest/v1/activity_feed"
+PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
+PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -797,18 +799,105 @@ def _profile_history_stats(user):
     }
 
 
+
+def _profile_tool_stats(telegram_user_id):
+    result = {
+        "first_player_wins": 0,
+        "dice_rolls": 0,
+        "dice_good_rolls": 0,
+        "dice_max_rolls": 0,
+        "dice_nat20s": 0,
+        "dice_best_good_streak": 0,
+    }
+    try:
+        resp = requests.get(
+            PROFILE_TOOL_STATS_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{int(telegram_user_id)}",
+                "select": "first_player_wins,dice_rolls,dice_good_rolls,dice_max_rolls,dice_nat20s,dice_best_good_streak",
+                "limit": 1,
+            },
+            timeout=20,
+        )
+        if resp.ok and resp.json():
+            row = resp.json()[0]
+            for key in result:
+                result[key] = int(row.get(key) or 0)
+    except Exception:
+        logging.exception("Не вдалося прочитати статистику інструментів профілю")
+    return result
+
+
+def _merge_profile_stats(user, telegram_user_id):
+    stats = _profile_history_stats(user)
+    stats.update(_profile_tool_stats(telegram_user_id))
+    return stats
+
+
 def _profile_achievements(stats):
     games = int(stats.get("games_played") or 0)
     wins = int(stats.get("wins") or 0)
     events = int(stats.get("events_attended") or 0)
     unique_games = int(stats.get("unique_games") or 0)
+    picker_wins = int(stats.get("first_player_wins") or 0)
+    dice_rolls = int(stats.get("dice_rolls") or 0)
+    dice_good = int(stats.get("dice_good_rolls") or 0)
+    dice_max = int(stats.get("dice_max_rolls") or 0)
+    nat20 = int(stats.get("dice_nat20s") or 0)
+    good_streak = int(stats.get("dice_best_good_streak") or 0)
+
+    def ach(aid, icon, name, description, progress, target, category):
+        return {
+            "id": aid,
+            "icon": icon,
+            "name": name,
+            "description": description,
+            "unlocked": int(progress) >= int(target),
+            "progress": int(progress),
+            "target": int(target),
+            "category": category,
+        }
+
     return [
-        {"id": "first_game", "icon": "🎲", "name": "Перша партія", "description": "Зіграно першу записану партію", "unlocked": games >= 1},
-        {"id": "first_win", "icon": "🏆", "name": "Перша перемога", "description": "Здобуто першу перемогу", "unlocked": wins >= 1},
-        {"id": "regular", "icon": "🔥", "name": "Завсідник", "description": "Зіграно 10 партій", "unlocked": games >= 10},
-        {"id": "explorer", "icon": "🧭", "name": "Дослідник", "description": "Зіграно у 5 різних ігор", "unlocked": unique_games >= 5},
-        {"id": "event_guest", "icon": "👥", "name": "У компанії", "description": "Відвідано 5 подій", "unlocked": events >= 5},
-        {"id": "champion", "icon": "👑", "name": "Чемпіон", "description": "Здобуто 10 перемог", "unlocked": wins >= 10},
+        # Партії
+        ach("first_game", "🎲", "Перша партія", "Зіграно першу записану партію", games, 1, "games"),
+        ach("regular", "🔥", "Завсідник", "Зіграно 10 партій", games, 10, "games"),
+        ach("game_night_25", "🌙", "Ігрові ночі", "Зіграно 25 партій", games, 25, "games"),
+        ach("game_night_50", "🎮", "Серйозний гравець", "Зіграно 50 партій", games, 50, "games"),
+        ach("game_night_100", "💯", "Сотня партій", "Зіграно 100 партій", games, 100, "games"),
+
+        # Перемоги
+        ach("first_win", "🏆", "Перша перемога", "Здобуто першу перемогу", wins, 1, "wins"),
+        ach("winner_5", "🥉", "Смак перемоги", "Здобуто 5 перемог", wins, 5, "wins"),
+        ach("champion", "👑", "Чемпіон", "Здобуто 10 перемог", wins, 10, "wins"),
+        ach("winner_25", "🥈", "Мисливець за перемогами", "Здобуто 25 перемог", wins, 25, "wins"),
+        ach("winner_50", "🥇", "Домінатор столу", "Здобуто 50 перемог", wins, 50, "wins"),
+
+        # Різні ігри / події
+        ach("explorer", "🧭", "Дослідник", "Зіграно у 5 різних настільних ігор", unique_games, 5, "collection"),
+        ach("explorer_10", "🗺", "Колекціонер досвіду", "Зіграно у 10 різних ігор", unique_games, 10, "collection"),
+        ach("explorer_20", "🌍", "Настільний мандрівник", "Зіграно у 20 різних ігор", unique_games, 20, "collection"),
+        ach("event_guest", "👥", "У компанії", "Відвідано 5 завершених подій", events, 5, "events"),
+        ach("event_regular_10", "🎉", "Свій у клубі", "Відвідано 10 завершених подій", events, 10, "events"),
+        ach("event_regular_25", "🏛", "Серце клубу", "Відвідано 25 завершених подій", events, 25, "events"),
+
+        # «Хто перший»
+        ach("picker_3", "☝️", "Перший серед рівних", "3 рази перемогти у «Хто перший»", picker_wins, 3, "picker"),
+        ach("picker_10", "⚡", "Швидкий старт", "10 разів перемогти у «Хто перший»", picker_wins, 10, "picker"),
+        ach("picker_25", "🧲", "Магніт першого ходу", "25 разів перемогти у «Хто перший»", picker_wins, 25, "picker"),
+        ach("picker_50", "🚀", "Завжди перший", "50 разів перемогти у «Хто перший»", picker_wins, 50, "picker"),
+
+        # Кубики
+        ach("dice_10", "🎲", "Кидай ще", "Зроблено 10 кидків кубика", dice_rolls, 10, "dice"),
+        ach("dice_good_10", "🍀", "Щаслива рука", "10 разів випало не менше 75% від максимуму кубика", dice_good, 10, "dice"),
+        ach("dice_good_50", "✨", "Улюбленець фортуни", "50 вдалих кидків (75%+ від максимуму)", dice_good, 50, "dice"),
+        ach("dice_good_100", "🌟", "Фортуна на твоєму боці", "100 вдалих кидків (75%+ від максимуму)", dice_good, 100, "dice"),
+        ach("dice_max_1", "💥", "Максимум!", "Хоча б раз викинути максимальне значення", dice_max, 1, "dice"),
+        ach("dice_max_10", "🔥", "Максималіст", "10 разів викинути максимальне значення", dice_max, 10, "dice"),
+        ach("dice_streak_3", "🎯", "Гаряча серія", "3 вдалі кидки поспіль", good_streak, 3, "dice"),
+        ach("nat20_1", "🐉", "Критичний успіх", "Викинути натуральну 20 на d20", nat20, 1, "dice"),
+        ach("nat20_5", "⚔️", "Критична легенда", "Викинути натуральну 20 на d20 п'ять разів", nat20, 5, "dice"),
     ]
 
 
@@ -843,7 +932,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,earned_achievements,achievements_initialized",
+                "select": "telegram_user_id,earned_achievements,achievements_initialized,achievement_catalog_version",
                 "limit": 1,
             },
             timeout=20,
@@ -855,13 +944,15 @@ def get_my_profile():
 
     previous_earned = set()
     achievements_initialized = False
+    achievement_catalog_version = 0
     if existing_profile:
         raw_earned = existing_profile.get("earned_achievements") or []
         if isinstance(raw_earned, list):
             previous_earned = {str(x) for x in raw_earned if x}
         achievements_initialized = bool(existing_profile.get("achievements_initialized"))
+        achievement_catalog_version = int(existing_profile.get("achievement_catalog_version") or 0)
 
-    stats = _profile_history_stats(user)
+    stats = _merge_profile_stats(user, user_id)
     xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
     xp_per_level = 250
     level = max(1, xp // xp_per_level + 1)
@@ -873,9 +964,11 @@ def get_my_profile():
 
     # Після першого запуску нової системи старі досягнення просто фіксуємо,
     # щоб не засипати групу повідомленнями про історичні нагороди.
-    if achievements_initialized:
+    if achievements_initialized and achievement_catalog_version >= 2:
         newly_earned_ids = currently_unlocked - previous_earned
     else:
+        # Перший запуск системи або перехід на новий каталог:
+        # вже виконані старі умови фіксуємо без хвилі старих повідомлень.
         newly_earned_ids = set()
 
     earned_ids = previous_earned | currently_unlocked
@@ -892,6 +985,7 @@ def get_my_profile():
         "xp": xp,
         "earned_achievements": sorted(earned_ids),
         "achievements_initialized": True,
+        "achievement_catalog_version": 2,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -941,6 +1035,184 @@ def get_my_profile():
     })
 
 
+
+
+def _refresh_profile_achievements_by_id(telegram_user_id, announce=True):
+    """Перераховує досягнення конкретного профілю за Telegram ID."""
+    try:
+        pid = int(telegram_user_id)
+    except Exception:
+        return []
+
+    try:
+        resp = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{pid}",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,achievements_initialized,achievement_catalog_version",
+                "limit": 1,
+            },
+            timeout=20,
+        )
+        if not resp.ok or not resp.json():
+            return []
+        profile = resp.json()[0]
+    except Exception:
+        logging.exception("Не вдалося прочитати профіль для перерахунку досягнень")
+        return []
+
+    pseudo_user = {
+        "id": pid,
+        "username": profile.get("username") or "",
+        "first_name": profile.get("display_name") or profile.get("username") or "Гравець",
+        "last_name": "",
+    }
+    stats = _merge_profile_stats(pseudo_user, pid)
+    achievements = _profile_achievements(stats)
+    current_ids = {a["id"] for a in achievements if a.get("unlocked")}
+    old_ids = {str(x) for x in (profile.get("earned_achievements") or []) if x}
+    initialized = bool(profile.get("achievements_initialized"))
+    catalog_version = int(profile.get("achievement_catalog_version") or 0)
+
+    if announce and initialized and catalog_version >= 2:
+        new_ids = current_ids - old_ids
+    else:
+        new_ids = set()
+
+    earned_ids = old_ids | current_ids
+
+    history_xp = (
+        int(stats.get("games_played") or 0) * 20
+        + int(stats.get("wins") or 0) * 10
+        + int(stats.get("events_attended") or 0) * 25
+        + int(stats.get("unique_games") or 0) * 5
+    )
+    level = max(1, history_xp // 250 + 1)
+
+    try:
+        requests.patch(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"telegram_user_id": f"eq.{pid}"},
+            json={
+                "xp": history_xp,
+                "earned_achievements": sorted(earned_ids),
+                "achievements_initialized": True,
+                "achievement_catalog_version": 2,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            timeout=20,
+        )
+    except Exception:
+        logging.exception("Не вдалося зберегти перераховані досягнення")
+
+    if new_ids:
+        by_id = {a["id"]: a for a in achievements}
+        display_name = profile.get("display_name") or profile.get("username") or "Гравець"
+        for aid in sorted(new_ids):
+            achievement = by_id.get(aid)
+            if not achievement:
+                continue
+            try:
+                log_activity(
+                    "achievement_unlocked",
+                    f"{display_name} отримав(ла) досягнення «{achievement.get('name') or 'Досягнення'}»",
+                    achievement.get("description") or "",
+                    actor_name=display_name,
+                    image_url=profile.get("photo_url") or None,
+                    metadata={"achievement_id": aid, "level": level, "xp": history_xp},
+                )
+                notify_achievement_groups_async(display_name, achievement, level, history_xp)
+            except Exception:
+                logging.exception("Не вдалося опублікувати нове досягнення")
+
+    return [a for a in achievements if a.get("id") in new_ids]
+
+
+@app.route("/api/profile/tool-event", methods=["POST"])
+def record_profile_tool_event():
+    recorder = _request_telegram_user()
+    if not recorder:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    event_type = str(data.get("event_type") or "").strip()
+    if event_type not in {"dice_roll", "first_player_win"}:
+        return jsonify({"error": "unsupported_event_type"}), 400
+
+    try:
+        recorder_id = int(recorder.get("id"))
+        target_id = int(data.get("target_telegram_user_id") or recorder_id)
+    except Exception:
+        return jsonify({"error": "invalid_telegram_user_id"}), 400
+
+    # Цільовий ID мусить належати реальному профілю в нашому клубі.
+    try:
+        check = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={"telegram_user_id": f"eq.{target_id}", "select": "telegram_user_id", "limit": 1},
+            timeout=15,
+        )
+        if not check.ok or not check.json():
+            return jsonify({"error": "profile_not_found"}), 404
+    except Exception:
+        return jsonify({"error": "profile_lookup_failed"}), 503
+
+    # Перед новою дією тихо переводимо старий профіль на каталог v2.
+    # Завдяки цьому старі новододані нагороди не засипають групу повідомленнями,
+    # але нагорода, отримана саме цією новою дією, буде оголошена.
+    _refresh_profile_achievements_by_id(target_id, announce=False)
+
+    value = data.get("value")
+    sides = data.get("sides")
+    if event_type == "dice_roll":
+        try:
+            value = int(value)
+            sides = int(sides)
+        except Exception:
+            return jsonify({"error": "invalid_dice_roll"}), 400
+        if sides not in {4, 6, 8, 10, 12, 20, 100} or value < 1 or value > sides:
+            return jsonify({"error": "invalid_dice_roll"}), 400
+    else:
+        value = None
+        sides = None
+
+    metadata = {}
+    if event_type == "first_player_win":
+        try:
+            metadata["participants"] = max(2, min(20, int(data.get("participants") or 2)))
+        except Exception:
+            metadata["participants"] = 2
+
+    try:
+        rpc = requests.post(
+            PROFILE_TOOL_EVENT_RPC,
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={
+                "p_telegram_user_id": target_id,
+                "p_recorded_by_telegram_user_id": recorder_id,
+                "p_event_type": event_type,
+                "p_value": value,
+                "p_sides": sides,
+                "p_metadata": metadata,
+            },
+            timeout=20,
+        )
+        if not rpc.ok:
+            logging.warning("record_profile_tool_event RPC failed: %s", rpc.text[:500])
+            return jsonify({"error": "tool_event_store_failed"}), 500
+    except Exception:
+        logging.exception("Не вдалося записати подію інструмента")
+        return jsonify({"error": "tool_event_store_failed"}), 500
+
+    newly = _refresh_profile_achievements_by_id(target_id, announce=True)
+    return jsonify({
+        "status": "ok",
+        "target_telegram_user_id": target_id,
+        "new_achievements": newly,
+    })
 
 
 # ==================== АКТИВНІСТЬ КЛУБУ ====================
@@ -1107,7 +1379,7 @@ def _refresh_existing_profile_after_event(rsvp):
         "first_name": profile.get("display_name") or rsvp.get("display_name") or username,
         "last_name": "",
     }
-    stats = _profile_history_stats(pseudo_user)
+    stats = _merge_profile_stats(pseudo_user, profile.get('telegram_user_id'))
     xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
     level = max(1, xp // 250 + 1)
 

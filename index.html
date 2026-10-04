@@ -2582,6 +2582,97 @@
     .game-detail-stats { grid-template-columns: 1fr 1fr 1fr; }
   }
 
+
+  /* ==================== PROFILE-BOUND TOOL ACHIEVEMENTS ==================== */
+  .tool-profile-box {
+    margin: 0 12px 12px;
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card-bg);
+  }
+  .tool-profile-label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .25px;
+  }
+  .tool-profile-select {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+  }
+  .tool-profile-note {
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .picker-profiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 0 14px 10px;
+  }
+  .picker-profile-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .picker-profile-chip input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+  }
+  .picker-profile-help {
+    margin: 0 16px 10px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.45;
+    text-align: center;
+  }
+  .touch-label {
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 7px);
+    transform: translateX(-50%);
+    max-width: 110px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(5,11,20,.9);
+    border: 1px solid rgba(255,255,255,.16);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  .achievement-progress-text {
+    margin-top: 4px;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 750;
+  }
+
 </style>
 </head>
 <body>
@@ -2762,6 +2853,11 @@
 
   <!-- Кубики -->
   <div class="tool-panel active" id="panel-dice">
+    <div class="tool-profile-box">
+      <label class="tool-profile-label" for="diceProfileSelect">Хто кидає кубик</label>
+      <select class="tool-profile-select" id="diceProfileSelect"></select>
+      <div class="tool-profile-note">Результат прив’язується до Telegram ID обраного профілю. Якщо передаєте телефон іншому гравцю — оберіть його тут.</div>
+    </div>
     <div class="dice-buttons">
       <button class="die-btn active" data-sides="4">d4</button>
       <button class="die-btn" data-sides="6">d6</button>
@@ -2784,6 +2880,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <p class="roll-sub picker-intro" style="padding:0 16px; margin-top:0;">Кожен гравець тримає палець на екрані одночасно, поки не з'явиться переможець.</p>
+    <div class="picker-profiles" id="pickerProfiles"></div>
+    <div class="picker-profile-help">Для досягнень познач учасників. Пальці прив’язуються до профілів у порядку появи на екрані; ім’я одразу видно під кружечком.</div>
     <div class="picker-area" id="pickerArea">
       <div class="picker-hint" id="pickerHint">Покладіть пальці на екран<br>(мінімум 2)</div>
     </div>
@@ -4208,6 +4306,130 @@ function resetInitiative() {
 renderInitiative();
 
 
+
+/* ==================== НАДІЙНА ПРИВ'ЯЗКА ІНСТРУМЕНТІВ ДО ПРОФІЛІВ ==================== */
+let toolProfilesCache = [];
+let currentToolProfileId = null;
+
+function toolProfileName(p) {
+  return p?.display_name || p?.username || 'Гравець';
+}
+
+async function ensureToolProfiles(force = false) {
+  if (toolProfilesCache.length && !force) return toolProfilesCache;
+  try {
+    // Спершу створюємо/оновлюємо власний профіль за перевіреним Telegram initData.
+    const meRes = await fetch('/api/profile/me', { headers: telegramAuthHeaders() });
+    const me = meRes.ok ? await meRes.json() : null;
+    currentToolProfileId = me?.telegram_user_id ? String(me.telegram_user_id) : null;
+
+    const res = await fetch('/api/profiles/public');
+    toolProfilesCache = res.ok ? await res.json() : [];
+    if (me?.telegram_user_id && !toolProfilesCache.some(p => String(p.telegram_user_id) === String(me.telegram_user_id))) {
+      toolProfilesCache.unshift(me);
+    }
+    populateDiceProfiles();
+    renderPickerProfiles();
+  } catch (e) {
+    console.warn('Не вдалося завантажити профілі для інструментів', e);
+  }
+  return toolProfilesCache;
+}
+
+function populateDiceProfiles() {
+  const select = document.getElementById('diceProfileSelect');
+  if (!select) return;
+  const previous = select.value || currentToolProfileId || '';
+  select.innerHTML = '';
+  toolProfilesCache.forEach(p => {
+    const option = document.createElement('option');
+    option.value = String(p.telegram_user_id || '');
+    option.textContent = toolProfileName(p);
+    select.appendChild(option);
+  });
+  const wanted = toolProfilesCache.some(p => String(p.telegram_user_id) === previous)
+    ? previous
+    : (currentToolProfileId || String(toolProfilesCache[0]?.telegram_user_id || ''));
+  if (wanted) select.value = wanted;
+}
+
+function renderPickerProfiles() {
+  const root = document.getElementById('pickerProfiles');
+  if (!root) return;
+  if (!toolProfilesCache.length) {
+    root.innerHTML = '<span class="tool-profile-note">Профілі ще не створені.</span>';
+    return;
+  }
+  const previouslyChecked = new Set(
+    Array.from(root.querySelectorAll('input:checked')).map(i => i.value)
+  );
+  root.innerHTML = toolProfilesCache.map((p, index) => {
+    const id = String(p.telegram_user_id || '');
+    const checked = previouslyChecked.size
+      ? previouslyChecked.has(id)
+      : (id === currentToolProfileId || index < 2);
+    return `<label class="picker-profile-chip">
+      <input type="checkbox" value="${escapeHtml(id)}" ${checked ? 'checked' : ''}>
+      <span>${escapeHtml(toolProfileName(p))}</span>
+    </label>`;
+  }).join('');
+  root.querySelectorAll('input').forEach(input => input.addEventListener('change', () => {
+    if (pickerLocked || pickerSpinning || Object.keys(activeTouches).length) resetPicker();
+  }));
+}
+
+function selectedPickerProfiles() {
+  const ids = new Set(
+    Array.from(document.querySelectorAll('#pickerProfiles input:checked')).map(i => String(i.value))
+  );
+  return toolProfilesCache.filter(p => ids.has(String(p.telegram_user_id)));
+}
+
+function nextPickerProfileForTouch() {
+  const selected = selectedPickerProfiles();
+  const used = new Set(
+    Object.values(activeTouches)
+      .map(t => t.telegramUserId ? String(t.telegramUserId) : '')
+      .filter(Boolean)
+  );
+  return selected.find(p => !used.has(String(p.telegram_user_id))) || null;
+}
+
+async function recordProfileToolEvent(eventType, targetTelegramUserId, extra = {}) {
+  const target = targetTelegramUserId ? Number(targetTelegramUserId) : 0;
+  if (!target) return null;
+  try {
+    const res = await fetch('/api/profile/tool-event', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({
+        event_type: eventType,
+        target_telegram_user_id: target,
+        ...extra,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.warn('Tool event not recorded', data);
+      return null;
+    }
+    const unlocked = Array.isArray(data.new_achievements) ? data.new_achievements : [];
+    if (unlocked.length && tg?.HapticFeedback) {
+      tg.HapticFeedback.notificationOccurred('success');
+    }
+    // Якщо досягнення отримав поточний користувач — оновлюємо його профіль.
+    if (currentToolProfileId && String(target) === String(currentToolProfileId)) {
+      loadMyProfile();
+    }
+    return data;
+  } catch (e) {
+    console.warn('Tool event request failed', e);
+    return null;
+  }
+}
+
+setTimeout(() => ensureToolProfiles(), 0);
+
 /* ==================== КУБИКИ ==================== */
 let selectedSides = 4;
 const diceHistory = [];
@@ -4258,6 +4480,11 @@ function rollDice() {
       document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
 
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
+      const diceActorId = document.getElementById('diceProfileSelect')?.value || currentToolProfileId;
+      recordProfileToolEvent('dice_roll', diceActorId, {
+        sides: selectedSides,
+        value: finalResult
+      });
       isRolling = false;
     }
   }, tickEvery);
@@ -4349,7 +4576,8 @@ function renderTouches() {
     dot.style.top = t.y + "px";
     dot.style.setProperty("--dot-color", t.color);
     dot.dataset.id = id;
-    dot.innerHTML = '<div class="dot-ripple"></div><div class="dot-ripple ripple-2"></div><div class="dot-fill"></div>';
+    dot.innerHTML = '<div class="dot-ripple"></div><div class="dot-ripple ripple-2"></div><div class="dot-fill"></div>' +
+      (t.profileName ? `<div class="touch-label">${escapeHtml(t.profileName)}</div>` : '');
     pickerArea.appendChild(dot);
   });
   pickerHint.style.display = ids.length === 0 ? "block" : "none";
@@ -4434,7 +4662,9 @@ function finishPick(winnerId) {
     el.classList.remove("spin-highlight", "pulsing");
     if (el.dataset.id === winnerId) {
       el.classList.add("winner");
-      el.innerHTML = '<div class="dot-fill"></div><svg style="position:absolute;" viewBox="0 0 24 24" fill="#fff" stroke="none" width="30" height="30"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17.3l-5.8 3.2 1.1-6.5-4.8-4.6 6.6-.9L12 2.5Z"/></svg>';
+      const winnerTouch = activeTouches[winnerId] || {};
+      el.innerHTML = '<div class="dot-fill"></div><svg style="position:absolute;" viewBox="0 0 24 24" fill="#fff" stroke="none" width="30" height="30"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17.3l-5.8 3.2 1.1-6.5-4.8-4.6 6.6-.9L12 2.5Z"/></svg>' +
+        (winnerTouch.profileName ? `<div class="touch-label">${escapeHtml(winnerTouch.profileName)}</div>` : '');
     } else {
       el.classList.add("fading");
     }
@@ -4443,6 +4673,13 @@ function finishPick(winnerId) {
   pickerStatus.textContent = "Хід має цей гравець! Торкніться ще раз для нового вибору.";
   if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
   playPickerWinner();
+
+  const winnerTouch = activeTouches[winnerId] || {};
+  if (winnerTouch.telegramUserId) {
+    recordProfileToolEvent('first_player_win', winnerTouch.telegramUserId, {
+      participants: Object.keys(activeTouches).length
+    });
+  }
 
   // Якщо пальці вже прибрані (або приберуться найближчим часом), поле саме
   // повернеться в стан очікування, готове до нового вибору.
@@ -4481,6 +4718,9 @@ pickerArea.addEventListener("touchstart", (e) => {
   for (const t of e.changedTouches) {
     const pos = getRelativePos(t);
     pos.color = pickerColors[colorCursor % pickerColors.length];
+    const boundProfile = nextPickerProfileForTouch();
+    pos.telegramUserId = boundProfile?.telegram_user_id || null;
+    pos.profileName = boundProfile ? toolProfileName(boundProfile) : '';
     colorCursor++;
     activeTouches[t.identifier] = pos;
   }
@@ -4496,6 +4736,8 @@ pickerArea.addEventListener("touchmove", (e) => {
     if (activeTouches[t.identifier]) {
       const pos = getRelativePos(t);
       pos.color = activeTouches[t.identifier].color;
+      pos.telegramUserId = activeTouches[t.identifier].telegramUserId || null;
+      pos.profileName = activeTouches[t.identifier].profileName || '';
       activeTouches[t.identifier] = pos;
     }
   }
@@ -4534,6 +4776,9 @@ pickerArea.addEventListener("mousedown", (e) => {
   const rect = pickerArea.getBoundingClientRect();
   const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
   pos.color = pickerColors[colorCursor % pickerColors.length];
+  const boundProfile = nextPickerProfileForTouch();
+  pos.telegramUserId = boundProfile?.telegram_user_id || null;
+  pos.profileName = boundProfile ? toolProfileName(boundProfile) : '';
   colorCursor++;
   activeTouches["mouse"] = pos;
   renderTouches();
@@ -5483,6 +5728,9 @@ async function loadCommunity() {
       fetch('/api/activity?limit=50')
     ]);
     communityMembersCache = membersRes.ok ? await membersRes.json() : [];
+    toolProfilesCache = communityMembersCache.slice();
+    populateDiceProfiles();
+    renderPickerProfiles();
     homeActivityCache = activityRes.ok ? await activityRes.json() : [];
     renderCommunityMembers(communityMembersCache);
     renderActivityList('communityActivity', homeActivityCache);
@@ -6365,6 +6613,8 @@ function renderMyProfile(data) {
       <div class="profile-stat"><strong>${Number(stats.wins) || 0}</strong><span>перемог</span></div>
       <div class="profile-stat"><strong>${Number(stats.events_attended) || 0}</strong><span>відвіданих подій</span></div>
       <div class="profile-stat"><strong class="profile-favorite">${escapeHtml(fav)}</strong><span>найчастіша гра</span></div>
+      <div class="profile-stat"><strong>${Number(stats.first_player_wins) || 0}</strong><span>перемог «Хто перший»</span></div>
+      <div class="profile-stat"><strong>${Number(stats.dice_good_rolls) || 0}</strong><span>вдалих кидків</span></div>
     </div>
 
     <div class="profile-section-title">Досягнення</div>
@@ -6372,7 +6622,11 @@ function renderMyProfile(data) {
       ${achievements.map(a => `
         <div class="achievement-card ${a.unlocked ? 'unlocked' : 'locked'}">
           <div class="achievement-icon">${a.unlocked ? escapeHtml(a.icon || '🏆') : '🔒'}</div>
-          <div><div class="achievement-name">${escapeHtml(a.name || '')}</div><div class="achievement-desc">${escapeHtml(a.description || '')}</div></div>
+          <div>
+            <div class="achievement-name">${escapeHtml(a.name || '')}</div>
+            <div class="achievement-desc">${escapeHtml(a.description || '')}</div>
+            ${!a.unlocked && Number(a.target) > 0 ? `<div class="achievement-progress-text">${Math.min(Number(a.progress) || 0, Number(a.target))} / ${Number(a.target)}</div>` : ''}
+          </div>
         </div>`).join('')}
     </div>
     <div class="profile-note">Профіль прив’язаний до твого Telegram ID, тому зміна @username не створить новий акаунт.</div>
