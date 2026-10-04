@@ -1844,6 +1844,118 @@ def get_event_snapshot(event_id):
     return event
 
 
+
+def get_event_rsvp_response(event_id, username, telegram_user_id=None):
+    """Повертає вже збережену відповідь користувача на подію або None."""
+    username = (username or "").lstrip("@").lower()
+
+    # Надійна прив'язка — Telegram user_id.
+    if telegram_user_id:
+        try:
+            resp = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={
+                    "event_id": f"eq.{int(event_id)}",
+                    "telegram_user_id": f"eq.{int(telegram_user_id)}",
+                    "select": "id,status,username,display_name,telegram_user_id",
+                    "limit": 1,
+                },
+                timeout=20,
+            )
+            if resp.ok and resp.json():
+                return resp.json()[0]
+        except Exception:
+            logging.exception("Не вдалося перевірити RSVP за Telegram user_id")
+
+    # Сумісність зі старими RSVP, де telegram_user_id ще не був записаний.
+    if username:
+        try:
+            resp = requests.get(
+                RSVPS_REST,
+                headers=HEADERS,
+                params={
+                    "event_id": f"eq.{int(event_id)}",
+                    "username": f"eq.{username}",
+                    "select": "id,status,username,display_name,telegram_user_id",
+                    "limit": 1,
+                },
+                timeout=20,
+            )
+            if resp.ok and resp.json():
+                return resp.json()[0]
+        except Exception:
+            logging.exception("Не вдалося перевірити RSVP за username")
+
+    return None
+
+
+def add_event_decline(event_id, username, display_name, telegram_user_id=None):
+    """Зберігає відповідь «Не йду» замість видалення RSVP."""
+    username = (username or "").lstrip("@").lower()
+    if not username:
+        raise ValueError("username is required")
+
+    eresp = requests.get(
+        EVENTS_REST,
+        headers=HEADERS,
+        params={"id": f"eq.{event_id}", "select": "id,status", "limit": 1},
+        timeout=20,
+    )
+    eresp.raise_for_status()
+    rows = eresp.json()
+    if not rows:
+        raise ValueError("event_not_found")
+    if (rows[0].get("status") or "scheduled") != "scheduled":
+        raise ValueError("event_closed")
+
+    payload = {
+        "event_id": int(event_id),
+        "username": username,
+        "display_name": display_name or username,
+        "status": "declined",
+        "telegram_user_id": int(telegram_user_id) if telegram_user_id else None,
+    }
+
+    resp = requests.post(
+        RSVPS_REST,
+        headers={
+            **HEADERS,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        params={"on_conflict": "event_id,username"},
+        json=payload,
+        timeout=30,
+    )
+
+    # Сумісність, якщо поле telegram_user_id ще не додано в старій базі.
+    if resp.status_code >= 400 and "telegram_user_id" in resp.text:
+        payload.pop("telegram_user_id", None)
+        resp = requests.post(
+            RSVPS_REST,
+            headers={
+                **HEADERS,
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            params={"on_conflict": "event_id,username"},
+            json=payload,
+            timeout=30,
+        )
+
+    resp.raise_for_status()
+    return "declined"
+
+
+def rsvp_locked_message(status):
+    status = (status or "going").strip().lower()
+    if status == "declined":
+        return "Ви вже проголосували: не йдете ❌"
+    if status == "waitlist":
+        return "Ви вже проголосували: ви в черзі ⏳"
+    return "Ви вже проголосували: ви йдете ✅"
+
 def add_event_rsvp(event_id, username, display_name, telegram_user_id=None):
     """Записує користувача на подію. Повертає going або waitlist."""
     username = (username or "").lstrip("@").lower()
@@ -2740,6 +2852,7 @@ def format_group_event(event):
         places = f"👥 Учасників: {len(going)}"
     if waiting:
         places += f" · черга: {len(waiting)}"
+    places += f" · відповіли: {len(rsvps)}"
     lines.append(places)
     desc = (event.get("description") or "").strip()
     if desc:
@@ -2963,12 +3076,39 @@ async def callback_event_go(callback: CallbackQuery):
     try:
         event_id = int(callback.data.split(":", 1)[1])
         username, display_name = telegram_rsvp_identity(callback.from_user)
-        status = add_event_rsvp(event_id, username, display_name, callback.from_user.id)
+
+        existing = get_event_rsvp_response(
+            event_id,
+            username,
+            callback.from_user.id,
+        )
+        if existing:
+            await callback.answer(
+                rsvp_locked_message(existing.get("status")),
+                show_alert=True,
+            )
+            return
+
+        status = add_event_rsvp(
+            event_id,
+            username,
+            display_name,
+            callback.from_user.id,
+        )
+
         if status == "waitlist":
-            await callback.answer("Місць немає — тебе додано в чергу ⏳", show_alert=True)
+            await callback.answer(
+                "Відповідь збережена. Місць немає — ви в черзі ⏳",
+                show_alert=True,
+            )
         else:
-            await callback.answer("Ти записаний ✅")
+            await callback.answer(
+                "Відповідь збережена: ви йдете ✅",
+                show_alert=True,
+            )
+
         await refresh_group_event_message(callback, event_id)
+
     except ValueError as exc:
         if str(exc) == "event_closed":
             await callback.answer("Ця подія вже завершена ✅", show_alert=True)
@@ -2976,26 +3116,56 @@ async def callback_event_go(callback: CallbackQuery):
             await callback.answer("Подію вже не знайдено.", show_alert=True)
     except Exception:
         logging.exception("Помилка RSVP із Telegram-групи")
-        await callback.answer("Не вдалося записатися. Спробуй ще раз.", show_alert=True)
-
+        await callback.answer(
+            "Не вдалося записати відповідь. Спробуйте ще раз.",
+            show_alert=True,
+        )
 
 @dp.callback_query(F.data.startswith("ev_no:"))
 async def callback_event_no(callback: CallbackQuery):
     try:
         event_id = int(callback.data.split(":", 1)[1])
-        username, _ = telegram_rsvp_identity(callback.from_user)
-        existed = remove_event_rsvp(event_id, username)
-        await callback.answer("Запис скасовано ❌" if existed else "Ти не був записаний на цю подію.")
+        username, display_name = telegram_rsvp_identity(callback.from_user)
+
+        existing = get_event_rsvp_response(
+            event_id,
+            username,
+            callback.from_user.id,
+        )
+        if existing:
+            await callback.answer(
+                rsvp_locked_message(existing.get("status")),
+                show_alert=True,
+            )
+            return
+
+        add_event_decline(
+            event_id,
+            username,
+            display_name,
+            callback.from_user.id,
+        )
+
+        await callback.answer(
+            "Відповідь збережена: ви не йдете ❌",
+            show_alert=True,
+        )
         await refresh_group_event_message(callback, event_id)
+
     except ValueError as exc:
         if str(exc) == "event_closed":
-            await callback.answer("Ця подія вже завершена — список учасників зафіксовано ✅", show_alert=True)
+            await callback.answer(
+                "Ця подія вже завершена — відповіді зафіксовано ✅",
+                show_alert=True,
+            )
         else:
             await callback.answer("Подію вже не знайдено.", show_alert=True)
     except Exception:
-        logging.exception("Помилка скасування RSVP із Telegram-групи")
-        await callback.answer("Не вдалося скасувати запис.", show_alert=True)
-
+        logging.exception("Помилка відповіді «Не йду» із Telegram-групи")
+        await callback.answer(
+            "Не вдалося записати відповідь.",
+            show_alert=True,
+        )
 
 def run_bot_polling():
     global bot_loop
