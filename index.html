@@ -2845,6 +2845,152 @@
     font-weight: 800;
   }
 
+
+  /* ==================== DATE WHEEL PICKER ==================== */
+  .date-wheel-trigger {
+    width: 100%;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #f7f3ec;
+    color: #6f675f;
+    font: inherit;
+    font-size: 17px;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .date-wheel-trigger.has-value {
+    color: #151515;
+    font-weight: 700;
+  }
+
+  .date-wheel-arrow {
+    flex: 0 0 auto;
+    color: #6f9fe8;
+    font-size: 27px;
+    line-height: 1;
+    transform: rotate(90deg);
+  }
+
+  .date-wheel-sheet {
+    padding: 0 14px 18px !important;
+  }
+
+  .date-wheel-head {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+    min-height: 58px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .date-wheel-head strong {
+    color: var(--text);
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .date-wheel-head-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: #8ea8ca;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 2px;
+    text-align: left;
+  }
+
+  .date-wheel-head-btn.confirm {
+    color: var(--accent);
+    text-align: right;
+  }
+
+  .date-wheel-labels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 12px 4px 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  .date-wheel-picker {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    height: 238px;
+    overflow: hidden;
+    margin-top: 4px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.025);
+    border: 1px solid var(--border);
+  }
+
+  .date-wheel-highlight {
+    position: absolute;
+    z-index: 1;
+    left: 7px;
+    right: 7px;
+    top: 50%;
+    height: 48px;
+    transform: translateY(-50%);
+    border-top: 1px solid rgba(111,159,232,.35);
+    border-bottom: 1px solid rgba(111,159,232,.35);
+    border-radius: 10px;
+    background: rgba(111,159,232,.08);
+    pointer-events: none;
+  }
+
+  .date-wheel-column {
+    position: relative;
+    z-index: 2;
+    height: 238px;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 95px 0;
+  }
+
+  .date-wheel-column::-webkit-scrollbar {
+    display: none;
+  }
+
+  .date-wheel-item {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: center;
+    color: #8e98aa;
+    font-size: 18px;
+    font-weight: 650;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: color .15s ease, transform .15s ease, opacity .15s ease;
+  }
+
+  .date-wheel-item.selected {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 850;
+  }
+
 </style>
 </head>
 <body>
@@ -3473,6 +3619,31 @@
 </div>
 
 <!-- Модалка створення події (тільки для адмінів) -->
+
+<!-- Числовий скрол-пікер дати -->
+<div class="modal" id="eventDatePickerModal">
+  <div class="sheet date-wheel-sheet">
+    <div class="date-wheel-head">
+      <button type="button" class="date-wheel-head-btn" onclick="closeModal('eventDatePickerModal')">Скасувати</button>
+      <strong>Оберіть дату</strong>
+      <button type="button" class="date-wheel-head-btn confirm" onclick="confirmEventDatePicker()">Готово</button>
+    </div>
+
+    <div class="date-wheel-labels">
+      <span>День</span>
+      <span>Місяць</span>
+      <span>Рік</span>
+    </div>
+
+    <div class="date-wheel-picker">
+      <div class="date-wheel-highlight"></div>
+      <div class="date-wheel-column" id="eventDayWheel"></div>
+      <div class="date-wheel-column" id="eventMonthWheel"></div>
+      <div class="date-wheel-column" id="eventYearWheel"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="eventModal">
   <div class="sheet">
     <button class="close-btn" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
@@ -3482,7 +3653,11 @@
     <input type="text" id="eventTitle" placeholder="Ігровий вечір">
 
     <label>Дата</label>
-    <input type="text" id="eventDate" placeholder="РРРР-ММ-ДД">
+    <input type="hidden" id="eventDate">
+    <button type="button" class="date-wheel-trigger" id="eventDateDisplay" onclick="openEventDatePicker()">
+      <span id="eventDateDisplayText">Оберіть дату</span>
+      <span class="date-wheel-arrow">›</span>
+    </button>
 
     <label>Час (необов'язково)</label>
     <input type="text" id="eventTime" placeholder="19:00">
@@ -4035,7 +4210,7 @@ function eventGamesHtml(ev) {
 
 function openEventModal() {
   document.getElementById('eventTitle').value = '';
-  document.getElementById('eventDate').value = '';
+  resetEventDatePickerField();
   document.getElementById('eventTime').value = '';
   document.getElementById('eventDescription').value = '';
   const capacity = document.getElementById('eventCapacity');
@@ -6635,7 +6810,7 @@ function renderEvents(events) {
 
 function openEventModal() {
   document.getElementById('eventTitle').value = '';
-  document.getElementById('eventDate').value = '';
+  resetEventDatePickerField();
   document.getElementById('eventTime').value = '';
   document.getElementById('eventDescription').value = '';
   const capacity = document.getElementById('eventCapacity');
