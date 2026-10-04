@@ -3092,56 +3092,13 @@ def profile_group_keyboard_payload():
 
 
 def notify_achievement_groups_sync(display_name, achievement, level, xp):
-    """Публікує нове досягнення учасника у всіх активних Telegram-групах."""
-    try:
-        group_ids = get_active_group_ids_sync()
-        if not group_ids:
-            logging.warning("Немає активних Telegram-груп для анонсу досягнення")
-            return
-
-        icon = achievement.get("icon") or "🏆"
-        name = achievement.get("name") or "Досягнення"
-        description = (achievement.get("description") or "").strip()
-        lines = [
-            "🏆 Нове досягнення!",
-            "",
-            f"👤 {display_name}",
-            f"{icon} {name}",
-        ]
-        if description:
-            lines.append(description)
-        bonus_xp = int(achievement.get("bonus_xp") or 0)
-        if bonus_xp:
-            lines.append(f"🎁 Нагорода: +{bonus_xp} XP")
-        lines.extend(["", f"⭐ Рівень {level} · {xp} XP"])
-        text = "\n".join(lines)
-        keyboard = profile_group_keyboard_payload()
-
-        for chat_id in group_ids:
-            payload = {"chat_id": chat_id, "text": text[:4096]}
-            if keyboard:
-                payload["reply_markup"] = keyboard
-            ok, err = telegram_api_post("sendMessage", payload)
-            if ok:
-                logging.info(
-                    "Досягнення '%s' користувача '%s' опубліковано в групі %s",
-                    name, display_name, chat_id
-                )
-            else:
-                logging.error(
-                    "Не вдалось опублікувати досягнення '%s' в групі %s: %s",
-                    name, chat_id, err
-                )
-    except Exception:
-        logging.exception("Не вдалось опублікувати групове сповіщення про досягнення")
+    """Сповіщення про досягнення в Telegram-групу вимкнено."""
+    return
 
 
 def notify_achievement_groups_async(display_name, achievement, level, xp):
-    Thread(
-        target=notify_achievement_groups_sync,
-        args=(display_name, achievement, level, xp),
-        daemon=True,
-    ).start()
+    """Сповіщення про досягнення в Telegram-групу вимкнено."""
+    return
 
 
 def notify_groups_sync(event_id, photo_url=None):
