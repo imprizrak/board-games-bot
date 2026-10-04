@@ -2826,6 +2826,25 @@
     .xp-rewards-grid { grid-template-columns: 1fr; }
   }
 
+
+  .profile-xp-breakdown {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .achievement-xp-reward {
+    display: inline-flex;
+    margin-top: 5px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(212,175,55,.28);
+    background: rgba(212,175,55,.08);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 800;
+  }
+
 </style>
 </head>
 <body>
@@ -6868,6 +6887,11 @@ function renderMyProfile(data) {
         <div class="profile-xp-value">${Number(data.level_xp) || 0} / ${Number(data.xp_per_level) || 250} XP</div>
       </div>
       <div class="profile-xp-track"><div class="profile-xp-fill" style="width:${progress}%"></div></div>
+      <div class="profile-xp-breakdown">
+        Всього: <strong>${Number(data.xp) || 0} XP</strong> ·
+        активність: ${Number(data.base_xp) || 0} XP ·
+        досягнення: +${Number(data.achievement_bonus_xp) || 0} XP
+      </div>
     </div>
 
     <div class="profile-section-title">Статистика</div>
@@ -6890,6 +6914,7 @@ function renderMyProfile(data) {
           <div>
             <div class="achievement-name">${escapeHtml(a.name || '')}</div>
             <div class="achievement-desc">${escapeHtml(a.description || '')}</div>
+            ${Number(a.bonus_xp) > 0 ? `<div class="achievement-xp-reward">+${Number(a.bonus_xp)} XP</div>` : ''}
             ${!a.unlocked && Number(a.target) > 0 ? `<div class="achievement-progress-text">${Math.min(Number(a.progress) || 0, Number(a.target))} / ${Number(a.target)}</div>` : ''}
           </div>
         </div>`).join('')}

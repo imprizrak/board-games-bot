@@ -848,7 +848,7 @@ def _profile_achievements(stats):
     nat20 = int(stats.get("dice_nat20s") or 0)
     good_streak = int(stats.get("dice_best_good_streak") or 0)
 
-    def ach(aid, icon, name, description, progress, target, category):
+    def ach(aid, icon, name, description, progress, target, category, bonus_xp):
         return {
             "id": aid,
             "icon": icon,
@@ -858,49 +858,122 @@ def _profile_achievements(stats):
             "progress": int(progress),
             "target": int(target),
             "category": category,
+            "bonus_xp": int(bonus_xp),
         }
 
     return [
-        # Партії
-        ach("first_game", "🎲", "Перша партія", "Зіграно першу записану партію", games, 1, "games"),
-        ach("regular", "🔥", "Завсідник", "Зіграно 10 партій", games, 10, "games"),
-        ach("game_night_25", "🌙", "Ігрові ночі", "Зіграно 25 партій", games, 25, "games"),
-        ach("game_night_50", "🎮", "Серйозний гравець", "Зіграно 50 партій", games, 50, "games"),
-        ach("game_night_100", "💯", "Сотня партій", "Зіграно 100 партій", games, 100, "games"),
+        # Вступні.
+        ach("first_game", "🎲", "Перша партія", "Зіграно першу записану партію", games, 1, "games", 25),
+        ach("first_win", "🏆", "Перша перемога", "Здобуто першу перемогу", wins, 1, "wins", 50),
 
-        # Перемоги
-        ach("first_win", "🏆", "Перша перемога", "Здобуто першу перемогу", wins, 1, "wins"),
-        ach("winner_5", "🥉", "Смак перемоги", "Здобуто 5 перемог", wins, 5, "wins"),
-        ach("champion", "👑", "Чемпіон", "Здобуто 10 перемог", wins, 10, "wins"),
-        ach("winner_25", "🥈", "Мисливець за перемогами", "Здобуто 25 перемог", wins, 25, "wins"),
-        ach("winner_50", "🥇", "Домінатор столу", "Здобуто 50 перемог", wins, 50, "wins"),
+        # Партії.
+        ach("regular", "🔥", "Завсідник", "Зіграно 25 партій", games, 25, "games", 100),
+        ach("game_night_75", "🌙", "Ігрові ночі", "Зіграно 75 партій", games, 75, "games", 250),
+        ach("game_night_150", "🎮", "Серйозний гравець", "Зіграно 150 партій", games, 150, "games", 500),
+        ach("game_night_300", "💯", "Легенда столу", "Зіграно 300 партій", games, 300, "games", 1000),
 
-        # Різні ігри / події
-        ach("explorer", "🧭", "Дослідник", "Зіграно у 5 різних настільних ігор", unique_games, 5, "collection"),
-        ach("explorer_10", "🗺", "Колекціонер досвіду", "Зіграно у 10 різних ігор", unique_games, 10, "collection"),
-        ach("explorer_20", "🌍", "Настільний мандрівник", "Зіграно у 20 різних ігор", unique_games, 20, "collection"),
-        ach("event_guest", "👥", "У компанії", "Відвідано 5 завершених подій", events, 5, "events"),
-        ach("event_regular_10", "🎉", "Свій у клубі", "Відвідано 10 завершених подій", events, 10, "events"),
-        ach("event_regular_25", "🏛", "Серце клубу", "Відвідано 25 завершених подій", events, 25, "events"),
+        # Перемоги.
+        ach("winner_15", "🥉", "Смак перемоги", "Здобуто 15 перемог", wins, 15, "wins", 150),
+        ach("champion_40", "👑", "Чемпіон", "Здобуто 40 перемог", wins, 40, "wins", 300),
+        ach("winner_100", "🥈", "Мисливець за перемогами", "Здобуто 100 перемог", wins, 100, "wins", 750),
+        ach("winner_200", "🥇", "Домінатор столу", "Здобуто 200 перемог", wins, 200, "wins", 1500),
 
-        # «Хто перший»
-        ach("picker_3", "☝️", "Перший серед рівних", "3 рази перемогти у «Хто перший»", picker_wins, 3, "picker"),
-        ach("picker_10", "⚡", "Швидкий старт", "10 разів перемогти у «Хто перший»", picker_wins, 10, "picker"),
-        ach("picker_25", "🧲", "Магніт першого ходу", "25 разів перемогти у «Хто перший»", picker_wins, 25, "picker"),
-        ach("picker_50", "🚀", "Завжди перший", "50 разів перемогти у «Хто перший»", picker_wins, 50, "picker"),
+        # Різні ігри.
+        ach("explorer_10", "🧭", "Дослідник", "Зіграно у 10 різних настільних ігор", unique_games, 10, "collection", 150),
+        ach("explorer_25", "🗺", "Колекціонер досвіду", "Зіграно у 25 різних ігор", unique_games, 25, "collection", 400),
+        ach("explorer_50", "🌍", "Настільний мандрівник", "Зіграно у 50 різних ігор", unique_games, 50, "collection", 1000),
 
-        # Кубики
-        ach("dice_10", "🎲", "Кидай ще", "Зроблено 10 кидків кубика", dice_rolls, 10, "dice"),
-        ach("dice_good_10", "🍀", "Щаслива рука", "10 разів випало не менше 75% від максимуму кубика", dice_good, 10, "dice"),
-        ach("dice_good_50", "✨", "Улюбленець фортуни", "50 вдалих кидків (75%+ від максимуму)", dice_good, 50, "dice"),
-        ach("dice_good_100", "🌟", "Фортуна на твоєму боці", "100 вдалих кидків (75%+ від максимуму)", dice_good, 100, "dice"),
-        ach("dice_max_1", "💥", "Максимум!", "Хоча б раз викинути максимальне значення", dice_max, 1, "dice"),
-        ach("dice_max_10", "🔥", "Максималіст", "10 разів викинути максимальне значення", dice_max, 10, "dice"),
-        ach("dice_streak_3", "🎯", "Гаряча серія", "3 вдалі кидки поспіль", good_streak, 3, "dice"),
-        ach("nat20_1", "🐉", "Критичний успіх", "Викинути натуральну 20 на d20", nat20, 1, "dice"),
-        ach("nat20_5", "⚔️", "Критична легенда", "Викинути натуральну 20 на d20 п'ять разів", nat20, 5, "dice"),
+        # Події.
+        ach("event_guest_10", "👥", "У компанії", "Відвідано 10 завершених подій", events, 10, "events", 150),
+        ach("event_regular_30", "🎉", "Свій у клубі", "Відвідано 30 завершених подій", events, 30, "events", 400),
+        ach("event_regular_75", "🏛", "Серце клубу", "Відвідано 75 завершених подій", events, 75, "events", 1000),
+
+        # «Хто перший».
+        ach("picker_10", "☝️", "Перший серед рівних", "10 разів перемогти у «Хто перший»", picker_wins, 10, "picker", 100),
+        ach("picker_30", "⚡", "Швидкий старт", "30 разів перемогти у «Хто перший»", picker_wins, 30, "picker", 250),
+        ach("picker_75", "🧲", "Магніт першого ходу", "75 разів перемогти у «Хто перший»", picker_wins, 75, "picker", 600),
+        ach("picker_150", "🚀", "Завжди перший", "150 разів перемогти у «Хто перший»", picker_wins, 150, "picker", 1200),
+
+        # Кубики.
+        ach("dice_50", "🎲", "Кидай ще", "Зроблено 50 кидків кубика", dice_rolls, 50, "dice", 50),
+        ach("dice_250", "🌀", "Володар кубиків", "Зроблено 250 кидків кубика", dice_rolls, 250, "dice", 200),
+        ach("dice_1000", "🔮", "Тисяча кидків", "Зроблено 1000 кидків кубика", dice_rolls, 1000, "dice", 750),
+
+        # Вдалий кидок = 80%+ від максимуму.
+        ach("dice_good_25", "🍀", "Щаслива рука", "25 разів випало не менше 80% від максимуму кубика", dice_good, 25, "dice", 100),
+        ach("dice_good_100", "✨", "Улюбленець фортуни", "100 вдалих кидків (80%+ від максимуму)", dice_good, 100, "dice", 300),
+        ach("dice_good_300", "🌟", "Фортуна на твоєму боці", "300 вдалих кидків (80%+ від максимуму)", dice_good, 300, "dice", 800),
+
+        # Максимальні значення.
+        ach("dice_max_3", "💥", "Максимум!", "3 рази викинути максимальне значення", dice_max, 3, "dice", 75),
+        ach("dice_max_20", "🔥", "Максималіст", "20 разів викинути максимальне значення", dice_max, 20, "dice", 250),
+        ach("dice_max_75", "☄️", "Неможлива удача", "75 разів викинути максимальне значення", dice_max, 75, "dice", 750),
+
+        # Серії.
+        ach("dice_streak_5", "🎯", "Гаряча серія", "5 вдалих кидків поспіль", good_streak, 5, "dice", 150),
+        ach("dice_streak_8", "⚡", "Серія фортуни", "8 вдалих кидків поспіль", good_streak, 8, "dice", 500),
+
+        # d20.
+        ach("nat20_3", "🐉", "Критичний успіх", "Викинути натуральну 20 на d20 тричі", nat20, 3, "dice", 150),
+        ach("nat20_15", "⚔️", "Критична легенда", "Викинути натуральну 20 на d20 15 разів", nat20, 15, "dice", 500),
+        ach("nat20_50", "👁️", "Обранець долі", "Викинути натуральну 20 на d20 50 разів", nat20, 50, "dice", 1500),
     ]
 
+
+# Старі вже отримані досягнення теж не втрачають свою цінність.
+# Ця таблиця використовується лише для ID, яких більше немає в актуальному каталозі.
+_LEGACY_ACHIEVEMENT_BONUS_XP = {
+    "game_night_25": 100,
+    "game_night_50": 150,
+    "game_night_100": 250,
+    "winner_5": 75,
+    "champion": 125,
+    "winner_25": 200,
+    "winner_50": 300,
+    "explorer": 75,
+    "explorer_20": 250,
+    "event_guest": 75,
+    "event_regular_10": 100,
+    "event_regular_25": 200,
+    "picker_3": 50,
+    "picker_25": 150,
+    "picker_50": 250,
+    "dice_10": 25,
+    "dice_good_10": 50,
+    "dice_good_50": 100,
+    "dice_good_100": 200,
+    "dice_max_1": 25,
+    "dice_max_10": 100,
+    "dice_streak_3": 50,
+    "nat20_1": 50,
+    "nat20_5": 150,
+}
+
+
+def _profile_xp_breakdown(stats, earned_ids, achievements=None):
+    achievements = achievements or _profile_achievements(stats)
+    earned_ids = {str(x) for x in (earned_ids or set()) if x}
+
+    base_xp = (
+        int(stats.get("games_played") or 0) * 20
+        + int(stats.get("wins") or 0) * 10
+        + int(stats.get("events_attended") or 0) * 25
+        + int(stats.get("unique_games") or 0) * 5
+    )
+
+    catalog_bonus = {a["id"]: int(a.get("bonus_xp") or 0) for a in achievements}
+    achievement_bonus_xp = 0
+    for aid in earned_ids:
+        if aid in catalog_bonus:
+            achievement_bonus_xp += catalog_bonus[aid]
+        else:
+            achievement_bonus_xp += int(_LEGACY_ACHIEVEMENT_BONUS_XP.get(aid, 0))
+
+    return {
+        "base_xp": base_xp,
+        "achievement_bonus_xp": achievement_bonus_xp,
+        "total_xp": base_xp + achievement_bonus_xp,
+    }
 
 
 # ==================== НАГОРОДИ ЗА XP ====================
@@ -1116,30 +1189,28 @@ def get_my_profile():
         achievement_catalog_version = int(existing_profile.get("achievement_catalog_version") or 0)
 
     stats = _merge_profile_stats(user, user_id)
-    xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
+    achievements = _profile_achievements(stats)
+    currently_unlocked = {a["id"] for a in achievements if a.get("unlocked")}
+
+    # Після переходу на каталог v4 вже виконані умови фіксуємо тихо.
+    if achievements_initialized and achievement_catalog_version >= 4:
+        newly_earned_ids = currently_unlocked - previous_earned
+    else:
+        newly_earned_ids = set()
+
+    earned_ids = previous_earned | currently_unlocked
+
+    xp_breakdown = _profile_xp_breakdown(stats, earned_ids, achievements)
+    xp = xp_breakdown["total_xp"]
     xp_per_level = 250
     level = max(1, xp // xp_per_level + 1)
     level_xp = xp % xp_per_level
     progress = round((level_xp / xp_per_level) * 100) if xp_per_level else 0
 
-    achievements = _profile_achievements(stats)
-    currently_unlocked = {a["id"] for a in achievements if a.get("unlocked")}
-
     cosmetic_profile = dict(existing_profile or {})
     cosmetic_profile["xp"] = xp
     xp_rewards, cosmetics, next_xp_reward = _resolve_profile_cosmetics(level, cosmetic_profile)
     active_title = cosmetics.get("title_label") or _profile_title(level)
-
-    # Після першого запуску нової системи старі досягнення просто фіксуємо,
-    # щоб не засипати групу повідомленнями про історичні нагороди.
-    if achievements_initialized and achievement_catalog_version >= 3:
-        newly_earned_ids = currently_unlocked - previous_earned
-    else:
-        # Перший запуск системи або перехід на новий каталог:
-        # вже виконані старі умови фіксуємо без хвилі старих повідомлень.
-        newly_earned_ids = set()
-
-    earned_ids = previous_earned | currently_unlocked
 
     # Досягнення назавжди лишається відкритим після першого отримання.
     for achievement in achievements:
@@ -1153,7 +1224,7 @@ def get_my_profile():
         "xp": xp,
         "earned_achievements": sorted(earned_ids),
         "achievements_initialized": True,
-        "achievement_catalog_version": 2,
+        "achievement_catalog_version": 4,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -1193,6 +1264,8 @@ def get_my_profile():
         "display_name": display_name,
         "photo_url": photo_url,
         "xp": xp,
+        "base_xp": xp_breakdown["base_xp"],
+        "achievement_bonus_xp": xp_breakdown["achievement_bonus_xp"],
         "level": level,
         "level_xp": level_xp,
         "xp_per_level": xp_per_level,
@@ -1320,19 +1393,15 @@ def _refresh_profile_achievements_by_id(telegram_user_id, announce=True):
     initialized = bool(profile.get("achievements_initialized"))
     catalog_version = int(profile.get("achievement_catalog_version") or 0)
 
-    if announce and initialized and catalog_version >= 3:
+    if announce and initialized and catalog_version >= 4:
         new_ids = current_ids - old_ids
     else:
         new_ids = set()
 
     earned_ids = old_ids | current_ids
 
-    history_xp = (
-        int(stats.get("games_played") or 0) * 20
-        + int(stats.get("wins") or 0) * 10
-        + int(stats.get("events_attended") or 0) * 25
-        + int(stats.get("unique_games") or 0) * 5
-    )
+    xp_breakdown = _profile_xp_breakdown(stats, earned_ids, achievements)
+    history_xp = xp_breakdown["total_xp"]
     level = max(1, history_xp // 250 + 1)
 
     try:
@@ -1344,7 +1413,7 @@ def _refresh_profile_achievements_by_id(telegram_user_id, announce=True):
                 "xp": history_xp,
                 "earned_achievements": sorted(earned_ids),
                 "achievements_initialized": True,
-                "achievement_catalog_version": 2,
+                "achievement_catalog_version": 4,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
             timeout=20,
@@ -1628,15 +1697,17 @@ def _refresh_existing_profile_after_event(rsvp):
         "last_name": "",
     }
     stats = _merge_profile_stats(pseudo_user, profile.get('telegram_user_id'))
-    xp = stats["games_played"] * 20 + stats["wins"] * 10 + stats["events_attended"] * 25 + stats["unique_games"] * 5
-    level = max(1, xp // 250 + 1)
-
     achievements = _profile_achievements(stats)
     current_ids = {a["id"] for a in achievements if a.get("unlocked")}
     old_ids = {str(x) for x in (profile.get("earned_achievements") or []) if x}
     initialized = bool(profile.get("achievements_initialized"))
-    newly_earned = current_ids - old_ids if initialized else set()
+    catalog_version = int(profile.get("achievement_catalog_version") or 0)
+    newly_earned = current_ids - old_ids if initialized and catalog_version >= 4 else set()
     earned_ids = old_ids | current_ids
+
+    xp_breakdown = _profile_xp_breakdown(stats, earned_ids, achievements)
+    xp = xp_breakdown["total_xp"]
+    level = max(1, xp // 250 + 1)
 
     try:
         patch = requests.patch(
@@ -1647,6 +1718,7 @@ def _refresh_existing_profile_after_event(rsvp):
                 "xp": xp,
                 "earned_achievements": sorted(earned_ids),
                 "achievements_initialized": True,
+                "achievement_catalog_version": 4,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
             timeout=20,
@@ -2483,6 +2555,9 @@ def notify_achievement_groups_sync(display_name, achievement, level, xp):
         ]
         if description:
             lines.append(description)
+        bonus_xp = int(achievement.get("bonus_xp") or 0)
+        if bonus_xp:
+            lines.append(f"🎁 Нагорода: +{bonus_xp} XP")
         lines.extend(["", f"⭐ Рівень {level} · {xp} XP"])
         text = "\n".join(lines)
         keyboard = profile_group_keyboard_payload()
