@@ -51,6 +51,7 @@ ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
 TELEGRAM_GROUPS_REST = f"{SUPABASE_URL}/rest/v1/telegram_groups"
 PROFILES_REST = f"{SUPABASE_URL}/rest/v1/profiles"
+ACTIVITY_REST = f"{SUPABASE_URL}/rest/v1/activity_feed"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -416,6 +417,14 @@ def add_game():
         notify_text += f"\n\n{description}"
     notify_subscribers_async(notify_text, photo_url=cover_url)
     notify_game_groups_async(name, description=description, cover_url=cover_url)
+    log_activity(
+        "game_added",
+        f"У бібліотеці з’явилась нова гра: {name}",
+        description,
+        actor_name=added_by,
+        image_url=cover_url,
+        metadata={"game_name": name},
+    )
 
     return jsonify({"status": "ok"})
 
@@ -549,6 +558,19 @@ def add_history():
             timeout=30,
         )
     resp.raise_for_status()
+    history_title = f"Зіграно партію: {payload.get('game_name') or 'Настільна гра'}"
+    details = []
+    if payload.get("winner"):
+        details.append(f"Переможець: {payload.get('winner')}")
+    if payload.get("players"):
+        details.append(f"Гравці: {payload.get('players')}")
+    log_activity(
+        "game_played",
+        history_title,
+        " · ".join(details),
+        actor_name=payload.get("added_by") or "",
+        metadata={"game_name": payload.get("game_name"), "winner": payload.get("winner")},
+    )
     return jsonify({"status": "ok"})
 
 
@@ -893,6 +915,14 @@ def get_my_profile():
         for achievement_id in sorted(newly_earned_ids):
             achievement = by_id.get(achievement_id)
             if achievement:
+                log_activity(
+                    "achievement_unlocked",
+                    f"{display_name} отримав(ла) досягнення «{achievement.get('name') or 'Досягнення'}»",
+                    achievement.get("description") or "",
+                    actor_name=display_name,
+                    image_url=photo_url or None,
+                    metadata={"achievement_id": achievement_id, "level": level, "xp": xp},
+                )
                 notify_achievement_groups_async(display_name, achievement, level, xp)
 
     return jsonify({
@@ -909,6 +939,90 @@ def get_my_profile():
         "stats": stats,
         "achievements": achievements,
     })
+
+
+
+
+# ==================== АКТИВНІСТЬ КЛУБУ ====================
+def log_activity(activity_type, title, subtitle="", actor_name="", image_url=None, metadata=None):
+    """Пише одну подію в стрічку. Якщо таблиця ще не створена — основна дія не ламається."""
+    try:
+        payload = {
+            "activity_type": str(activity_type or "activity")[:64],
+            "actor_name": str(actor_name or "")[:200],
+            "title": str(title or "Активність клубу")[:300],
+            "subtitle": str(subtitle or "")[:1000],
+            "image_url": image_url or None,
+            "metadata": metadata or {},
+        }
+        resp = requests.post(
+            ACTIVITY_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            json=payload,
+            timeout=15,
+        )
+        if not resp.ok:
+            logging.warning("Activity feed write skipped: %s", resp.text[:300])
+    except Exception:
+        logging.exception("Не вдалося записати активність клубу")
+
+
+@app.route("/api/activity", methods=["GET"])
+def get_activity_feed():
+    try:
+        limit = max(1, min(100, int(request.args.get("limit") or 30)))
+    except ValueError:
+        limit = 30
+    try:
+        resp = requests.get(
+            ACTIVITY_REST,
+            headers=HEADERS,
+            params={"select": "*", "order": "created_at.desc,id.desc", "limit": limit},
+            timeout=20,
+        )
+        if not resp.ok:
+            return jsonify([])
+        return jsonify(resp.json())
+    except Exception:
+        logging.exception("Не вдалося завантажити стрічку активності")
+        return jsonify([])
+
+
+@app.route("/api/profiles/public", methods=["GET"])
+def get_public_profiles():
+    try:
+        resp = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,updated_at",
+                "order": "xp.desc,updated_at.desc",
+                "limit": 100,
+            },
+            timeout=25,
+        )
+        if not resp.ok:
+            return jsonify([])
+        result = []
+        for row in resp.json():
+            xp = int(row.get("xp") or 0)
+            level = max(1, xp // 250 + 1)
+            earned = row.get("earned_achievements") or []
+            result.append({
+                "telegram_user_id": row.get("telegram_user_id"),
+                "username": row.get("username") or "",
+                "display_name": row.get("display_name") or row.get("username") or "Гравець",
+                "photo_url": row.get("photo_url") or "",
+                "xp": xp,
+                "level": level,
+                "title": _profile_title(level),
+                "achievement_count": len(earned) if isinstance(earned, list) else 0,
+                "updated_at": row.get("updated_at"),
+            })
+        return jsonify(result)
+    except Exception:
+        logging.exception("Не вдалося завантажити публічні профілі")
+        return jsonify([])
 
 
 # ==================== АДМІНИ ====================
@@ -1062,6 +1176,14 @@ def _complete_event(event):
     except Exception:
         logging.exception("Не вдалося нарахувати XP учасникам завершеної події %s", event_id)
 
+    log_activity(
+        "event_completed",
+        f"Подію завершено: {event.get('title') or 'Ігрова подія'}",
+        "Учасникам зараховано відвідування та XP.",
+        actor_name="Система",
+        image_url=event.get("cover_url") or None,
+        metadata={"event_id": event_id},
+    )
     logging.info("Подію %s автоматично завершено", event_id)
     return True
 
@@ -1433,6 +1555,16 @@ def add_event():
 
     if event_id:
         notify_groups_async(event_id, photo_url=event_photo)
+
+    game_label = ", ".join(game_names) if game_names else ""
+    log_activity(
+        "event_created",
+        f"Створено нову подію: {data.get('title', '')}",
+        (f"Ігри: {game_label}" if game_label else data.get("description", "")),
+        actor_name=data.get("created_by", ""),
+        image_url=event_photo,
+        metadata={"event_id": event_id, "games": game_names},
+    )
 
     return jsonify({"status": "ok", "event_id": event_id})
 

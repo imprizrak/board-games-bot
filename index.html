@@ -10,14 +10,14 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --bg: #140a22;
-    --bg-texture: radial-gradient(circle at 50% -10%, rgba(157, 97, 255, 0.35) 0%, transparent 55%), radial-gradient(circle at 90% 15%, rgba(212, 175, 55, 0.14) 0%, transparent 45%), radial-gradient(circle at 8% 90%, rgba(122, 58, 201, 0.28) 0%, transparent 50%), linear-gradient(180deg, #170c29 0%, #0d0716 100%);
-    --card-bg: #241333;
+    --bg: #08111f;
+    --bg-texture: radial-gradient(circle at 50% -10%, rgba(47, 94, 168, 0.36) 0%, transparent 55%), radial-gradient(circle at 90% 15%, rgba(212, 175, 55, 0.14) 0%, transparent 45%), radial-gradient(circle at 8% 90%, rgba(24, 68, 126, 0.32) 0%, transparent 50%), linear-gradient(180deg, #0b1729 0%, #050b14 100%);
+    --card-bg: #101d2f;
     --text: #f0e6d2;
-    --muted: #a595bd;
+    --muted: #aebbd0;
     --accent: #d4af37;
     --accent-dark: #a9852a;
-    --border: #4d3468;
+    --border: #27466b;
     --danger-bg: #3a1c2c;
     --danger-text: #e8a3c0;
     --parchment: #f2e6c8;
@@ -130,7 +130,7 @@
     max-width: 480px;
     border-radius: 18px 18px 0 0;
     border-top: 3px double var(--accent);
-    box-shadow: 0 -4px 24px rgba(157, 97, 255, 0.15);
+    box-shadow: 0 -4px 24px rgba(47, 94, 168, 0.16);
     padding: 20px;
     max-height: 85vh;
     overflow-y: auto;
@@ -263,7 +263,7 @@
   .mc-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); }
   .mc-swatch.s1 { background: #d8c49c; } .mc-swatch.s2 { background: #7d5a43; } .mc-swatch.s3 { background: #333; }
   .mc-swatch.b1 { background: #e6c229; } .mc-swatch.b2 { background: #e94f37; } .mc-swatch.b3 { background: #46a3e6; }
-  .mc-swatch.d1 { background: #17131f; } .mc-swatch.d2 { background: #4c355d; } .mc-swatch.d3 { background: #7a1f35; }
+  .mc-swatch.d1 { background: #17131f; } .mc-swatch.d2 { background: #284765; } .mc-swatch.d3 { background: #7a1f35; }
   .mc-swatch.p1 { background: #e7d9c4; } .mc-swatch.p2 { background: #a27c62; } .mc-swatch.p3 { background: #5f738d; }
 
   .mc-level-list { display: flex; flex-direction: column; gap: 8px; }
@@ -396,7 +396,7 @@
   .events-subtab-btn.active {
     background: var(--accent);
     border-color: var(--accent);
-    color: #1a1024;
+    color: #0b1624;
   }
   .event-status-completed {
     display: inline-flex;
@@ -518,7 +518,7 @@
     font-size: 13px;
     font-weight: 700;
     background: var(--accent);
-    color: #1a1024;
+    color: #0b1624;
   }
   .event-card .ev-rsvp-btn.joined {
     background: var(--bg);
@@ -560,7 +560,7 @@
   }
   .lib-subtab-btn.active {
     background: var(--accent);
-    color: #1a1024;
+    color: #0b1624;
     border-color: var(--accent);
   }
   .lib-mode { display: none; }
@@ -600,7 +600,7 @@
   }
   .lib-genre-chip.active {
     background: var(--accent);
-    color: #1a1024;
+    color: #0b1624;
     border-color: var(--accent);
   }
 
@@ -610,7 +610,7 @@
     top: 6px; right: 6px;
     width: 28px; height: 28px;
     border-radius: 50%;
-    background: rgba(20, 10, 34, 0.55);
+    background: rgba(8, 17, 31, 0.62);
     border: none;
     display: flex;
     align-items: center;
@@ -898,7 +898,7 @@
     position: relative;
     height: calc(100vh - 260px);
     min-height: 320px;
-    background: radial-gradient(circle at 50% 50%, #2f1d47 0%, #140a22 75%);
+    background: radial-gradient(circle at 50% 50%, #132b47 0%, #08111f 75%);
     border: 1px solid var(--border);
     border-radius: 18px;
     margin: 0 16px;
@@ -1404,7 +1404,7 @@
     padding: 0;
     margin: 0;
     overflow: hidden;
-    background: #140a22;
+    background: #08111f;
   }
 
   body.picker-fullscreen #panel-picker .picker-area {
@@ -1418,7 +1418,7 @@
     border-radius: 0;
     box-shadow: none;
     background:
-      radial-gradient(circle at 50% 45%, rgba(87, 54, 130, 0.86) 0%, rgba(38, 20, 58, 0.98) 48%, #100718 100%);
+      radial-gradient(circle at 50% 45%, rgba(31, 67, 111, 0.88) 0%, rgba(12, 29, 49, 0.98) 48%, #040a12 100%);
   }
 
   body.picker-fullscreen #panel-picker .picker-intro {
@@ -1452,7 +1452,7 @@
     padding: 10px 14px;
     min-height: 42px;
     border-radius: 14px;
-    background: rgba(20, 10, 34, 0.66);
+    background: rgba(8, 17, 31, 0.72);
     border: 1px solid rgba(212, 175, 55, 0.25);
     color: var(--text);
     font-size: 16px;
@@ -1474,7 +1474,7 @@
     margin: 0;
     padding: 11px 18px;
     border-radius: 999px;
-    background: rgba(36, 19, 51, 0.9);
+    background: rgba(16, 29, 47, 0.92);
     border: 1px solid var(--border);
     color: var(--text);
     backdrop-filter: blur(8px);
@@ -1493,7 +1493,7 @@
     justify-content: center;
     border: 1px solid rgba(255,255,255,0.18);
     border-radius: 50%;
-    background: rgba(20, 10, 34, 0.72);
+    background: rgba(8, 17, 31, 0.78);
     color: #fff;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -1582,7 +1582,7 @@
   .quick-start-title { font-family:'Cinzel',serif; font-size:12px; color:var(--accent); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px; }
   .quick-start-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .quick-start-btn { border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:11px; padding:10px 8px; font-size:13px; font-weight:700; min-height:44px; }
-  .quick-start-btn.primary { background:var(--accent); color:#1a1024; border-color:var(--accent); }
+  .quick-start-btn.primary { background:var(--accent); color:#0b1624; border-color:var(--accent); }
 
   /* ---------- Статистика ---------- */
   .stats-wrap { padding:12px 12px 86px; }
@@ -1611,7 +1611,7 @@
   .mc-slot-label { color:var(--muted); font-size:11px; margin:10px 0 6px; text-transform:uppercase; letter-spacing:.5px; }
   .mc-slots { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
   .mc-slot { border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:10px; min-height:40px; font-weight:700; }
-  .mc-slot.selected { background:var(--accent); color:#1a1024; border-color:var(--accent); }
+  .mc-slot.selected { background:var(--accent); color:#0b1624; border-color:var(--accent); }
   .mc-slot:disabled { opacity:.35; text-decoration:line-through; }
   .mc-bookings { margin-top:16px; }
   .mc-booking-item { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-top:8px; }
@@ -1633,10 +1633,10 @@
      ========================================================== */
   :root {
     --text: #fff8ee;
-    --muted: #d2c7dd;
+    --muted: #c7d3e3;
     --accent: #e3bf55;
     --accent-dark: #c9a43b;
-    --border: #62497b;
+    --border: #345a84;
     --parchment-text: #25190d;
     --page-pad: 14px;
     --ui-radius: 14px;
@@ -1908,7 +1908,7 @@
   .quick-start-btn.primary,
   .flip7-continue-btn,
   .mc-slot.selected {
-    color: #1a1024;
+    color: #0b1624;
   }
 
   .btn.secondary {
@@ -2009,7 +2009,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, #3a2350, #1b1028);
+    background: linear-gradient(145deg, #173454, #091827);
     border: 2px solid var(--accent);
     color: var(--accent);
     font-size: 26px;
@@ -2105,12 +2105,567 @@
     .profile-achievements { grid-template-columns: 1fr; }
   }
 
+
+  /* ==================== STEAM-LIKE HOME / COMMUNITY ==================== */
+  :root {
+    --hub-bg: #07111d;
+    --hub-panel: #0f1b2a;
+    --hub-panel-2: #16263a;
+    --hub-line: rgba(255,255,255,0.08);
+    --hub-soft: rgba(255,255,255,0.045);
+    --hub-blue: #6f9fe8;
+  }
+
+  .steam-view {
+    padding: 0 12px 88px;
+  }
+
+  .steam-view > header {
+    padding-left: 4px;
+    padding-right: 4px;
+    text-align: left;
+    font-size: 22px;
+  }
+
+  .home-welcome {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 108px;
+    margin: 4px 0 16px;
+    padding: 16px;
+    border: 1px solid var(--hub-line);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 90% 0%, rgba(122,167,255,0.20), transparent 42%),
+      radial-gradient(circle at 0% 100%, rgba(212,175,55,0.12), transparent 45%),
+      linear-gradient(135deg, #13243a, #0a1523);
+  }
+
+  .home-avatar, .club-member-avatar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #1a2d45;
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #fff;
+    font-weight: 800;
+  }
+
+  .home-avatar {
+    width: 66px;
+    height: 66px;
+    border-radius: 16px;
+    font-size: 21px;
+  }
+
+  .home-avatar img, .club-member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .home-welcome-main { min-width: 0; flex: 1; }
+  .home-eyebrow {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+  .home-user-name {
+    color: var(--text);
+    font-family: 'Cinzel', serif;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .home-level-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 8px;
+  }
+  .home-level-chip {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(122,167,255,0.12);
+    border: 1px solid rgba(122,167,255,0.26);
+    color: #dce7ff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .steam-section {
+    margin: 18px 0 0;
+  }
+  .steam-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 2px 10px;
+  }
+  .steam-section-title {
+    margin: 0;
+    color: var(--text);
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 0.25px;
+  }
+  .steam-section-link {
+    border: 0;
+    background: none;
+    color: var(--hub-blue);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 0;
+  }
+
+  .continue-card {
+    display: none;
+    position: relative;
+    overflow: hidden;
+    padding: 16px;
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(212,175,55,0.14), transparent 45%),
+      linear-gradient(135deg, #14253a, #0d1928);
+    border: 1px solid var(--hub-line);
+  }
+  .continue-card.show { display: block; }
+  .continue-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+  }
+  .continue-title {
+    margin-top: 5px;
+    color: #fff;
+    font-size: 19px;
+    font-weight: 800;
+  }
+  .continue-meta {
+    color: #b9bfcb;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .continue-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .steam-small-btn {
+    min-height: 42px;
+    border: 1px solid var(--hub-line);
+    border-radius: 11px;
+    padding: 9px 14px;
+    background: var(--hub-panel-2);
+    color: var(--text);
+    font-weight: 750;
+    font-size: 13px;
+  }
+  .steam-small-btn.primary {
+    background: var(--accent);
+    color: #17120a;
+    border-color: var(--accent);
+  }
+
+  .steam-horizontal {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(142px, 42vw);
+    gap: 10px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    padding: 1px 1px 6px;
+    scrollbar-width: none;
+  }
+  .steam-horizontal::-webkit-scrollbar { display: none; }
+
+  .home-game-card {
+    scroll-snap-align: start;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--hub-line);
+    border-radius: 14px;
+    background: var(--hub-panel);
+    color: var(--text);
+    text-align: left;
+    padding: 0;
+  }
+  .home-game-cover {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #17283d;
+    overflow: hidden;
+  }
+  .home-game-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .home-game-placeholder {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 30px;
+  }
+  .home-game-body {
+    padding: 10px 11px 11px;
+  }
+  .home-game-title {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+    min-height: 32px;
+  }
+  .home-game-meta {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .next-event-card {
+    overflow: hidden;
+    border: 1px solid var(--hub-line);
+    border-radius: 16px;
+    background: var(--hub-panel);
+  }
+  .next-event-cover {
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    object-fit: cover;
+    display: block;
+    background: #14253a;
+  }
+  .next-event-body { padding: 14px; }
+  .next-event-date {
+    color: var(--hub-blue);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .3px;
+  }
+  .next-event-title {
+    margin-top: 4px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+  .next-event-games, .next-event-people {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .home-tools-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+  .home-tool-btn {
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--hub-line);
+    border-radius: 13px;
+    background: var(--hub-panel);
+    color: var(--text);
+    padding: 11px 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .home-tool-icon {
+    width: 31px;
+    height: 31px;
+    flex: 0 0 31px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--hub-soft);
+    font-size: 16px;
+  }
+
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .activity-item {
+    display: flex;
+    gap: 11px;
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid var(--hub-line);
+    border-radius: 13px;
+    background: var(--hub-panel);
+  }
+  .activity-thumb {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    border-radius: 11px;
+    overflow: hidden;
+    background: var(--hub-soft);
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+  }
+  .activity-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .activity-main { min-width: 0; flex: 1; }
+  .activity-title {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .activity-subtitle {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+  }
+  .activity-time {
+    color: #777f91;
+    font-size: 10px;
+    margin-top: 5px;
+  }
+
+  .community-wrap { padding: 0 12px 88px; }
+  .community-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .club-member-card {
+    min-width: 0;
+    border: 1px solid var(--hub-line);
+    border-radius: 14px;
+    background: var(--hub-panel);
+    padding: 12px;
+    text-align: left;
+    color: var(--text);
+  }
+  .club-member-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  .club-member-name {
+    margin-top: 9px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .club-member-meta {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.35;
+    margin-top: 4px;
+  }
+
+  .tools-return {
+    width: calc(100% - 24px);
+    margin: 0 12px 10px;
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-weight: 750;
+  }
+
+  .game-detail-hero {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+  .game-detail-cover {
+    width: 92px;
+    aspect-ratio: 1 / 1;
+    border-radius: 13px;
+    overflow: hidden;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+  }
+  .game-detail-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .game-detail-head h2 {
+    margin: 0 0 6px;
+    overflow-wrap: anywhere;
+  }
+  .game-detail-tags {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .game-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 7px;
+    margin: 13px 0 4px;
+  }
+  .game-detail-stat {
+    min-width: 0;
+    padding: 8px 6px;
+    border-radius: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .game-detail-stat strong {
+    display: block;
+    color: var(--accent);
+    font-size: 15px;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+  .game-detail-stat span {
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    margin-top: 4px;
+  }
+
+  .member-modal-hero {
+    display: flex;
+    gap: 13px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .member-modal-hero .club-member-avatar {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+    font-size: 22px;
+  }
+
+  @media (max-width: 370px) {
+    .steam-view, .community-wrap { padding-left: 10px; padding-right: 10px; }
+    .home-tools-grid { grid-template-columns: 1fr; }
+    .community-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
+    .game-detail-hero { grid-template-columns: 78px minmax(0,1fr); }
+    .game-detail-cover { width: 78px; }
+    .game-detail-stats { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
 </style>
 </head>
 <body>
 
+
+<!-- ==================== ВКЛАДКА: ГОЛОВНА ==================== -->
+<div class="view active" id="view-home">
+  <div class="steam-view">
+    <header>Настільний клуб</header>
+
+    <div class="home-welcome" id="homeWelcome">
+      <div class="home-avatar" id="homeAvatar">🎲</div>
+      <div class="home-welcome-main">
+        <div class="home-eyebrow">Твій ігровий простір</div>
+        <div class="home-user-name" id="homeUserName">Завантаження…</div>
+        <div class="home-level-line" id="homeLevelLine"></div>
+      </div>
+    </div>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Продовжити</h2>
+      </div>
+      <div class="continue-card" id="homeContinueCard">
+        <div class="continue-label">Активна сесія</div>
+        <div class="continue-title" id="homeContinueTitle">Ігрова сесія</div>
+        <div class="continue-meta" id="homeContinueMeta"></div>
+        <div class="continue-actions">
+          <button type="button" class="steam-small-btn primary" id="homeResumeBtn">Продовжити</button>
+          <button type="button" class="steam-small-btn" id="homeFinishBtn">Завершити</button>
+        </div>
+      </div>
+      <div class="empty" id="homeNoSession" style="padding:18px 10px;">Немає незавершеної сесії.</div>
+    </section>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Найближча подія</h2>
+        <button type="button" class="steam-section-link" onclick="showMainView('view-events')">Усі події</button>
+      </div>
+      <div id="homeNextEvent"></div>
+    </section>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Нещодавно грали</h2>
+        <button type="button" class="steam-section-link" onclick="openLibraryMode('history')">Історія</button>
+      </div>
+      <div class="steam-horizontal" id="homeRecentGames"></div>
+    </section>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Нові в бібліотеці</h2>
+        <button type="button" class="steam-section-link" onclick="showMainView('view-library')">Бібліотека</button>
+      </div>
+      <div class="steam-horizontal" id="homeNewGames"></div>
+    </section>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Ігрові інструменти</h2>
+        <button type="button" class="steam-section-link" onclick="openToolsHub()">Усі</button>
+      </div>
+      <div class="home-tools-grid">
+        <button type="button" class="home-tool-btn" onclick="openToolPanel('picker')"><span class="home-tool-icon">👆</span><span>Вибір гравця</span></button>
+        <button type="button" class="home-tool-btn" onclick="openToolPanel('counters','flip7')"><span class="home-tool-icon">7</span><span>Flip Seven</span></button>
+        <button type="button" class="home-tool-btn" onclick="openToolPanel('dice')"><span class="home-tool-icon">🎲</span><span>Кубики</span></button>
+        <button type="button" class="home-tool-btn" onclick="openToolPanel('timer')"><span class="home-tool-icon">⏱</span><span>Таймер</span></button>
+      </div>
+    </section>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Активність клубу</h2>
+        <button type="button" class="steam-section-link" onclick="showMainView('view-community')">Спільнота</button>
+      </div>
+      <div class="activity-list" id="homeActivity"></div>
+    </section>
+  </div>
+</div>
+
 <!-- ==================== ВКЛАДКА: БІБЛІОТЕКА ==================== -->
-<div class="view active" id="view-library">
+<div class="view" id="view-library">
   <header>Бібліотека настільних ігор</header>
 
   <div class="lib-subtabs">
@@ -2161,7 +2716,8 @@
 
 <!-- ==================== ВКЛАДКА: ІГРОВІ ДОДАТКИ ==================== -->
 <div class="view" id="view-tools">
-  <header>Ігрові додатки</header>
+  <header>Ігрові інструменти</header>
+  <button class="tools-return" type="button" onclick="showMainView('view-home')">← Повернутися на головну</button>
 
   <div class="session-banner" id="activeSessionBanner">
     <div class="session-top">
@@ -2346,6 +2902,27 @@
   </button>
 </div>
 
+
+<!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
+<div class="view" id="view-community">
+  <header>Спільнота</header>
+  <div class="community-wrap">
+    <section class="steam-section" style="margin-top:4px;">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Учасники клубу</h2>
+      </div>
+      <div class="community-grid" id="communityMembers"></div>
+    </section>
+
+    <section class="steam-section">
+      <div class="steam-section-head">
+        <h2 class="steam-section-title">Стрічка активності</h2>
+      </div>
+      <div class="activity-list" id="communityActivity"></div>
+    </section>
+  </div>
+</div>
+
 <!-- ==================== ВКЛАДКА: ПРОФІЛЬ ==================== -->
 <div class="view" id="view-profile">
   <header>Профіль</header>
@@ -2356,7 +2933,11 @@
 
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
 <div class="bottom-nav">
-  <button class="nav-btn active" data-view="view-library">
+  <button class="nav-btn active" data-view="view-home">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 3l8.5 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>
+    <span>Головна</span>
+  </button>
+  <button class="nav-btn" data-view="view-library">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5c-1.5-1-4-1.5-6-1v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V5.5c-2-.5-4.5 0-6 1Z"/><path d="M12 6.5v13"/></svg></span>
     <span>Бібліотека</span>
   </button>
@@ -2364,9 +2945,9 @@
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
     <span>Події</span>
   </button>
-  <button class="nav-btn" data-view="view-tools">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>
-    <span>Ігрові додатки</span>
+  <button class="nav-btn" data-view="view-community">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
+    <span>Спільнота</span>
   </button>
   <button class="nav-btn" data-view="view-profile">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/></svg></span>
@@ -2378,8 +2959,15 @@
 <div class="modal" id="viewModal">
   <div class="sheet">
     <button class="close-btn" onclick="closeModal('viewModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
-    <h2 id="viewName"></h2>
+    <div class="game-detail-hero">
+      <div class="game-detail-cover" id="viewCoverHero">🎲</div>
+      <div class="game-detail-head">
+        <h2 id="viewName"></h2>
+        <div class="game-detail-tags" id="viewTags"></div>
+      </div>
+    </div>
     <p id="viewDescription"></p>
+    <div class="game-detail-stats" id="viewGameStats"></div>
     <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила (PDF)</a>
     <p id="viewNoRules" style="color:var(--muted);"></p>
     <div class="quick-start" id="quickStartSection">
@@ -2645,6 +3233,15 @@
     <img id="eventCoverPreview" class="event-cover-preview" alt="Попередній перегляд обкладинки">
 
     <button class="btn" onclick="submitEvent()">Створити подію</button>
+  </div>
+</div>
+
+
+<!-- Публічний профіль учасника -->
+<div class="modal" id="memberProfileModal">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('memberProfileModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div id="memberProfileContent"></div>
   </div>
 </div>
 
@@ -3459,7 +4056,7 @@ function resetTimers() {
 renderTimers();
 
 /* ==================== КОЛЕСО ВИПАДКОВОГО ВИБОРУ ==================== */
-const wheelColors = ["#e2a63a", "#4b3f8f", "#6a3f9e", "#2f4f8f", "#2c3d63", "#4a4030", "#5e3f8f", "#2f6e6a", "#e0533d", "#3f8fd1"];
+const wheelColors = ["#e2a63a", "#244a78", "#28598f", "#2f4f8f", "#2c3d63", "#4a4030", "#315f91", "#2f6e6a", "#e0533d", "#3f8fd1"];
 let wheelSpinning = false;
 let wheelCurrentRotation = 0;
 
@@ -3666,7 +4263,7 @@ const pickerArea = document.getElementById("pickerArea");
 const pickerHint = document.getElementById("pickerHint");
 const pickerStatus = document.getElementById("pickerStatus");
 
-const pickerColors = ["#e0533d", "#3f8fd1", "#5cb85c", "#c9a227", "#a259c4", "#e08fc4", "#4fbfa8", "#e0904d"];
+const pickerColors = ["#e0533d", "#3f8fd1", "#5cb85c", "#c9a227", "#3f78b5", "#5c8ec4", "#4fbfa8", "#e0904d"];
 
 /* Повноекранний режим + звук рулетки */
 let pickerAudioCtx = null;
@@ -4025,7 +4622,7 @@ document.querySelectorAll(".counters-subtab-btn").forEach(btn => {
 });
 
 /* ==================== FLIP SEVEN: КАЛЬКУЛЯТОР БАЛІВ ==================== */
-const flip7Colors = ["#e2a63a", "#4b3f8f", "#6a3f9e", "#2f4f8f", "#2c3d63", "#4a4030", "#5e3f8f", "#2f6e6a"];
+const flip7Colors = ["#e2a63a", "#244a78", "#28598f", "#2f4f8f", "#2c3d63", "#4a4030", "#315f91", "#2f6e6a"];
 const flip7Modifiers = [2, 4, 6, 8, 10];
 
 let flip7Players = [
@@ -4582,7 +5179,370 @@ function submitCharacter() {
 
   saveCharactersToStorage();
   closeModal("characterModal");
-  renderCharacters();
+  
+/* ==================== STEAM-LIKE HUB ==================== */
+let homeHistoryCache = [];
+let homeActivityCache = [];
+let communityMembersCache = [];
+
+function showMainView(viewId) {
+  if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+  if (viewId === 'view-home') loadHomeHub();
+  if (viewId === 'view-community') loadCommunity();
+  if (viewId === 'view-profile') loadMyProfile();
+  if (viewId === 'view-events') loadEvents();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function openToolsHub() {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-tools'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-home'));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function openLibraryMode(mode = 'games') {
+  showMainView('view-library');
+  const btn = document.querySelector(`.lib-subtab-btn[data-lib="${CSS.escape(mode)}"]`);
+  if (btn) btn.click();
+}
+
+function friendlyActivityTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = Math.max(0, Date.now() - d.getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'щойно';
+  if (mins < 60) return `${mins} хв тому`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} год тому`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days} дн тому`;
+  return d.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+function activityIcon(type) {
+  const icons = {
+    game_added:'🎲',
+    event_created:'📅',
+    event_completed:'✓',
+    game_played:'▶',
+    achievement_unlocked:'🏆'
+  };
+  return icons[type] || '•';
+}
+
+function activityHtml(item) {
+  const image = item.image_url
+    ? `<img src="${escapeHtml(item.image_url)}" alt="">`
+    : escapeHtml(activityIcon(item.activity_type));
+  return `<div class="activity-item">
+    <div class="activity-thumb">${image}</div>
+    <div class="activity-main">
+      <div class="activity-title">${escapeHtml(item.title || 'Активність клубу')}</div>
+      ${item.subtitle ? `<div class="activity-subtitle">${escapeHtml(item.subtitle)}</div>` : ''}
+      <div class="activity-time">${friendlyActivityTime(item.created_at)}</div>
+    </div>
+  </div>`;
+}
+
+function renderActivityList(targetId, items, limit = null) {
+  const root = document.getElementById(targetId);
+  if (!root) return;
+  const list = Array.isArray(items) ? (limit ? items.slice(0, limit) : items) : [];
+  root.innerHTML = list.length
+    ? list.map(activityHtml).join('')
+    : '<div class="empty" style="padding:18px 10px;">Активність з’явиться після нових ігор, партій, подій і досягнень.</div>';
+}
+
+function gameByName(name) {
+  const wanted = String(name || '').trim().toLowerCase();
+  return allGames.find(g => String(g.name || '').trim().toLowerCase() === wanted) || null;
+}
+
+function renderHomeGameCard(game, meta = '') {
+  const cover = game?.cover_url
+    ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}">`
+    : `<div class="home-game-placeholder">🎲</div>`;
+  const safeGame = game || {name:'Без назви'};
+  return `<button type="button" class="home-game-card" data-home-game="${escapeHtml(safeGame.name || '')}">
+    <div class="home-game-cover">${cover}</div>
+    <div class="home-game-body">
+      <div class="home-game-title">${escapeHtml(safeGame.name || 'Без назви')}</div>
+      <div class="home-game-meta">${escapeHtml(meta || safeGame.tags || 'Настільна гра')}</div>
+    </div>
+  </button>`;
+}
+
+function bindHomeGameCards(root) {
+  root?.querySelectorAll('[data-home-game]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const game = gameByName(btn.dataset.homeGame);
+      if (game) openViewModal(game);
+      else {
+        showMainView('view-library');
+        const search = document.getElementById('librarySearch');
+        if (search) { search.value = btn.dataset.homeGame || ''; renderGamesGrid(); }
+      }
+    });
+  });
+}
+
+function renderHomeProfile(profile) {
+  const name = profile?.display_name || username || 'Гравець';
+  const avatar = document.getElementById('homeAvatar');
+  if (avatar) {
+    avatar.innerHTML = profile?.photo_url
+      ? `<img src="${escapeHtml(profile.photo_url)}" alt="${escapeHtml(name)}">`
+      : escapeHtml(profileInitials(name));
+  }
+  const nameEl = document.getElementById('homeUserName');
+  if (nameEl) nameEl.textContent = name;
+  const line = document.getElementById('homeLevelLine');
+  if (line) {
+    line.innerHTML = `<span class="home-level-chip">Рівень ${Number(profile?.level) || 1}</span>
+      <span class="home-level-chip">${escapeHtml(profile?.title || 'Новачок')}</span>
+      <span class="home-level-chip">${Number(profile?.xp) || 0} XP</span>`;
+  }
+}
+
+function renderHomeSession() {
+  loadActiveSessionRecord();
+  const card = document.getElementById('homeContinueCard');
+  const empty = document.getElementById('homeNoSession');
+  if (!card || !empty) return;
+  if (!activeSession) {
+    card.classList.remove('show');
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  card.classList.add('show');
+  document.getElementById('homeContinueTitle').textContent = activeSession.gameName || 'Ігрова сесія';
+  const mins = activeSession.startedAt ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000)) : 0;
+  document.getElementById('homeContinueMeta').textContent = `${sessionToolLabel(activeSession)}${mins ? ` · ${mins} хв` : ''}`;
+}
+
+function eventNamesForHome(ev) {
+  const names = eventGameNames(ev);
+  return names.length ? names.join(' · ') : 'Ігрова зустріч';
+}
+
+function renderHomeNextEvent(events) {
+  const root = document.getElementById('homeNextEvent');
+  if (!root) return;
+  const ev = Array.isArray(events) ? events[0] : null;
+  if (!ev) {
+    root.innerHTML = '<div class="empty" style="padding:18px 10px;">Найближчих подій поки немає.</div>';
+    return;
+  }
+  const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+  const going = rsvps.filter(r => (r.status || 'going') === 'going');
+  const cover = ev.cover_url
+    ? `<img class="next-event-cover" src="${escapeHtml(ev.cover_url)}" alt="${escapeHtml(ev.title || '')}">`
+    : '';
+  root.innerHTML = `<button type="button" class="next-event-card" id="homeNextEventBtn" style="width:100%; padding:0; color:inherit; text-align:left;">
+    ${cover}
+    <div class="next-event-body">
+      <div class="next-event-date">${escapeHtml(formatEventDate(ev.event_date))}${ev.event_time ? ` · ${escapeHtml(String(ev.event_time).slice(0,5))}` : ''}</div>
+      <div class="next-event-title">${escapeHtml(ev.title || 'Ігрова подія')}</div>
+      <div class="next-event-games">🎲 ${escapeHtml(eventNamesForHome(ev))}</div>
+      <div class="next-event-people">👥 ${going.length}${Number(ev.max_participants) ? ` / ${Number(ev.max_participants)}` : ''}</div>
+    </div>
+  </button>`;
+  document.getElementById('homeNextEventBtn')?.addEventListener('click', () => showMainView('view-events'));
+}
+
+function renderHomeRecent(history) {
+  const root = document.getElementById('homeRecentGames');
+  if (!root) return;
+  const unique = [];
+  const seen = new Set();
+  (Array.isArray(history) ? history : []).forEach(row => {
+    const name = String(row.game_name || '').trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) return;
+    seen.add(key);
+    unique.push({ row, game: gameByName(name) || {name} });
+  });
+  const items = unique.slice(0, 8);
+  root.innerHTML = items.length
+    ? items.map(({row,game}) => renderHomeGameCard(game, row.played_at ? `Остання партія: ${formatEventDate(String(row.played_at).slice(0,10))}` : 'Нещодавно грали')).join('')
+    : '<div class="empty" style="min-width:100%; padding:18px 10px;">Історія партій поки порожня.</div>';
+  bindHomeGameCards(root);
+}
+
+function renderHomeNewGames(games) {
+  const root = document.getElementById('homeNewGames');
+  if (!root) return;
+  const list = [...(Array.isArray(games) ? games : [])]
+    .sort((a,b) => Number(b.id || 0) - Number(a.id || 0))
+    .slice(0, 8);
+  root.innerHTML = list.length
+    ? list.map(game => renderHomeGameCard(game, game.tags || 'У бібліотеці')).join('')
+    : '<div class="empty" style="min-width:100%; padding:18px 10px;">Бібліотека поки порожня.</div>';
+  bindHomeGameCards(root);
+}
+
+async function loadHomeHub() {
+  renderHomeSession();
+  try {
+    const [profileRes, historyRes, eventsRes, activityRes] = await Promise.all([
+      fetch('/api/profile/me', {headers: telegramAuthHeaders()}),
+      fetch('/api/history'),
+      fetch('/api/events?scope=upcoming'),
+      fetch('/api/activity?limit=8')
+    ]);
+
+    const profile = profileRes.ok ? await profileRes.json() : {};
+    const history = historyRes.ok ? await historyRes.json() : [];
+    const events = eventsRes.ok ? await eventsRes.json() : [];
+    const activity = activityRes.ok ? await activityRes.json() : [];
+
+    homeHistoryCache = Array.isArray(history) ? history : [];
+    homeActivityCache = Array.isArray(activity) ? activity : [];
+
+    if (!allGames.length) {
+      await loadGames();
+    }
+
+    renderHomeProfile(profile);
+    renderHomeRecent(homeHistoryCache);
+    renderHomeNewGames(allGames);
+    renderHomeNextEvent(events);
+    renderActivityList('homeActivity', homeActivityCache, 4);
+  } catch (e) {
+    console.warn('Home hub load failed', e);
+  }
+}
+
+function renderCommunityMembers(members) {
+  const root = document.getElementById('communityMembers');
+  if (!root) return;
+  const list = Array.isArray(members) ? members : [];
+  root.innerHTML = list.length ? list.map((m, index) => {
+    const name = m.display_name || m.username || 'Гравець';
+    const avatar = m.photo_url
+      ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}">`
+      : escapeHtml(profileInitials(name));
+    return `<button type="button" class="club-member-card" data-member-index="${index}">
+      <div class="club-member-avatar">${avatar}</div>
+      <div class="club-member-name">${escapeHtml(name)}</div>
+      <div class="club-member-meta">Рівень ${Number(m.level) || 1} · ${escapeHtml(m.title || 'Новачок')}<br>${Number(m.achievement_count) || 0} досягнень</div>
+    </button>`;
+  }).join('') : '<div class="empty" style="grid-column:1/-1; padding:18px 10px;">Профілі з’являться, коли учасники відкриють бот.</div>';
+
+  root.querySelectorAll('[data-member-index]').forEach(btn => {
+    btn.addEventListener('click', () => openPublicMember(Number(btn.dataset.memberIndex)));
+  });
+}
+
+function openPublicMember(index) {
+  const m = communityMembersCache[index];
+  if (!m) return;
+  const root = document.getElementById('memberProfileContent');
+  const name = m.display_name || m.username || 'Гравець';
+  const avatar = m.photo_url
+    ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}">`
+    : escapeHtml(profileInitials(name));
+  root.innerHTML = `
+    <div class="member-modal-hero">
+      <div class="club-member-avatar">${avatar}</div>
+      <div>
+        <h2 style="margin:0 0 4px;">${escapeHtml(name)}</h2>
+        <div style="color:var(--muted); font-size:13px;">${m.username ? '@'+escapeHtml(m.username) : 'Учасник клубу'}</div>
+      </div>
+    </div>
+    <div class="profile-stats-grid">
+      <div class="profile-stat"><strong>${Number(m.level) || 1}</strong><span>рівень</span></div>
+      <div class="profile-stat"><strong>${Number(m.xp) || 0}</strong><span>XP</span></div>
+      <div class="profile-stat"><strong>${Number(m.achievement_count) || 0}</strong><span>досягнень</span></div>
+      <div class="profile-stat"><strong class="profile-favorite">${escapeHtml(m.title || 'Новачок')}</strong><span>титул</span></div>
+    </div>`;
+  document.getElementById('memberProfileModal').classList.add('open');
+}
+
+async function loadCommunity() {
+  const membersRoot = document.getElementById('communityMembers');
+  const activityRoot = document.getElementById('communityActivity');
+  if (membersRoot) membersRoot.innerHTML = '<div class="empty" style="grid-column:1/-1;">Завантаження…</div>';
+  if (activityRoot) activityRoot.innerHTML = '<div class="empty">Завантаження…</div>';
+  try {
+    const [membersRes, activityRes] = await Promise.all([
+      fetch('/api/profiles/public'),
+      fetch('/api/activity?limit=50')
+    ]);
+    communityMembersCache = membersRes.ok ? await membersRes.json() : [];
+    homeActivityCache = activityRes.ok ? await activityRes.json() : [];
+    renderCommunityMembers(communityMembersCache);
+    renderActivityList('communityActivity', homeActivityCache);
+  } catch (e) {
+    if (membersRoot) membersRoot.innerHTML = '<div class="empty" style="grid-column:1/-1;">Не вдалося завантажити учасників.</div>';
+    if (activityRoot) activityRoot.innerHTML = '<div class="empty">Не вдалося завантажити активність.</div>';
+  }
+}
+
+function renderGameDetailStats(game) {
+  const statsRoot = document.getElementById('viewGameStats');
+  const coverRoot = document.getElementById('viewCoverHero');
+  const tagsRoot = document.getElementById('viewTags');
+  if (coverRoot) {
+    coverRoot.innerHTML = game.cover_url
+      ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}">`
+      : '🎲';
+  }
+  if (tagsRoot) tagsRoot.textContent = game.tags || 'Настільна гра';
+
+  const rows = (homeHistoryCache || []).filter(h => String(h.game_name || '').trim().toLowerCase() === String(game.name || '').trim().toLowerCase());
+  const playCount = rows.length;
+  const wins = rows.filter(h => String(h.winner || '').trim()).length;
+  const last = rows[0]?.played_at ? formatEventDate(String(rows[0].played_at).slice(0,10)) : '—';
+  if (statsRoot) {
+    statsRoot.innerHTML = `
+      <div class="game-detail-stat"><strong>${playCount}</strong><span>партій</span></div>
+      <div class="game-detail-stat"><strong>${wins}</strong><span>з переможцем</span></div>
+      <div class="game-detail-stat"><strong>${escapeHtml(last)}</strong><span>остання</span></div>`;
+  }
+}
+
+function openViewModal(game) {
+  currentGame = game;
+  document.getElementById('viewName').textContent = game.name;
+  document.getElementById('viewDescription').textContent = game.description || '';
+  const rulesLink = document.getElementById('viewRules');
+  const noRules = document.getElementById('viewNoRules');
+  if (game.rules_url) {
+    rulesLink.href = game.rules_url;
+    rulesLink.style.display = 'inline-block';
+    noRules.textContent = '';
+  } else {
+    rulesLink.style.display = 'none';
+    noRules.textContent = 'Правила ще не додані.';
+  }
+  renderGameDetailStats(game);
+  renderQuickStart(game);
+  document.getElementById('viewModal').classList.add('open');
+}
+
+document.getElementById('homeResumeBtn')?.addEventListener('click', () => {
+  if (activeSession) openToolPanel(activeSession.tool || 'counters', activeSession.mode || null);
+});
+document.getElementById('homeFinishBtn')?.addEventListener('click', async () => {
+  await finishActiveSession();
+  renderHomeSession();
+  loadHomeHub();
+});
+
+document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
+  if (btn.dataset.view === 'view-home') loadHomeHub();
+  if (btn.dataset.view === 'view-community') loadCommunity();
+}));
+
+
+loadHomeHub();
+renderCharacters();
 }
 
 async function downloadCharacterPdf() {
@@ -4930,7 +5890,7 @@ function renderActiveSessionBanner() {
 }
 
 function openToolPanel(tool, mode = null) {
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-tools'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-home'));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-tools'));
   document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
   document.querySelectorAll('.tool-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tool));
@@ -5443,10 +6403,15 @@ document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click
 async function applyInitialDeepLink() {
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') !== 'events') return;
+    const requestedView = params.get('view');
+    if (requestedView === 'profile') {
+      showMainView('view-profile');
+      await loadMyProfile();
+      return;
+    }
+    if (requestedView !== 'events') return;
     window.__deepLinkedEventId = params.get('event') || '';
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-events'));
-    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-events'));
+    showMainView('view-events');
     await loadEvents();
     requestAnimationFrame(() => {
       const target = window.__deepLinkedEventId
