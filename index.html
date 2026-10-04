@@ -2673,6 +2673,159 @@
     font-weight: 750;
   }
 
+
+  /* ==================== XP REWARDS / PROFILE COSMETICS ==================== */
+  .profile-hero.frame-steel .profile-avatar,
+  .club-member-avatar.frame-steel,
+  .home-avatar.frame-steel {
+    border-color: #aebdce !important;
+    box-shadow: 0 0 0 2px rgba(174,189,206,.14), 0 0 18px rgba(120,155,196,.20);
+  }
+  .profile-hero.frame-gold .profile-avatar,
+  .club-member-avatar.frame-gold,
+  .home-avatar.frame-gold {
+    border-color: #d4af37 !important;
+    box-shadow: 0 0 0 2px rgba(212,175,55,.16), 0 0 20px rgba(212,175,55,.28);
+  }
+  .profile-hero.frame-legendary .profile-avatar,
+  .club-member-avatar.frame-legendary,
+  .home-avatar.frame-legendary {
+    border: 3px solid #d4af37 !important;
+    box-shadow:
+      0 0 0 2px rgba(111,159,232,.28),
+      0 0 24px rgba(212,175,55,.38),
+      0 0 42px rgba(111,159,232,.20);
+  }
+
+  .profile-theme-ocean .profile-hero,
+  .profile-theme-ocean .profile-xp-card {
+    background:
+      radial-gradient(circle at 90% 0%, rgba(64,120,190,.18), transparent 42%),
+      linear-gradient(145deg, #10233a, #0b1727);
+  }
+  .profile-theme-midnight .profile-hero,
+  .profile-theme-midnight .profile-xp-card {
+    background:
+      radial-gradient(circle at 10% 0%, rgba(212,175,55,.10), transparent 40%),
+      linear-gradient(145deg, #07101c, #111827);
+  }
+
+  .profile-active-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 8px;
+    padding: 5px 9px;
+    border: 1px solid rgba(111,159,232,.30);
+    border-radius: 999px;
+    background: rgba(111,159,232,.10);
+    color: #dce9ff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .xp-reward-next {
+    margin-top: 12px;
+    padding: 12px 13px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: rgba(255,255,255,.025);
+  }
+  .xp-reward-next strong {
+    color: var(--accent);
+  }
+  .xp-reward-next div {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 3px;
+  }
+
+  .xp-rewards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 10px;
+  }
+  .xp-reward-card {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card-bg);
+  }
+  .xp-reward-card.locked {
+    opacity: .48;
+  }
+  .xp-reward-card.active {
+    border-color: rgba(212,175,55,.58);
+    box-shadow: 0 0 0 1px rgba(212,175,55,.14);
+  }
+  .xp-reward-top {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .xp-reward-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 19px;
+  }
+  .xp-reward-name {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+  .xp-reward-level {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .xp-reward-desc {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .xp-reward-action {
+    width: 100%;
+    min-height: 36px;
+    margin-top: 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .xp-reward-card.active .xp-reward-action {
+    color: var(--accent);
+    border-color: rgba(212,175,55,.40);
+  }
+  .xp-reward-reset {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  @media (max-width: 370px) {
+    .xp-rewards-grid { grid-template-columns: 1fr; }
+  }
+
 </style>
 </head>
 <body>
@@ -5547,6 +5700,9 @@ function renderHomeProfile(profile) {
   const name = profile?.display_name || username || 'Гравець';
   const avatar = document.getElementById('homeAvatar');
   if (avatar) {
+    avatar.classList.remove('frame-steel','frame-gold','frame-legendary');
+    const frameClass = cosmeticFrameClass(profile?.cosmetics?.frame_id || '');
+    if (frameClass) avatar.classList.add(frameClass);
     avatar.innerHTML = profile?.photo_url
       ? `<img src="${escapeHtml(profile.photo_url)}" alt="${escapeHtml(name)}">`
       : escapeHtml(profileInitials(name));
@@ -5680,10 +5836,12 @@ function renderCommunityMembers(members) {
     const avatar = m.photo_url
       ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}">`
       : escapeHtml(profileInitials(name));
+    const frameClass = cosmeticFrameClass(m.cosmetics?.frame_id || '');
+    const badge = m.cosmetics?.badge_label || '';
     return `<button type="button" class="club-member-card" data-member-index="${index}">
-      <div class="club-member-avatar">${avatar}</div>
+      <div class="club-member-avatar ${frameClass}">${avatar}</div>
       <div class="club-member-name">${escapeHtml(name)}</div>
-      <div class="club-member-meta">Рівень ${Number(m.level) || 1} · ${escapeHtml(m.title || 'Новачок')}<br>${Number(m.achievement_count) || 0} досягнень</div>
+      <div class="club-member-meta">Рівень ${Number(m.level) || 1} · ${escapeHtml(m.title || 'Новачок')}<br>${Number(m.achievement_count) || 0} досягнень${badge ? `<br>${escapeHtml(badge)}` : ''}</div>
     </button>`;
   }).join('') : '<div class="empty" style="grid-column:1/-1; padding:18px 10px;">Профілі з’являться, коли учасники відкриють бот.</div>';
 
@@ -5700,12 +5858,15 @@ function openPublicMember(index) {
   const avatar = m.photo_url
     ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}">`
     : escapeHtml(profileInitials(name));
+  const frameClass = cosmeticFrameClass(m.cosmetics?.frame_id || '');
+  const badge = m.cosmetics?.badge_label || '';
   root.innerHTML = `
     <div class="member-modal-hero">
-      <div class="club-member-avatar">${avatar}</div>
+      <div class="club-member-avatar ${frameClass}">${avatar}</div>
       <div>
         <h2 style="margin:0 0 4px;">${escapeHtml(name)}</h2>
         <div style="color:var(--muted); font-size:13px;">${m.username ? '@'+escapeHtml(m.username) : 'Учасник клубу'}</div>
+        ${badge ? `<div class="profile-active-badge">${escapeHtml(badge)}</div>` : ''}
       </div>
     </div>
     <div class="profile-stats-grid">
@@ -6570,6 +6731,103 @@ function profileInitials(name) {
   return (parts.slice(0,2).map(p => p[0]?.toUpperCase() || '').join('') || 'Г').slice(0,2);
 }
 
+
+/* ==================== XP REWARDS ==================== */
+function cosmeticFrameClass(frameId) {
+  if (frameId === 'frame_steel') return 'frame-steel';
+  if (frameId === 'frame_gold') return 'frame-gold';
+  if (frameId === 'frame_legendary') return 'frame-legendary';
+  return '';
+}
+
+function cosmeticThemeClass(themeId) {
+  if (themeId === 'theme_ocean') return 'profile-theme-ocean';
+  if (themeId === 'theme_midnight') return 'profile-theme-midnight';
+  return '';
+}
+
+function rewardTypeLabel(type) {
+  return ({
+    title: 'Титул',
+    frame: 'Рамка',
+    badge: 'Значок',
+    theme: 'Тема профілю'
+  })[type] || 'Нагорода';
+}
+
+async function equipXpReward(rewardId, rewardType) {
+  try {
+    const payload = {};
+    payload[rewardType] = rewardId;
+    const res = await fetch('/api/profile/cosmetics', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      tg.showAlert(data.error || 'Не вдалося застосувати нагороду.');
+      return;
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    await loadMyProfile();
+    await loadHomeHub();
+  } catch (e) {
+    tg.showAlert('Не вдалося застосувати нагороду.');
+  }
+}
+
+async function resetXpCosmetics() {
+  try {
+    const res = await fetch('/api/profile/cosmetics', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({title:'', frame:'', badge:'', theme:''})
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      tg.showAlert(data.error || 'Не вдалося скинути оформлення.');
+      return;
+    }
+    await loadMyProfile();
+    await loadHomeHub();
+  } catch (e) {
+    tg.showAlert('Не вдалося скинути оформлення.');
+  }
+}
+
+function xpRewardsHtml(data) {
+  const rewards = Array.isArray(data.xp_rewards) ? data.xp_rewards : [];
+  if (!rewards.length) return '';
+  return `
+    <div class="profile-section-title">Нагороди за XP</div>
+    ${data.next_xp_reward ? `
+      <div class="xp-reward-next">
+        <strong>Наступна нагорода: рівень ${Number(data.next_xp_reward.level_required) || 1}</strong>
+        <div>${escapeHtml(data.next_xp_reward.icon || '🎁')} ${escapeHtml(data.next_xp_reward.name || '')} · ще ${Math.max(0, Number(data.next_xp_reward.xp_needed) || 0)} XP</div>
+      </div>` : `
+      <div class="xp-reward-next">
+        <strong>Усі нагороди відкрито 👑</strong>
+        <div>Ти досяг(ла) максимального рівня поточного каталогу нагород.</div>
+      </div>`}
+    <div class="xp-rewards-grid" style="margin-top:10px;">
+      ${rewards.map(r => `
+        <div class="xp-reward-card ${r.unlocked ? '' : 'locked'} ${r.active ? 'active' : ''}">
+          <div class="xp-reward-top">
+            <div class="xp-reward-icon">${r.unlocked ? escapeHtml(r.icon || '🎁') : '🔒'}</div>
+            <div>
+              <div class="xp-reward-name">${escapeHtml(r.name || '')}</div>
+              <div class="xp-reward-level">Рівень ${Number(r.level_required) || 1} · ${escapeHtml(rewardTypeLabel(r.type))}</div>
+            </div>
+          </div>
+          <div class="xp-reward-desc">${escapeHtml(r.description || '')}</div>
+          ${r.unlocked ? `<button type="button" class="xp-reward-action" onclick="equipXpReward('${escapeHtml(r.id)}','${escapeHtml(r.type)}')">${r.active ? '✓ Використовується' : 'Використати'}</button>` : ''}
+        </div>`).join('')}
+    </div>
+    <button type="button" class="xp-reward-reset" onclick="resetXpCosmetics()">Скинути оформлення до стандартного</button>
+  `;
+}
+
 function renderMyProfile(data) {
   const root = document.getElementById('profileContent');
   if (!root) return;
@@ -6585,9 +6843,13 @@ function renderMyProfile(data) {
   const progress = Math.max(0, Math.min(100, Number(data.level_progress_percent) || 0));
   const userLabel = data.username ? `@${escapeHtml(data.username)}` : 'Telegram-профіль';
   const fav = stats.favorite_game || '—';
-  root.className = '';
+  const cosmetics = data.cosmetics || {};
+  const frameClass = cosmeticFrameClass(cosmetics.frame_id || '');
+  const themeClass = cosmeticThemeClass(cosmetics.theme_id || '');
+  const activeBadge = cosmetics.badge_label || '';
+  root.className = themeClass;
   root.innerHTML = `
-    <div class="profile-hero">
+    <div class="profile-hero ${frameClass}">
       <div class="profile-avatar">${photo}</div>
       <div class="profile-main">
         <div class="profile-name">${escapeHtml(displayName)}</div>
@@ -6596,6 +6858,7 @@ function renderMyProfile(data) {
           <span class="profile-title">${escapeHtml(data.title || 'Новачок')}</span>
           <span class="profile-level-badge">Рівень ${Number(data.level) || 1}</span>
         </div>
+        ${activeBadge ? `<div class="profile-active-badge">${escapeHtml(activeBadge)}</div>` : ''}
       </div>
     </div>
 
@@ -6616,6 +6879,8 @@ function renderMyProfile(data) {
       <div class="profile-stat"><strong>${Number(stats.first_player_wins) || 0}</strong><span>перемог «Хто перший»</span></div>
       <div class="profile-stat"><strong>${Number(stats.dice_good_rolls) || 0}</strong><span>вдалих кидків</span></div>
     </div>
+
+    ${xpRewardsHtml(data)}
 
     <div class="profile-section-title">Досягнення</div>
     <div class="profile-achievements">

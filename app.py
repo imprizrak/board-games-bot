@@ -902,6 +902,168 @@ def _profile_achievements(stats):
     ]
 
 
+
+# ==================== НАГОРОДИ ЗА XP ====================
+def _xp_reward_catalog(level):
+    level = max(1, int(level or 1))
+    rewards = [
+        {
+            "id": "title_club_player",
+            "type": "title",
+            "level_required": 3,
+            "icon": "🎲",
+            "name": "Клубний гравець",
+            "value": "Клубний гравець",
+            "description": "Перший титул за розвиток профілю.",
+        },
+        {
+            "id": "title_tactician",
+            "type": "title",
+            "level_required": 5,
+            "icon": "♟️",
+            "name": "Тактик",
+            "value": "Тактик",
+            "description": "Титул за досягнення 5 рівня.",
+        },
+        {
+            "id": "frame_steel",
+            "type": "frame",
+            "level_required": 10,
+            "icon": "🩶",
+            "name": "Сталева рамка",
+            "value": "frame_steel",
+            "description": "Сріблясто-синя рамка для аватарки.",
+        },
+        {
+            "id": "title_strategist",
+            "type": "title",
+            "level_required": 15,
+            "icon": "🧠",
+            "name": "Стратег",
+            "value": "Стратег",
+            "description": "Рідкісний титул за 15 рівень.",
+        },
+        {
+            "id": "badge_veteran",
+            "type": "badge",
+            "level_required": 20,
+            "icon": "⭐",
+            "name": "Ветеран клубу",
+            "value": "⭐ Ветеран клубу",
+            "description": "Значок, який видно у профілі та списку учасників.",
+        },
+        {
+            "id": "frame_gold",
+            "type": "frame",
+            "level_required": 25,
+            "icon": "🏅",
+            "name": "Золота рамка",
+            "value": "frame_gold",
+            "description": "Золота рамка аватарки за 25 рівень.",
+        },
+        {
+            "id": "theme_ocean",
+            "type": "theme",
+            "level_required": 30,
+            "icon": "🌊",
+            "name": "Deep Ocean",
+            "value": "theme_ocean",
+            "description": "Особлива темно-синя тема профілю.",
+        },
+        {
+            "id": "title_master",
+            "type": "title",
+            "level_required": 35,
+            "icon": "🎓",
+            "name": "Майстер столу",
+            "value": "Майстер столу",
+            "description": "Титул для досвідчених учасників клубу.",
+        },
+        {
+            "id": "badge_elite",
+            "type": "badge",
+            "level_required": 40,
+            "icon": "👑",
+            "name": "Еліта клубу",
+            "value": "👑 Еліта клубу",
+            "description": "Рідкісний клубний значок.",
+        },
+        {
+            "id": "theme_midnight",
+            "type": "theme",
+            "level_required": 45,
+            "icon": "🌙",
+            "name": "Midnight",
+            "value": "theme_midnight",
+            "description": "Темна преміальна тема профілю.",
+        },
+        {
+            "id": "frame_legendary",
+            "type": "frame",
+            "level_required": 50,
+            "icon": "💠",
+            "name": "Легендарна рамка",
+            "value": "frame_legendary",
+            "description": "Найрідкісніша рамка аватарки у поточному каталозі.",
+        },
+        {
+            "id": "title_legend",
+            "type": "title",
+            "level_required": 50,
+            "icon": "🏆",
+            "name": "Легенда Styloteka",
+            "value": "Легенда Styloteka",
+            "description": "Легендарний титул за 50 рівень.",
+        },
+    ]
+    for reward in rewards:
+        reward["unlocked"] = level >= int(reward["level_required"])
+    return rewards
+
+
+def _resolve_profile_cosmetics(level, profile=None):
+    profile = profile or {}
+    rewards = _xp_reward_catalog(level)
+    unlocked = {r["id"]: r for r in rewards if r.get("unlocked")}
+
+    selected = {
+        "title": profile.get("selected_title_reward") or "",
+        "frame": profile.get("selected_frame_reward") or "",
+        "badge": profile.get("selected_badge_reward") or "",
+        "theme": profile.get("selected_theme_reward") or "",
+    }
+
+    # Якщо нагорода ще не відкрита або ID більше не існує — ігноруємо вибір.
+    for kind in tuple(selected):
+        rid = selected[kind]
+        reward = unlocked.get(rid)
+        if not reward or reward.get("type") != kind:
+            selected[kind] = ""
+
+    title_reward = unlocked.get(selected["title"])
+    badge_reward = unlocked.get(selected["badge"])
+
+    cosmetics = {
+        "title_id": selected["title"],
+        "frame_id": selected["frame"],
+        "badge_id": selected["badge"],
+        "theme_id": selected["theme"],
+        "title_label": title_reward.get("value") if title_reward else "",
+        "badge_label": badge_reward.get("value") if badge_reward else "",
+    }
+
+    for reward in rewards:
+        reward["active"] = selected.get(reward.get("type")) == reward.get("id")
+
+    next_reward = next((r for r in rewards if not r.get("unlocked")), None)
+    if next_reward:
+        xp_for_level = (int(next_reward["level_required"]) - 1) * 250
+        next_reward = dict(next_reward)
+        next_reward["xp_needed"] = max(0, xp_for_level - int(profile.get("xp") or 0))
+
+    return rewards, cosmetics, next_reward
+
+
 def _profile_title(level):
     if level >= 15:
         return "Легенда клубу"
@@ -933,7 +1095,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,earned_achievements,achievements_initialized,achievement_catalog_version",
+                "select": "telegram_user_id,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp",
                 "limit": 1,
             },
             timeout=20,
@@ -963,9 +1125,14 @@ def get_my_profile():
     achievements = _profile_achievements(stats)
     currently_unlocked = {a["id"] for a in achievements if a.get("unlocked")}
 
+    cosmetic_profile = dict(existing_profile or {})
+    cosmetic_profile["xp"] = xp
+    xp_rewards, cosmetics, next_xp_reward = _resolve_profile_cosmetics(level, cosmetic_profile)
+    active_title = cosmetics.get("title_label") or _profile_title(level)
+
     # Після першого запуску нової системи старі досягнення просто фіксуємо,
     # щоб не засипати групу повідомленнями про історичні нагороди.
-    if achievements_initialized and achievement_catalog_version >= 2:
+    if achievements_initialized and achievement_catalog_version >= 3:
         newly_earned_ids = currently_unlocked - previous_earned
     else:
         # Перший запуск системи або перехід на новий каталог:
@@ -1030,11 +1197,88 @@ def get_my_profile():
         "level_xp": level_xp,
         "xp_per_level": xp_per_level,
         "level_progress_percent": progress,
-        "title": _profile_title(level),
+        "title": active_title,
         "stats": stats,
         "achievements": achievements,
+        "xp_rewards": xp_rewards,
+        "cosmetics": cosmetics,
+        "next_xp_reward": next_xp_reward,
     })
 
+
+
+@app.route("/api/profile/cosmetics", methods=["POST"])
+def set_profile_cosmetics():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    data = request.get_json(silent=True) or {}
+
+    try:
+        resp = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{user_id}",
+                "select": "telegram_user_id,xp,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "limit": 1,
+            },
+            timeout=20,
+        )
+        if not resp.ok or not resp.json():
+            return jsonify({"error": "profile_not_found"}), 404
+        profile = resp.json()[0]
+    except Exception:
+        logging.exception("Не вдалося прочитати профіль для зміни оформлення")
+        return jsonify({"error": "profile_lookup_failed"}), 503
+
+    xp = int(profile.get("xp") or 0)
+    level = max(1, xp // 250 + 1)
+    rewards = _xp_reward_catalog(level)
+    unlocked = {r["id"]: r for r in rewards if r.get("unlocked")}
+
+    field_map = {
+        "title": "selected_title_reward",
+        "frame": "selected_frame_reward",
+        "badge": "selected_badge_reward",
+        "theme": "selected_theme_reward",
+    }
+
+    patch = {}
+    for kind, field in field_map.items():
+        if kind not in data:
+            continue
+        reward_id = str(data.get(kind) or "").strip()
+        if not reward_id:
+            patch[field] = None
+            continue
+        reward = unlocked.get(reward_id)
+        if not reward or reward.get("type") != kind:
+            return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
+        patch[field] = reward_id
+
+    if not patch:
+        return jsonify({"status": "ok"})
+
+    patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+    try:
+        up = requests.patch(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"telegram_user_id": f"eq.{user_id}"},
+            json=patch,
+            timeout=20,
+        )
+        if not up.ok:
+            logging.warning("Не вдалося зберегти оформлення профілю: %s", up.text[:500])
+            return jsonify({"error": "profile_update_failed"}), 500
+    except Exception:
+        logging.exception("Не вдалося зберегти оформлення профілю")
+        return jsonify({"error": "profile_update_failed"}), 500
+
+    return jsonify({"status": "ok"})
 
 
 
@@ -1076,7 +1320,7 @@ def _refresh_profile_achievements_by_id(telegram_user_id, announce=True):
     initialized = bool(profile.get("achievements_initialized"))
     catalog_version = int(profile.get("achievement_catalog_version") or 0)
 
-    if announce and initialized and catalog_version >= 2:
+    if announce and initialized and catalog_version >= 3:
         new_ids = current_ids - old_ids
     else:
         new_ids = set()
@@ -1268,7 +1512,7 @@ def get_public_profiles():
             PROFILES_REST,
             headers=HEADERS,
             params={
-                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,updated_at",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,updated_at",
                 "order": "xp.desc,updated_at.desc",
                 "limit": 100,
             },
@@ -1281,6 +1525,8 @@ def get_public_profiles():
             xp = int(row.get("xp") or 0)
             level = max(1, xp // 250 + 1)
             earned = row.get("earned_achievements") or []
+            _, cosmetics, _ = _resolve_profile_cosmetics(level, row)
+            public_title = cosmetics.get("title_label") or _profile_title(level)
             result.append({
                 "telegram_user_id": row.get("telegram_user_id"),
                 "username": row.get("username") or "",
@@ -1288,7 +1534,8 @@ def get_public_profiles():
                 "photo_url": row.get("photo_url") or "",
                 "xp": xp,
                 "level": level,
-                "title": _profile_title(level),
+                "title": public_title,
+                "cosmetics": cosmetics,
                 "achievement_count": len(earned) if isinstance(earned, list) else 0,
                 "updated_at": row.get("updated_at"),
             })
