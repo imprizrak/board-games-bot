@@ -723,6 +723,136 @@ def _admin_required_response():
 
 
 
+
+
+# ==================== TELEGRAM-АВАТАРКИ ====================
+# WebApp initData не гарантує поле photo_url. Тому аватар беремо
+# через Bot API getUserProfilePhotos і віддаємо клієнту через наш backend,
+# не розкриваючи BOT_TOKEN у URL Telegram-файлу.
+_TELEGRAM_AVATAR_CACHE = {}
+_TELEGRAM_AVATAR_CACHE_TTL = 15 * 60
+
+
+def _profile_avatar_url(telegram_user_id):
+    try:
+        return f"/api/profile/avatar/{int(telegram_user_id)}"
+    except Exception:
+        return ""
+
+
+def _telegram_avatar_placeholder():
+    # Нейтральна SVG-заглушка, якщо в Telegram немає доступної фотографії.
+    return b"""<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<rect width="256" height="256" rx="48" fill="#14253a"/>
+<circle cx="128" cy="94" r="46" fill="#6f9fe8"/>
+<path d="M44 230c7-56 36-84 84-84s77 28 84 84" fill="#6f9fe8"/>
+</svg>"""
+
+
+def _telegram_profile_avatar_bytes(telegram_user_id):
+    """Повертає (bytes, mimetype, found_real_photo)."""
+    try:
+        user_id = int(telegram_user_id)
+    except Exception:
+        return _telegram_avatar_placeholder(), "image/svg+xml", False
+
+    now = time.time()
+    cached = _TELEGRAM_AVATAR_CACHE.get(user_id)
+    if cached and now - cached["ts"] < _TELEGRAM_AVATAR_CACHE_TTL:
+        return cached["data"], cached["mimetype"], cached["real"]
+
+    if not API_TOKEN:
+        data = _telegram_avatar_placeholder()
+        _TELEGRAM_AVATAR_CACHE[user_id] = {
+            "ts": now, "data": data, "mimetype": "image/svg+xml", "real": False
+        }
+        return data, "image/svg+xml", False
+
+    try:
+        photos_resp = requests.get(
+            f"https://api.telegram.org/bot{API_TOKEN}/getUserProfilePhotos",
+            params={"user_id": user_id, "offset": 0, "limit": 1},
+            timeout=20,
+        )
+        photos_data = photos_resp.json() if photos_resp.content else {}
+
+        photos = ((photos_data.get("result") or {}).get("photos") or [])
+        if photos_resp.ok and photos_data.get("ok") and photos:
+            # Telegram повертає кілька розмірів однієї фотографії; останній — найбільший.
+            sizes = photos[0] or []
+            if sizes:
+                file_id = sizes[-1].get("file_id")
+                if file_id:
+                    file_resp = requests.get(
+                        f"https://api.telegram.org/bot{API_TOKEN}/getFile",
+                        params={"file_id": file_id},
+                        timeout=20,
+                    )
+                    file_data = file_resp.json() if file_resp.content else {}
+                    file_path = ((file_data.get("result") or {}).get("file_path") or "")
+
+                    if file_resp.ok and file_data.get("ok") and file_path:
+                        image_resp = requests.get(
+                            f"https://api.telegram.org/file/bot{API_TOKEN}/{file_path}",
+                            timeout=30,
+                        )
+                        image_resp.raise_for_status()
+
+                        mimetype = (
+                            image_resp.headers.get("Content-Type")
+                            or ("image/png" if file_path.lower().endswith(".png") else "image/jpeg")
+                        )
+                        data = image_resp.content
+                        _TELEGRAM_AVATAR_CACHE[user_id] = {
+                            "ts": now,
+                            "data": data,
+                            "mimetype": mimetype,
+                            "real": True,
+                        }
+                        return data, mimetype, True
+
+    except Exception:
+        logging.exception("Не вдалося завантажити Telegram-аватар користувача %s", user_id)
+
+    data = _telegram_avatar_placeholder()
+    _TELEGRAM_AVATAR_CACHE[user_id] = {
+        "ts": now, "data": data, "mimetype": "image/svg+xml", "real": False
+    }
+    return data, "image/svg+xml", False
+
+
+@app.route("/api/profile/avatar/<int:telegram_user_id>", methods=["GET"])
+def get_profile_avatar(telegram_user_id):
+    # Не даємо використовувати endpoint як довільний Telegram photo proxy:
+    # аватар віддається лише для користувача, який уже має профіль у Styloteka.
+    try:
+        check = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{int(telegram_user_id)}",
+                "select": "telegram_user_id",
+                "limit": 1,
+            },
+            timeout=15,
+        )
+        if not check.ok or not check.json():
+            return "", 404
+    except Exception:
+        return "", 404
+
+    data, mimetype, real = _telegram_profile_avatar_bytes(telegram_user_id)
+    response = send_file(
+        io.BytesIO(data),
+        mimetype=mimetype,
+        download_name=f"avatar-{telegram_user_id}",
+        max_age=900,
+    )
+    response.headers["Cache-Control"] = "public, max-age=900"
+    response.headers["X-Styloteka-Telegram-Avatar"] = "1" if real else "0"
+    return response
+
+
 # ==================== ПРОФІЛЬ УЧАСНИКА ====================
 def _profile_norm(value):
     return re.sub(r"\s+", " ", str(value or "").strip().lstrip("@").lower())
@@ -1158,7 +1288,7 @@ def get_my_profile():
     user_id = int(user.get("id"))
     username = (user.get("username") or "").lstrip("@").lower()
     display_name = " ".join(x for x in [user.get("first_name"), user.get("last_name")] if x).strip() or username or "Гравець"
-    photo_url = user.get("photo_url") or ""
+    photo_url = _profile_avatar_url(user_id)
 
     # Читаємо вже зароблені досягнення ДО оновлення профілю.
     existing_profile = None
@@ -1434,7 +1564,7 @@ def _refresh_profile_achievements_by_id(telegram_user_id, announce=True):
                     f"{display_name} отримав(ла) досягнення «{achievement.get('name') or 'Досягнення'}»",
                     achievement.get("description") or "",
                     actor_name=display_name,
-                    image_url=profile.get("photo_url") or None,
+                    image_url=_profile_avatar_url(profile.get("telegram_user_id")) or None,
                     metadata={"achievement_id": aid, "level": level, "xp": history_xp},
                 )
                 notify_achievement_groups_async(display_name, achievement, level, history_xp)
@@ -1600,7 +1730,7 @@ def get_public_profiles():
                 "telegram_user_id": row.get("telegram_user_id"),
                 "username": row.get("username") or "",
                 "display_name": row.get("display_name") or row.get("username") or "Гравець",
-                "photo_url": row.get("photo_url") or "",
+                "photo_url": _profile_avatar_url(row.get("telegram_user_id")),
                 "xp": xp,
                 "level": level,
                 "title": public_title,
