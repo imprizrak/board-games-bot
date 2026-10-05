@@ -9,7 +9,7 @@ import json
 import time
 import re
 from threading import Thread
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from urllib.parse import quote, parse_qsl, urlparse, unquote, parse_qs
 
@@ -2207,10 +2207,180 @@ def auto_complete_due_events():
         logging.exception("Помилка автоматичної перевірки завершення подій")
 
 
+def _event_reminder_due_at(event):
+    """Час групового нагадування за добу до події у часовому поясі клубу."""
+    raw_date = str(event.get("event_date") or "").strip()
+    if not raw_date:
+        return None
+    try:
+        day = datetime.strptime(raw_date[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+    try:
+        tz = ZoneInfo(EVENT_TIMEZONE)
+    except Exception:
+        logging.exception("Невідомий EVENT_TIMEZONE=%s, використовую UTC", EVENT_TIMEZONE)
+        tz = timezone.utc
+
+    raw_time = str(event.get("event_time") or "").strip()
+    if raw_time:
+        try:
+            parts = raw_time.split(":")
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
+            second = int(float(parts[2])) if len(parts) > 2 and parts[2] else 0
+        except (ValueError, IndexError):
+            hour, minute, second = 12, 0, 0
+        event_at = datetime(day.year, day.month, day.day, hour, minute, second, tzinfo=tz)
+        return event_at - timedelta(days=1)
+
+    # Якщо час події не вказаний, нагадуємо опівдні попереднього дня.
+    previous_day = day - timedelta(days=1)
+    return datetime(previous_day.year, previous_day.month, previous_day.day, 12, 0, 0, tzinfo=tz)
+
+
+def format_group_event_reminder(event):
+    """Текст нагадування за день до події."""
+    base = format_group_event(event)
+    return "⏰ Нагадування: подія вже завтра!\n\n" + base
+
+
+def notify_event_reminder_groups_sync(event):
+    """Надсилає нагадування про подію в усі активні Telegram-групи. Повертає True, якщо надіслано хоча б в одну."""
+    event_id = event.get("id")
+    if not event_id:
+        return False
+
+    try:
+        fresh_event = get_event_snapshot(event_id) or event
+        text = format_group_event_reminder(fresh_event)
+        keyboard = telegram_keyboard_payload(event_id, _event_google_maps_url(fresh_event))
+        group_ids = get_active_group_ids_sync()
+        if not group_ids:
+            logging.warning("Немає активних Telegram-груп для нагадування про подію %s", event_id)
+            return False
+
+        photo_url = (fresh_event.get("cover_url") or "").strip()
+        sent_any = False
+        for chat_id in group_ids:
+            if photo_url:
+                ok, err = telegram_api_post("sendPhoto", {
+                    "chat_id": chat_id,
+                    "photo": photo_url,
+                    "caption": text[:1024],
+                    "reply_markup": keyboard,
+                })
+            else:
+                ok, err = telegram_api_post("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": text[:4096],
+                    "reply_markup": keyboard,
+                })
+
+            if ok:
+                sent_any = True
+                logging.info("Нагадування про подію %s надіслано в групу %s", event_id, chat_id)
+            else:
+                logging.error(
+                    "Не вдалось надіслати нагадування про подію %s в групу %s: %s",
+                    event_id, chat_id, err
+                )
+        return sent_any
+    except Exception:
+        logging.exception("Не вдалось надіслати групове нагадування про подію %s", event_id)
+        return False
+
+
+def _claim_event_day_reminder(event_id):
+    """Атомарно позначає нагадування як взяте в роботу, щоб не було дублювань між воркерами."""
+    now_utc = datetime.now(timezone.utc).isoformat()
+    resp = requests.patch(
+        EVENTS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+        params={
+            "id": f"eq.{event_id}",
+            "status": "eq.scheduled",
+            "reminder_day_sent_at": "is.null",
+        },
+        json={"reminder_day_sent_at": now_utc},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    rows = resp.json() if resp.content else []
+    return rows[0] if rows else None
+
+
+def _release_event_day_reminder_claim(event_id):
+    """Повертає подію в чергу нагадувань, якщо Telegram тимчасово не зміг нічого надіслати."""
+    try:
+        resp = requests.patch(
+            EVENTS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"id": f"eq.{event_id}", "status": "eq.scheduled"},
+            json={"reminder_day_sent_at": None},
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except Exception:
+        logging.exception("Не вдалося повернути нагадування події %s у чергу", event_id)
+
+
+def auto_send_event_day_reminders():
+    """Надсилає рівно одне групове нагадування приблизно за 24 години до кожної майбутньої події."""
+    try:
+        try:
+            tz = ZoneInfo(EVENT_TIMEZONE)
+        except Exception:
+            logging.exception("Невідомий EVENT_TIMEZONE=%s, використовую UTC", EVENT_TIMEZONE)
+            tz = timezone.utc
+
+        now_local = datetime.now(tz)
+        # Достатньо переглянути сьогоднішні та завтрашні заплановані події.
+        max_date = (now_local.date() + timedelta(days=1)).isoformat()
+        resp = requests.get(
+            EVENTS_REST,
+            headers=HEADERS,
+            params={
+                "status": "eq.scheduled",
+                "event_date": f"lte.{max_date}",
+                "reminder_day_sent_at": "is.null",
+                "select": "*",
+                "order": "event_date.asc,event_time.asc",
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+
+        for event in resp.json():
+            event_due = _event_local_due_at(event)
+            reminder_due = _event_reminder_due_at(event)
+            if not event_due or not reminder_due:
+                continue
+            # Якщо воркер/Render був недоступний у точний момент, нагадування все одно піде після відновлення,
+            # доки сама подія ще не почалася/не завершилась.
+            if reminder_due <= now_local < event_due:
+                event_id = event.get("id")
+                if not event_id:
+                    continue
+                try:
+                    claimed = _claim_event_day_reminder(event_id)
+                    if not claimed:
+                        continue
+                    if not notify_event_reminder_groups_sync(claimed):
+                        _release_event_day_reminder_claim(event_id)
+                except Exception:
+                    logging.exception("Не вдалося обробити нагадування події %s", event_id)
+                    _release_event_day_reminder_claim(event_id)
+    except Exception:
+        logging.exception("Помилка автоматичної перевірки нагадувань про події")
+
+
 def event_completion_worker():
     # Невелика затримка після запуску, щоб застосунок встиг ініціалізуватися.
     time.sleep(5)
     while True:
+        auto_send_event_day_reminders()
         auto_complete_due_events()
         time.sleep(60)
 
@@ -2758,10 +2928,11 @@ def edit_event(event_id):
     else:
         cover_url = old_cover_url
 
+    new_event_time = str(data.get("event_time") or "").strip()
     payload = {
         "title": title,
         "event_date": event_date,
-        "event_time": str(data.get("event_time") or "").strip(),
+        "event_time": new_event_time,
         "location_text": location["location_text"],
         "location_map_url": location["location_map_url"],
         "location_lat": location["location_lat"],
@@ -2772,6 +2943,14 @@ def edit_event(event_id):
         "max_participants": max_participants,
         "cover_url": cover_url,
     }
+
+    # Якщо адміністратор переносить дату або час уже анонсованої події,
+    # дозволяємо системі надіслати нове нагадування за день до нового часу.
+    old_event_date = str(current_event.get("event_date") or "").strip()[:10]
+    old_event_time = str(current_event.get("event_time") or "").strip()[:5]
+    normalized_new_time = new_event_time[:5]
+    if old_event_date != event_date[:10] or old_event_time != normalized_new_time:
+        payload["reminder_day_sent_at"] = None
 
     resp = requests.patch(
         EVENTS_REST,
