@@ -2690,6 +2690,150 @@ def add_event():
     return jsonify({"status": "ok", "event_id": event_id})
 
 
+@app.route("/api/events/<int:event_id>", methods=["PATCH"])
+def edit_event(event_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
+
+    current_resp = requests.get(
+        EVENTS_REST,
+        headers=HEADERS,
+        params={"id": f"eq.{event_id}", "select": "*", "limit": 1},
+        timeout=30,
+    )
+    current_resp.raise_for_status()
+    current_rows = current_resp.json()
+    if not current_rows:
+        return jsonify({"error": "event_not_found"}), 404
+
+    current_event = current_rows[0]
+    if str(current_event.get("status") or "scheduled") != "scheduled":
+        return jsonify({"error": "completed_event_cannot_be_edited"}), 409
+
+    content_type = (request.content_type or "").lower()
+    if "multipart/form-data" in content_type:
+        data = request.form.to_dict(flat=True)
+        cover_file = request.files.get("cover")
+    else:
+        data = request.get_json(silent=True, force=True) or {}
+        cover_file = None
+
+    title = str(data.get("title") or "").strip()
+    event_date = str(data.get("event_date") or "").strip()
+    if not title or not event_date:
+        return jsonify({"error": "title_and_date_required"}), 400
+
+    try:
+        raw_games = data.get("game_names_json")
+        game_names = json.loads(raw_games) if isinstance(raw_games, str) and raw_games.strip() else data.get("game_names", [])
+    except Exception:
+        game_names = []
+
+    if not isinstance(game_names, list):
+        game_names = []
+    game_names = [str(name).strip() for name in game_names if str(name).strip()]
+    game_names = list(dict.fromkeys(game_names))
+
+    legacy_game_name = str(data.get("game_name") or "").strip()
+    if not game_names and legacy_game_name:
+        game_names = [legacy_game_name]
+    primary_game = game_names[0] if game_names else legacy_game_name
+
+    try:
+        max_participants = max(0, int(data.get("max_participants") or 0))
+    except Exception:
+        max_participants = 0
+
+    location = _normalize_event_location(data.get("location_text"))
+    old_cover_url = current_event.get("cover_url")
+    remove_cover = str(data.get("remove_cover") or "").strip().lower() in {"1", "true", "yes", "on"}
+    new_cover_url = None
+
+    if cover_file and getattr(cover_file, "filename", ""):
+        new_cover_url = upload_file(cover_file, "event-covers")
+        cover_url = new_cover_url
+    elif remove_cover:
+        cover_url = None
+    else:
+        cover_url = old_cover_url
+
+    payload = {
+        "title": title,
+        "event_date": event_date,
+        "event_time": str(data.get("event_time") or "").strip(),
+        "location_text": location["location_text"],
+        "location_map_url": location["location_map_url"],
+        "location_lat": location["location_lat"],
+        "location_lng": location["location_lng"],
+        "game_name": primary_game,
+        "game_names": game_names,
+        "description": str(data.get("description") or "").strip(),
+        "max_participants": max_participants,
+        "cover_url": cover_url,
+    }
+
+    resp = requests.patch(
+        EVENTS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+        params={"id": f"eq.{event_id}"},
+        json=payload,
+        timeout=30,
+    )
+
+    if resp.status_code >= 400 and any(field in resp.text for field in (
+        "max_participants", "cover_url", "game_names", "location_text",
+        "location_map_url", "location_lat", "location_lng"
+    )):
+        fallback = dict(payload)
+        for field in (
+            "max_participants", "cover_url", "game_names", "location_text",
+            "location_map_url", "location_lat", "location_lng"
+        ):
+            if field in resp.text:
+                fallback.pop(field, None)
+        resp = requests.patch(
+            EVENTS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            params={"id": f"eq.{event_id}"},
+            json=fallback,
+            timeout=30,
+        )
+
+    if resp.status_code >= 400:
+        if new_cover_url:
+            try:
+                delete_file(new_cover_url)
+            except Exception:
+                logging.exception("Не вдалось прибрати нову обкладинку після помилки редагування події")
+        resp.raise_for_status()
+
+    if (new_cover_url or remove_cover) and old_cover_url and old_cover_url != cover_url:
+        try:
+            delete_file(old_cover_url)
+        except Exception:
+            logging.exception("Не вдалось видалити попередню обкладинку події")
+
+    updated_rows = resp.json() if resp.content else []
+    updated_event = updated_rows[0] if updated_rows else {**current_event, **payload}
+
+    log_activity(
+        "event_updated",
+        f"Оновлено подію: {title}",
+        (
+            f"Ігри: {', '.join(game_names)}" +
+            (f" · 📍 {location.get('location_text')}" if location.get("location_text") else "")
+            if game_names
+            else (location.get("location_text") or payload.get("description", ""))
+        ),
+        actor_name=str(data.get("updated_by") or data.get("created_by") or ""),
+        image_url=cover_url,
+        metadata={"event_id": event_id, "games": game_names},
+    )
+
+    return jsonify({"status": "updated", "event": updated_event})
+
+
 @app.route("/api/events/<int:event_id>", methods=["DELETE"])
 def delete_event(event_id):
     denied = _admin_required_response()
@@ -3092,13 +3236,56 @@ def profile_group_keyboard_payload():
 
 
 def notify_achievement_groups_sync(display_name, achievement, level, xp):
-    """Сповіщення про досягнення в Telegram-групу вимкнено."""
-    return
+    """Публікує нове досягнення учасника у всіх активних Telegram-групах."""
+    try:
+        group_ids = get_active_group_ids_sync()
+        if not group_ids:
+            logging.warning("Немає активних Telegram-груп для анонсу досягнення")
+            return
+
+        icon = achievement.get("icon") or "🏆"
+        name = achievement.get("name") or "Досягнення"
+        description = (achievement.get("description") or "").strip()
+        lines = [
+            "🏆 Нове досягнення!",
+            "",
+            f"👤 {display_name}",
+            f"{icon} {name}",
+        ]
+        if description:
+            lines.append(description)
+        bonus_xp = int(achievement.get("bonus_xp") or 0)
+        if bonus_xp:
+            lines.append(f"🎁 Нагорода: +{bonus_xp} XP")
+        lines.extend(["", f"⭐ Рівень {level} · {xp} XP"])
+        text = "\n".join(lines)
+        keyboard = profile_group_keyboard_payload()
+
+        for chat_id in group_ids:
+            payload = {"chat_id": chat_id, "text": text[:4096]}
+            if keyboard:
+                payload["reply_markup"] = keyboard
+            ok, err = telegram_api_post("sendMessage", payload)
+            if ok:
+                logging.info(
+                    "Досягнення '%s' користувача '%s' опубліковано в групі %s",
+                    name, display_name, chat_id
+                )
+            else:
+                logging.error(
+                    "Не вдалось опублікувати досягнення '%s' в групі %s: %s",
+                    name, chat_id, err
+                )
+    except Exception:
+        logging.exception("Не вдалось опублікувати групове сповіщення про досягнення")
 
 
 def notify_achievement_groups_async(display_name, achievement, level, xp):
-    """Сповіщення про досягнення в Telegram-групу вимкнено."""
-    return
+    Thread(
+        target=notify_achievement_groups_sync,
+        args=(display_name, achievement, level, xp),
+        daemon=True,
+    ).start()
 
 
 def notify_groups_sync(event_id, photo_url=None):
@@ -3311,85 +3498,6 @@ def telegram_rsvp_identity(user):
     return username, display_name
 
 
-
-
-@dp.message(Command("fixapp"))
-async def cmd_fixapp(message: Message):
-    """Оновлює кнопку в уже існуючому повідомленні, не створюючи нове."""
-    if message.chat.type not in ("group", "supergroup"):
-        await message.answer("Команда /fixapp працює у групі.")
-        return
-
-    try:
-        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
-        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
-            await message.answer("Оновити кнопку може лише адміністратор групи.")
-            return
-    except Exception:
-        await message.answer("Не вдалося перевірити права адміністратора.")
-        return
-
-    # Найнадійніше: відповісти командою /fixapp саме на старе повідомлення Styloteka.
-    target = message.reply_to_message
-
-    # Якщо команда не є відповіддю, пробуємо поточне закріплене повідомлення.
-    if target is None:
-        try:
-            chat_info = await bot.get_chat(message.chat.id)
-            target = getattr(chat_info, "pinned_message", None)
-        except Exception:
-            target = None
-
-    if target is None:
-        await message.answer(
-            "Не знайшла повідомлення для оновлення.\n"
-            "Відповідай командою /fixapp саме на старе повідомлення Styloteka з кнопкою."
-        )
-        return
-
-    try:
-        me = await bot.get_me()
-        if not target.from_user or target.from_user.id != me.id:
-            await message.answer(
-                "Це повідомлення надіслане не Styloteka, тому я не можу змінити його кнопку.\n"
-                "Відповідай /fixapp на старе повідомлення саме від бота."
-            )
-            return
-
-        bot_username = (me.username or "").lstrip("@")
-        if not bot_username:
-            await message.answer("Не вдалося визначити username бота.")
-            return
-
-        # Main Mini App URL — без short_name.
-        launch_url = f"https://t.me/{bot_username}?startapp=home"
-
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="🎲 Відкрити Styloteka",
-                        url=launch_url,
-                    )
-                ]
-            ]
-        )
-
-        await bot.edit_message_reply_markup(
-            chat_id=message.chat.id,
-            message_id=target.message_id,
-            reply_markup=keyboard,
-        )
-
-        await message.answer(
-            "✅ Стару кнопку оновлено. Саме повідомлення і його закріплення залишилися."
-        )
-    except Exception:
-        logging.exception("Не вдалося оновити стару кнопку Mini App")
-        await message.answer(
-            "Не вдалося змінити кнопку. Спробуй відповісти /fixapp прямо на старе повідомлення Styloteka."
-        )
-
 @dp.message(Command("setgroup"))
 async def cmd_setgroup(message: Message):
     if message.chat.type not in ("group", "supergroup"):
@@ -3503,9 +3611,11 @@ async def cmd_app(message: Message):
             await message.answer("Не вдалося визначити username бота.")
             return
 
-        # Використовуємо тільки Main Mini App.
-        # Це уникає BOT_INVALID / BOT_APP_SHORTNAME_INVALID через застарілий short_name.
-        launch_url = f"https://t.me/{bot_username}?startapp=home"
+        if TELEGRAM_APP_SHORT_NAME:
+            launch_url = f"https://t.me/{bot_username}/{TELEGRAM_APP_SHORT_NAME}?startapp=home"
+        else:
+            # Працює для Main Mini App, налаштованого в BotFather.
+            launch_url = f"https://t.me/{bot_username}?startapp=home"
 
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[

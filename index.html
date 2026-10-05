@@ -468,6 +468,35 @@
   }
   .event-card .ev-admin-del svg { width: 13px; height: 13px; }
 
+.event-card .ev-admin-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.event-card .ev-admin-edit {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.event-card .ev-admin-edit svg { width: 13px; height: 13px; }
+.event-cover-remove-btn {
+  margin-top: 8px;
+  width: 100%;
+  border: 1px solid var(--danger-text);
+  background: transparent;
+  color: var(--danger-text);
+  border-radius: 12px;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 700;
+}
+
   .ev-participants-label {
     font-size: 11px;
     color: var(--muted);
@@ -3919,7 +3948,7 @@
 <div class="modal" id="eventModal">
   <div class="sheet">
     <button class="close-btn" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
-    <h2>Нова подія</h2>
+    <h2 id="eventModalHeading">Нова подія</h2>
 
     <label>Назва</label>
     <input type="text" id="eventTitle" placeholder="Ігровий вечір">
@@ -3952,8 +3981,9 @@
     <input type="file" id="eventCover" accept="image/*">
     <div class="event-form-hint">Якщо свою обкладинку не додати, для Telegram-анонсу використається обкладинка першої обраної гри.</div>
     <img id="eventCoverPreview" class="event-cover-preview" alt="Попередній перегляд обкладинки">
+    <button type="button" class="event-cover-remove-btn" id="eventCoverRemoveBtn" style="display:none;" onclick="removeCurrentEventCover()">Видалити обкладинку</button>
 
-    <button class="btn" onclick="submitEvent()">Створити подію</button>
+    <button class="btn" id="eventSubmitBtn" onclick="submitEvent()">Створити подію</button>
   </div>
 </div>
 
@@ -4513,20 +4543,31 @@ function getSelectedEventGames() {
     .filter(Boolean);
 }
 
-function renderEventGameChoices() {
+function renderEventGameChoices(selectedNames = []) {
   const box = document.getElementById('eventGameChoices');
   if (!box) return;
   box.innerHTML = '';
-  if (!allGames || !allGames.length) {
+
+  const selected = new Set((selectedNames || []).filter(Boolean));
+  const games = Array.isArray(allGames) ? [...allGames] : [];
+  const knownNames = new Set(games.map(game => game.name));
+
+  selected.forEach(name => {
+    if (!knownNames.has(name)) games.push({name});
+  });
+
+  if (!games.length) {
     box.innerHTML = '<div class="event-form-hint">У бібліотеці поки немає ігор.</div>';
     return;
   }
-  allGames.forEach(game => {
+
+  games.forEach(game => {
     const label = document.createElement('label');
     label.className = 'event-game-choice';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = game.name;
+    checkbox.checked = selected.has(game.name);
     const text = document.createElement('span');
     text.textContent = game.name;
     label.appendChild(checkbox);
@@ -7144,7 +7185,12 @@ function renderEvents(events) {
           }
         </div>
         ${!historyMode && isAdmin
-          ? `<button class="ev-admin-del" data-id="${ev.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>`
+          ? `<div class="ev-admin-actions">
+              <button class="ev-admin-edit" data-id="${ev.id}" aria-label="Редагувати подію" title="Редагувати">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11a2.2 2.2 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
+              </button>
+              <button class="ev-admin-del" data-id="${ev.id}" aria-label="Видалити подію" title="Видалити"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>
+            </div>`
           : ''}
       </div>
 
@@ -7165,6 +7211,8 @@ function renderEvents(events) {
       if (!mine) {
         card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => toggleRsvp(ev.id));
       }
+
+      card.querySelector('.ev-admin-edit')?.addEventListener('click', () => openEditEventModal(ev));
 
       card.querySelector('.ev-admin-del')?.addEventListener('click', () =>
         tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => {
@@ -7204,7 +7252,91 @@ function renderEvents(events) {
 }
 
 
+let editingEventId = null;
+let editingEventCoverUrl = '';
+let editingEventRemoveCover = false;
+
+function setEventModalMode(editing) {
+  const heading = document.getElementById('eventModalHeading');
+  const submit = document.getElementById('eventSubmitBtn');
+  if (heading) heading.textContent = editing ? 'Редагувати подію' : 'Нова подія';
+  if (submit) submit.textContent = editing ? 'Зберегти зміни' : 'Створити подію';
+}
+
+function setEventDateField(value) {
+  const parsed = parseEventDateValue(value);
+  if (!parsed) {
+    resetEventDatePickerField();
+    return;
+  }
+  eventCalendarSelected = parsed;
+  eventCalendarView = new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+  applyEventCalendarSelection();
+}
+
+function showExistingEventCover(url) {
+  const preview = document.getElementById('eventCoverPreview');
+  const removeBtn = document.getElementById('eventCoverRemoveBtn');
+  editingEventCoverUrl = String(url || '').trim();
+  editingEventRemoveCover = false;
+
+  if (preview && editingEventCoverUrl) {
+    preview.src = editingEventCoverUrl;
+    preview.style.display = 'block';
+  } else if (preview) {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+  }
+  if (removeBtn) removeBtn.style.display = editingEventCoverUrl ? 'block' : 'none';
+}
+
+function removeCurrentEventCover() {
+  editingEventRemoveCover = true;
+  editingEventCoverUrl = '';
+  const input = document.getElementById('eventCover');
+  const preview = document.getElementById('eventCoverPreview');
+  const removeBtn = document.getElementById('eventCoverRemoveBtn');
+  if (input) input.value = '';
+  if (preview) {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+  }
+  if (removeBtn) removeBtn.style.display = 'none';
+}
+
+function openEditEventModal(ev) {
+  if (!isAdmin || !ev?.id) return;
+
+  editingEventId = Number(ev.id);
+  setEventModalMode(true);
+
+  document.getElementById('eventTitle').value = ev.title || '';
+  setEventDateField(String(ev.event_date || ''));
+  document.getElementById('eventTime').value = ev.event_time ? String(ev.event_time).slice(0, 5) : '';
+
+  const locationInput = document.getElementById('eventLocation');
+  if (locationInput) locationInput.value = ev.location_text || '';
+
+  document.getElementById('eventDescription').value = ev.description || '';
+  const capacity = document.getElementById('eventCapacity');
+  if (capacity) capacity.value = String(Number(ev.max_participants) || 0);
+
+  renderEventGameChoices(eventGameNames(ev));
+  resetEventCoverPreview();
+  initEventCoverPreview();
+  showExistingEventCover(ev.cover_url || '');
+
+  document.getElementById('eventModal').classList.add('open');
+}
+
+
+
 function openEventModal() {
+  editingEventId = null;
+  editingEventCoverUrl = '';
+  editingEventRemoveCover = false;
+  setEventModalMode(false);
+
   document.getElementById('eventTitle').value = '';
   resetEventDatePickerField();
   document.getElementById('eventTime').value = '';
@@ -7216,10 +7348,13 @@ function openEventModal() {
   renderEventGameChoices();
   resetEventCoverPreview();
   initEventCoverPreview();
+  const removeBtn = document.getElementById('eventCoverRemoveBtn');
+  if (removeBtn) removeBtn.style.display = 'none';
   document.getElementById('eventModal').classList.add('open');
 }
 
 async function submitEvent() {
+  const isEditing = !!editingEventId;
   const title = document.getElementById('eventTitle').value.trim();
   const date = document.getElementById('eventDate').value.trim();
   if (!title || !date) {
@@ -7238,29 +7373,53 @@ async function submitEvent() {
   formData.append('game_names_json', JSON.stringify(selectedGames));
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
-  formData.append('created_by', username);
+  formData.append(isEditing ? 'updated_by' : 'created_by', username);
+
+  if (isEditing && editingEventRemoveCover) {
+    formData.append('remove_cover', '1');
+  }
 
   const coverFile = document.getElementById('eventCover')?.files?.[0];
   if (coverFile) formData.append('cover', coverFile);
 
-  const res = await fetch('/api/events', {
-    method: 'POST',
-    headers: telegramAuthHeaders(),
-    body: formData,
-  });
+  const url = isEditing ? `/api/events/${editingEventId}` : '/api/events';
+  const method = isEditing ? 'PATCH' : 'POST';
+  const submitBtn = document.getElementById('eventSubmitBtn');
+  if (submitBtn) submitBtn.disabled = true;
 
-  if (res.status === 403) {
-    tg.showAlert('Створювати події можуть лише адміністратори Telegram-групи.');
-    return;
-  }
-  if (!res.ok) {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: telegramAuthHeaders(),
+      body: formData,
+    });
+
     const data = await res.json().catch(() => ({}));
-    tg.showAlert(data.error || 'Не вдалося створити подію.');
-    return;
-  }
 
-  closeModal('eventModal');
-  loadEvents();
+    if (res.status === 403) {
+      tg.showAlert(isEditing
+        ? 'Редагувати події можуть лише адміністратори Telegram-групи.'
+        : 'Створювати події можуть лише адміністратори Telegram-групи.');
+      return;
+    }
+    if (res.status === 409 && data.error === 'completed_event_cannot_be_edited') {
+      tg.showAlert('Завершену подію вже не можна редагувати.');
+      loadEvents();
+      return;
+    }
+    if (!res.ok) {
+      tg.showAlert(data.error || (isEditing ? 'Не вдалося зберегти зміни.' : 'Не вдалося створити подію.'));
+      return;
+    }
+
+    closeModal('eventModal');
+    editingEventId = null;
+    editingEventCoverUrl = '';
+    editingEventRemoveCover = false;
+    loadEvents();
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
 }
 
 async function toggleRsvp(eventId) {
