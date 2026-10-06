@@ -4246,13 +4246,13 @@
   }
   .dungeon-log-list li + li { margin-top: 4px; }
 
-  /* Шість вкладок у нижній навігації без перекриттів. */
+  /* Сім кнопок у нижній навігації без перекриттів. */
   .bottom-nav button {
     min-width: 0;
     flex: 1 1 0;
   }
   .bottom-nav button span:last-child {
-    font-size: clamp(8.5px, 2.35vw, 11px) !important;
+    font-size: clamp(8px, 2.15vw, 10.5px) !important;
     letter-spacing: 0 !important;
   }
   .bottom-nav button .icon svg { width: 20px; height: 20px; }
@@ -4554,6 +4554,73 @@
     font-size: 9px;
     text-align: center;
   }
+  .profile-shop-section-title {
+    grid-column: 1 / -1;
+    margin: 7px 2px 0;
+    padding-top: 7px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .02em;
+  }
+  .profile-shop-section-title:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .profile-shop-item.coupon {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(227,191,85,.40);
+    background:
+      radial-gradient(circle at 90% 0%, rgba(227,191,85,.14), transparent 46%),
+      linear-gradient(145deg, rgba(95,63,23,.18), rgba(255,255,255,.025));
+  }
+  .profile-shop-item.coupon::after {
+    content: "PREMIUM";
+    position: absolute;
+    top: 10px;
+    right: -23px;
+    width: 86px;
+    padding: 3px 0;
+    transform: rotate(38deg);
+    background: rgba(227,191,85,.92);
+    color: #17110a;
+    font-size: 7px;
+    font-weight: 950;
+    letter-spacing: .12em;
+    text-align: center;
+  }
+  .profile-shop-coupon-preview {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% - 18px);
+    min-height: 48px;
+    border: 1px dashed rgba(227,191,85,.58);
+    border-radius: 11px;
+    background: linear-gradient(135deg, rgba(227,191,85,.13), rgba(85,63,24,.08));
+    color: #f0cf69;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .04em;
+  }
+  .profile-shop-coupon-preview::before,
+  .profile-shop-coupon-preview::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--bg);
+    transform: translateY(-50%);
+  }
+  .profile-shop-coupon-preview::before { left: -6px; }
+  .profile-shop-coupon-preview::after { right: -6px; }
   .profile-shop-preview-avatar.frame-shop-bronze {
     border-color: #b97842 !important;
     box-shadow: 0 0 0 2px rgba(185,120,66,.18), 0 0 20px rgba(185,120,66,.24);
@@ -5012,6 +5079,10 @@
   <button class="nav-btn" data-view="view-dungeon">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V8l7-4 7 4v12"/><path d="M8 20v-5h8v5M9 9h.01M15 9h.01"/><path d="M3.5 20h17"/></svg></span>
     <span>Данж</span>
+  </button>
+  <button class="nav-shop-btn" type="button" onclick="openProfileShop()" aria-label="Відкрити Shop">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.5h14l-1 12H6l-1-12Z"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/></svg></span>
+    <span>Shop</span>
   </button>
   <button class="nav-btn" data-view="view-community">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
@@ -8881,13 +8952,20 @@ function xpRewardsHtml(data) {
 
 
 function shopTypeLabel(type) {
-  return type === 'frame' ? 'Рамка аватарки' : type === 'theme' ? 'Тема оформлення' : 'Оформлення';
+  if (type === 'frame') return 'Рамка аватарки';
+  if (type === 'theme') return 'Тема оформлення';
+  if (type === 'coupon') return 'Подарунковий купон';
+  return 'Оформлення';
 }
 
 function shopPreviewHtml(item) {
   if (item.type === 'frame') {
     const frameClass = cosmeticFrameClass(item.id || '');
     return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${frameClass}">🎲</div></div>`;
+  }
+  if (item.type === 'coupon') {
+    const label = item.id === 'shop_coupon_gift_royal' ? 'ROYAL GIFT' : item.id === 'shop_coupon_gift_large' ? 'GIFT PLUS' : 'GIFT';
+    return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">🎟 ${label}</div></div>`;
   }
   const palettes = {
     shop_theme_forest: ['#0b2117','#315b48','#d6bc67'],
@@ -8926,7 +9004,13 @@ async function buyProfileShopItem(itemId) {
       return;
     }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    tg.showAlert(data.status === 'already_owned' ? 'Цей предмет уже у твоїй колекції.' : 'Придбано й одразу застосовано ✨');
+    if (data.status === 'already_owned') {
+      tg.showAlert('Цей лот уже у твоїй колекції.');
+    } else if (data.item_type === 'coupon') {
+      tg.showAlert('Подарунковий купон придбано 🎟️ Він збережений у твоїй колекції.');
+    } else {
+      tg.showAlert('Придбано й одразу застосовано ✨');
+    }
     dungeonProfileCache = null;
     const shopOpen = document.getElementById('profileShopModal')?.classList.contains('open');
     await Promise.allSettled([loadMyProfile(), loadHomeHub(true), shopOpen ? loadProfileShopModal() : Promise.resolve()]);
@@ -8988,35 +9072,51 @@ function profileShopHtml(data) {
   const items = Array.isArray(data.shop_items) ? data.shop_items : [];
   const gold = Math.max(0, Number(data.gold) || 0);
   if (!items.length) return '';
+
+  const cosmetics = items.filter(item => item.type !== 'coupon');
+  const coupons = items.filter(item => item.type === 'coupon');
+
+  const renderItem = (item) => {
+    const owned = Boolean(item.owned);
+    const active = Boolean(item.active);
+    const price = Math.max(0, Number(item.price) || 0);
+    const missing = Math.max(0, price - gold);
+    const canBuy = missing === 0;
+    let action = '';
+
+    if (item.type === 'coupon') {
+      action = owned
+        ? `<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>`
+        : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : 'disabled'}>Купити · 🪙 ${price}</button>${canBuy ? '' : `<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
+    } else {
+      action = active
+        ? `<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`
+        : owned
+          ? `<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`
+          : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : 'disabled'}>Купити · 🪙 ${price}</button>${canBuy ? '' : `<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
+    }
+
+    return `
+      <div class="profile-shop-item ${item.type === 'coupon' ? 'coupon' : ''} ${owned ? 'owned' : ''} ${active ? 'active' : ''}">
+        ${shopPreviewHtml(item)}
+        <div class="profile-shop-icon">${escapeHtml(item.icon || '🎁')}</div>
+        <div class="profile-shop-name">${escapeHtml(item.name || '')}</div>
+        <div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div>
+        <div class="profile-shop-desc">${escapeHtml(item.description || '')}</div>
+        ${action}
+      </div>`;
+  };
+
   return `
     <div class="profile-shop-panel">
       <div class="profile-shop-head">
-        <div class="profile-shop-title">🛍 Крамниця оформлення</div>
+        <div class="profile-shop-title">🛍 Магазин</div>
         <div class="profile-shop-balance">🪙 ${gold}</div>
       </div>
-      <div class="profile-shop-subtitle">Купуй рамки для аватарки та теми за золото з пригод. Покупки залишаються у твоїй колекції назавжди.</div>
+      <div class="profile-shop-subtitle">Купуй оформлення та преміальні подарункові купони за золото з Данжу. Куплені лоти залишаються у твоїй колекції назавжди.</div>
       <div class="profile-shop-grid">
-        ${items.map(item => {
-          const owned = Boolean(item.owned);
-          const active = Boolean(item.active);
-          const price = Math.max(0, Number(item.price) || 0);
-          const missing = Math.max(0, price - gold);
-          const canBuy = missing === 0;
-          const action = active
-            ? `<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`
-            : owned
-              ? `<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`
-              : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : 'disabled'}>Купити · 🪙 ${price}</button>${canBuy ? '' : `<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
-          return `
-            <div class="profile-shop-item ${owned ? 'owned' : ''} ${active ? 'active' : ''}">
-              ${shopPreviewHtml(item)}
-              <div class="profile-shop-icon">${escapeHtml(item.icon || '🎁')}</div>
-              <div class="profile-shop-name">${escapeHtml(item.name || '')}</div>
-              <div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div>
-              <div class="profile-shop-desc">${escapeHtml(item.description || '')}</div>
-              ${action}
-            </div>`;
-        }).join('')}
+        ${cosmetics.length ? `<div class="profile-shop-section-title">✨ Оформлення</div>${cosmetics.map(renderItem).join('')}` : ''}
+        ${coupons.length ? `<div class="profile-shop-section-title">🎟 Подарункові купони · найдорожчі лоти</div>${coupons.map(renderItem).join('')}` : ''}
       </div>
     </div>`;
 }
