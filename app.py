@@ -178,6 +178,22 @@ def _event_google_maps_url(event):
     return f"https://www.google.com/maps/search/?api=1&query={quote(location)}"
 
 
+def normalize_rules_url(value):
+    """Нормалізує зовнішнє HTTP(S)-посилання на правила. Повертає None, якщо URL некоректний."""
+    value = str(value or "").strip()
+    if not value:
+        return ""
+    if not re.match(r"^https?://", value, flags=re.IGNORECASE):
+        value = "https://" + value
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return None
+    if parsed.scheme.lower() not in ("http", "https") or not parsed.netloc:
+        return None
+    return value
+
+
 # ==================== Робота зі сховищем Supabase ====================
 def upload_file(file_storage, folder):
     """Завантажує файл у Supabase Storage, повертає публічне посилання."""
@@ -512,12 +528,16 @@ def add_game():
     description = request.form.get("description", "")
     added_by = request.form.get("added_by", "невідомо")
     tags = request.form.get("tags", "")
+    rules_link = normalize_rules_url(request.form.get("rules_url", ""))
+    if rules_link is None:
+        return jsonify({"error": "Некоректне посилання на правила. Використай адресу сайту http:// або https://"}), 400
 
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
 
     cover_url = upload_file(cover_file, "covers") if cover_file else None
-    rules_url = upload_file(rules_file, "rules") if rules_file else None
+    # Якщо одночасно додані URL і PDF, файл має пріоритет.
+    rules_url = upload_file(rules_file, "rules") if rules_file else (rules_link or None)
 
     resp = requests.post(
         REST,
@@ -561,6 +581,10 @@ def update_game(game_id):
     name = request.form.get("name")
     description = request.form.get("description", "")
     tags = request.form.get("tags", "")
+    rules_link_raw = request.form.get("rules_url", None)
+    rules_link = normalize_rules_url(rules_link_raw) if rules_link_raw is not None else None
+    if rules_link_raw is not None and str(rules_link_raw).strip() and rules_link is None:
+        return jsonify({"error": "Некоректне посилання на правила. Використай адресу сайту http:// або https://"}), 400
 
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
@@ -585,6 +609,11 @@ def update_game(game_id):
     if rules_file:
         delete_file(rules_url)
         rules_url = upload_file(rules_file, "rules")
+    elif rules_link_raw is not None and str(rules_link_raw).strip():
+        # Нове зовнішнє посилання замінює попередній PDF/URL.
+        if rules_link != rules_url:
+            delete_file(rules_url)
+            rules_url = rules_link
 
     resp = requests.patch(
         REST,

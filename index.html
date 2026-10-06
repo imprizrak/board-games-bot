@@ -3651,7 +3651,7 @@
     </div>
     <p id="viewDescription"></p>
     <div class="game-detail-stats" id="viewGameStats"></div>
-    <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила (PDF)</a>
+    <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила</a>
     <p id="viewNoRules" style="color:var(--muted);"></p>
     <div class="quick-start" id="quickStartSection">
       <div class="quick-start-title">Швидкий старт</div>
@@ -3680,7 +3680,11 @@
     <label>Нова обкладинка (залиш порожнім, щоб не змінювати)</label>
     <input type="file" id="editCover" accept="image/*">
 
-    <label>Новий файл з правилами (PDF, необов'язково)</label>
+    <label>Посилання на правила</label>
+    <input type="url" id="editRulesUrl" placeholder="https://site.com/rules">
+    <div style="color:var(--muted); font-size:13px; margin-top:6px;">Можна вставити сторінку з правилами або пряме посилання на PDF.</div>
+
+    <label>Або новий файл з правилами (PDF, необов'язково)</label>
     <input type="file" id="editRules" accept="application/pdf">
 
     <button class="btn" onclick="submitEdit()">Зберегти зміни</button>
@@ -3705,7 +3709,11 @@
     <label>Обкладинка (картинка)</label>
     <input type="file" id="inputCover" accept="image/*">
 
-    <label>Файл з правилами (PDF)</label>
+    <label>Посилання на правила</label>
+    <input type="url" id="inputRulesUrl" placeholder="https://site.com/rules">
+    <div style="color:var(--muted); font-size:13px; margin-top:6px;">Встав сторінку з правилами або пряме посилання на PDF.</div>
+
+    <label>Або файл з правилами (PDF)</label>
     <input type="file" id="inputRules" accept="application/pdf">
 
     <button class="btn" onclick="submitGame()">Зберегти гру</button>
@@ -4146,6 +4154,7 @@ function openEditModal() {
   document.getElementById("editDescription").value = currentGame.description || "";
   document.getElementById("editTags").value = currentGame.tags || "";
   document.getElementById("editCover").value = "";
+  document.getElementById("editRulesUrl").value = currentGame.rules_url || "";
   document.getElementById("editRules").value = "";
   closeModal("viewModal");
   document.getElementById("editModal").classList.add("open");
@@ -4165,6 +4174,7 @@ async function submitEdit() {
   formData.append("name", name);
   formData.append("description", document.getElementById("editDescription").value);
   formData.append("tags", document.getElementById("editTags").value);
+  formData.append("rules_url", document.getElementById("editRulesUrl").value.trim());
 
   const coverFile = document.getElementById("editCover").files[0];
   const rulesFile = document.getElementById("editRules").files[0];
@@ -4177,6 +4187,11 @@ async function submitEdit() {
     body: formData,
   });
   if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    tg.showAlert(data.error || "Не вдалося зберегти гру.");
+    return;
+  }
 
   closeModal("editModal");
   loadGames();
@@ -4211,6 +4226,7 @@ async function submitGame() {
   formData.append("name", name);
   formData.append("description", document.getElementById("inputDescription").value);
   formData.append("tags", document.getElementById("inputTags").value);
+  formData.append("rules_url", document.getElementById("inputRulesUrl").value.trim());
   formData.append("added_by", username);
 
   const coverFile = document.getElementById("inputCover").files[0];
@@ -4225,12 +4241,18 @@ async function submitGame() {
     body: formData,
   });
   if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    tg.showAlert(data.error || "Не вдалося додати гру.");
+    return;
+  }
 
   closeModal("addModal");
   document.getElementById("inputName").value = "";
   document.getElementById("inputDescription").value = "";
   document.getElementById("inputTags").value = "";
   document.getElementById("inputCover").value = "";
+  document.getElementById("inputRulesUrl").value = "";
   document.getElementById("inputRules").value = "";
 
   loadGames();
