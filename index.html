@@ -3955,6 +3955,320 @@
     }
   }
 
+
+  /* ==================== ПІДЗЕМЕЛЛЯ: МІНІГРА ==================== */
+  .dungeon-wrap {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 4px var(--page-pad, 14px) calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .dungeon-hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid rgba(227,191,85,.34);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 92% 0%, rgba(92,139,214,.20), transparent 42%),
+      linear-gradient(145deg, #12243a, #08131f);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 6px 18px rgba(0,0,0,.22);
+  }
+  .dungeon-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: #13263d;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-weight: 900;
+    font-size: 22px;
+    box-shadow: 0 0 0 3px rgba(8,17,31,.72), 0 8px 16px rgba(0,0,0,.24);
+  }
+  .dungeon-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dungeon-hero-main { min-width: 0; }
+  .dungeon-kicker {
+    color: #87a1c3;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+  .dungeon-player-name {
+    margin-top: 3px;
+    color: #fff8ee;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 20px;
+    line-height: 1.15;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dungeon-player-title {
+    margin-top: 3px;
+    color: #d8ba63;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+  .dungeon-resources {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .dungeon-resource {
+    min-width: 0;
+    padding: 9px 8px;
+    border: 1px solid rgba(111,159,232,.18);
+    border-radius: 12px;
+    background: rgba(255,255,255,.035);
+    text-align: center;
+  }
+  .dungeon-resource strong {
+    display: block;
+    color: #fff8ee;
+    font-size: 15px;
+    line-height: 1.1;
+  }
+  .dungeon-resource span {
+    display: block;
+    margin-top: 3px;
+    color: #91a4bd;
+    font-size: 9px;
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .dungeon-progress {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+    margin: 14px 0;
+  }
+  .dungeon-room-node {
+    position: relative;
+    min-width: 0;
+    min-height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(111,159,232,.20);
+    border-radius: 12px;
+    background: #0c1928;
+    color: #657a96;
+    font-size: 12px;
+    font-weight: 850;
+    transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease;
+  }
+  .dungeon-room-node.done {
+    border-color: rgba(89,177,123,.42);
+    background: rgba(34,99,58,.20);
+    color: #a9d9b8;
+  }
+  .dungeon-room-node.active {
+    border-color: rgba(227,191,85,.72);
+    background: rgba(227,191,85,.10);
+    color: #f0d57f;
+    transform: translateY(-1px);
+  }
+  .dungeon-room-node.boss::after {
+    content: "♛";
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    color: #caa94b;
+    font-size: 9px;
+  }
+  .dungeon-card {
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 20px;
+    background: linear-gradient(155deg, #111f31, #091521);
+    box-shadow: 0 8px 22px rgba(0,0,0,.24);
+  }
+  .dungeon-scene {
+    position: relative;
+    min-height: 188px;
+    padding: 22px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background:
+      radial-gradient(circle at 18% 10%, rgba(227,191,85,.16), transparent 32%),
+      radial-gradient(circle at 88% 20%, rgba(75,111,175,.20), transparent 34%),
+      linear-gradient(180deg, #15283e 0%, #0b1725 66%, #08121d 100%);
+  }
+  .dungeon-scene-icon {
+    position: absolute;
+    top: 17px;
+    right: 18px;
+    font-size: 48px;
+    line-height: 1;
+    filter: drop-shadow(0 5px 8px rgba(0,0,0,.30));
+  }
+  .dungeon-room-label {
+    color: #88a0bd;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+  .dungeon-encounter-title {
+    margin: 5px 64px 0 0;
+    color: #fff8ee;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 23px;
+    line-height: 1.1;
+    font-weight: 800;
+  }
+  .dungeon-encounter-text {
+    margin: 9px 0 0;
+    color: #c2cede;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .dungeon-body { padding: 14px; }
+  .dungeon-message {
+    min-height: 43px;
+    padding: 10px 12px;
+    border: 1px solid rgba(111,159,232,.14);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+    color: #bfd0e6;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .dungeon-message strong { color: #f0d57f; }
+  .dungeon-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin-top: 12px;
+  }
+  .dungeon-action {
+    min-width: 0;
+    min-height: 46px;
+    padding: 10px 11px;
+    border: 1px solid rgba(111,159,232,.25);
+    border-radius: 13px;
+    background: #14253a;
+    color: #edf3fb;
+    font-size: 13px;
+    line-height: 1.25;
+    font-weight: 750;
+  }
+  .dungeon-action.primary {
+    border-color: #cda743;
+    background: linear-gradient(180deg, #d7b64f, #b88d25);
+    color: #122032;
+  }
+  .dungeon-action.danger {
+    border-color: rgba(215,101,101,.35);
+    background: rgba(103,37,43,.30);
+    color: #f1c1c1;
+  }
+  .dungeon-action:disabled { opacity: .45; }
+  .dungeon-roll {
+    margin-top: 12px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    color: #9eb0c7;
+    font-size: 12px;
+  }
+  .dungeon-roll.show { display: flex; }
+  .dungeon-d20 {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #c8a53e;
+    border-radius: 12px;
+    background: rgba(227,191,85,.08);
+    color: #f1d16f;
+    font-size: 17px;
+    font-weight: 900;
+  }
+  .dungeon-start {
+    padding: 24px 16px;
+    text-align: center;
+  }
+  .dungeon-start-icon { font-size: 54px; line-height: 1; }
+  .dungeon-start h2 {
+    margin: 13px 0 7px;
+    color: #fff8ee;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 22px;
+  }
+  .dungeon-start p {
+    max-width: 460px;
+    margin: 0 auto;
+    color: #9db0c8;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .dungeon-start .dungeon-action { margin-top: 16px; min-width: 180px; }
+  .dungeon-footnote {
+    margin-top: 12px;
+    color: #71849c;
+    font-size: 10px;
+    line-height: 1.35;
+    text-align: center;
+  }
+  .dungeon-log {
+    margin-top: 14px;
+    padding: 12px 13px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.025);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .dungeon-log-title {
+    color: #899db7;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .dungeon-log-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: #b4c2d4;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .dungeon-log-list li + li { margin-top: 4px; }
+
+  /* Шість вкладок у нижній навігації без перекриттів. */
+  .bottom-nav button {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .bottom-nav button span:last-child {
+    font-size: clamp(8.5px, 2.35vw, 11px) !important;
+    letter-spacing: 0 !important;
+  }
+  .bottom-nav button .icon svg { width: 20px; height: 20px; }
+
+  @media (max-width: 390px) {
+    .dungeon-wrap { padding-left: 11px; padding-right: 11px; }
+    .dungeon-hero { grid-template-columns: 62px minmax(0, 1fr); gap: 11px; padding: 13px; }
+    .dungeon-avatar { width: 62px; height: 62px; border-radius: 14px; }
+    .dungeon-player-name { font-size: 18px; }
+    .dungeon-resources { gap: 6px; }
+    .dungeon-resource { padding: 8px 5px; }
+    .dungeon-actions { grid-template-columns: 1fr; }
+    .dungeon-encounter-title { font-size: 20px; }
+    .bottom-nav button { padding-left: 1px !important; padding-right: 1px !important; }
+  }
+
 </style>
 </head>
 <body>
@@ -4207,6 +4521,62 @@
 </div>
 
 
+
+<!-- ==================== ВКЛАДКА: ПІДЗЕМЕЛЛЯ ==================== -->
+<div class="view" id="view-dungeon">
+  <header>Підземелля клубу</header>
+  <div class="dungeon-wrap">
+    <div class="dungeon-hero">
+      <div class="dungeon-avatar" id="dungeonAvatar">🎲</div>
+      <div class="dungeon-hero-main">
+        <div class="dungeon-kicker">Шукач пригод</div>
+        <div class="dungeon-player-name" id="dungeonPlayerName">Гравець</div>
+        <div class="dungeon-player-title" id="dungeonPlayerTitle">Новачок · LV 1</div>
+        <div class="dungeon-resources">
+          <div class="dungeon-resource"><strong id="dungeonHp">10/10</strong><span>❤️ Здоров'я</span></div>
+          <div class="dungeon-resource"><strong id="dungeonGold">0</strong><span>🪙 Золото</span></div>
+          <div class="dungeon-resource"><strong id="dungeonPotions">1</strong><span>🧪 Зілля</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dungeon-progress" id="dungeonProgress" aria-label="Прогрес підземелля"></div>
+
+    <div class="dungeon-card" id="dungeonCard">
+      <div class="dungeon-start" id="dungeonStart">
+        <div class="dungeon-start-icon">🏰</div>
+        <h2>Підземелля Про100 Настолки</h2>
+        <p>П'ять кімнат, випадкові зустрічі, скарби та фінальний бос. Ризикуй, кидай d20 і спробуй винести якомога більше золота.</p>
+        <button type="button" class="dungeon-action primary" id="dungeonStartBtn">Почати похід</button>
+      </div>
+
+      <div id="dungeonEncounter" hidden>
+        <div class="dungeon-scene">
+          <div class="dungeon-scene-icon" id="dungeonSceneIcon">⚔️</div>
+          <div class="dungeon-room-label" id="dungeonRoomLabel">Кімната 1 / 5</div>
+          <div class="dungeon-encounter-title" id="dungeonEncounterTitle">Невідомість</div>
+          <p class="dungeon-encounter-text" id="dungeonEncounterText"></p>
+        </div>
+        <div class="dungeon-body">
+          <div class="dungeon-message" id="dungeonMessage" aria-live="polite">Обери дію.</div>
+          <div class="dungeon-roll" id="dungeonRoll">
+            <div class="dungeon-d20" id="dungeonD20">—</div>
+            <div id="dungeonRollText">Кидок d20</div>
+          </div>
+          <div class="dungeon-actions" id="dungeonActions"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dungeon-log" id="dungeonLog" hidden>
+      <div class="dungeon-log-title">Журнал походу</div>
+      <ol class="dungeon-log-list" id="dungeonLogList"></ol>
+    </div>
+
+    <div class="dungeon-footnote">Прогрес цього прототипу зберігається на цьому пристрої. XP профілю поки не нараховується.</div>
+  </div>
+</div>
+
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
 <div class="view" id="view-community">
   <header>Спільнота</header>
@@ -4248,6 +4618,10 @@
   <button class="nav-btn" data-view="view-events">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
     <span>Події</span>
+  </button>
+  <button class="nav-btn" data-view="view-dungeon">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V8l7-4 7 4v12"/><path d="M8 20v-5h8v5M9 9h.01M15 9h.01"/><path d="M3.5 20h17"/></svg></span>
+    <span>Пригода</span>
   </button>
   <button class="nav-btn" data-view="view-community">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
@@ -6682,6 +7056,7 @@ function showMainView(viewId) {
   if (viewId === 'view-library') loadGames();
   if (viewId === 'view-profile') loadMyProfile();
   if (viewId === 'view-events') loadEvents();
+  if (viewId === 'view-dungeon') initDungeonTab();
   window.scrollTo({top:0, behavior:'auto'});
 }
 
@@ -8282,6 +8657,436 @@ async function applyInitialDeepLink() {
 }
 applyInitialDeepLink();
 checkMyAchievements(); // background achievement check
+
+
+/* ==================== ПІДЗЕМЕЛЛЯ: МІНІГРА ==================== */
+const DUNGEON_STORAGE_KEY = 'styloteka_dungeon_v1';
+let dungeonProfileCache = null;
+let dungeonState = loadDungeonState();
+
+function defaultDungeonState() {
+  return {
+    active: false,
+    finished: false,
+    won: false,
+    room: 0,
+    maxRooms: 5,
+    hp: 10,
+    maxHp: 10,
+    gold: 0,
+    potions: 1,
+    encounter: null,
+    lastRoll: null,
+    lastRollText: '',
+    message: 'Обери дію.',
+    log: []
+  };
+}
+
+function loadDungeonState() {
+  try {
+    const raw = localStorage.getItem(DUNGEON_STORAGE_KEY);
+    if (!raw) return defaultDungeonState();
+    const saved = JSON.parse(raw);
+    return { ...defaultDungeonState(), ...saved };
+  } catch (_) {
+    return defaultDungeonState();
+  }
+}
+
+function saveDungeonState() {
+  try {
+    localStorage.setItem(DUNGEON_STORAGE_KEY, JSON.stringify(dungeonState));
+  } catch (_) {}
+}
+
+function dungeonRandom(min, max) {
+  const a = Math.ceil(min);
+  const b = Math.floor(max);
+  return Math.floor(Math.random() * (b - a + 1)) + a;
+}
+
+function dungeonRollD20() {
+  const value = dungeonRandom(1, 20);
+  dungeonState.lastRoll = value;
+  return value;
+}
+
+function dungeonLog(text) {
+  dungeonState.log.unshift(text);
+  dungeonState.log = dungeonState.log.slice(0, 8);
+}
+
+function dungeonEncounterForRoom(room) {
+  if (room >= 5) {
+    return {
+      type: 'boss',
+      icon: '🐉',
+      title: 'Сторож скарбниці',
+      text: 'Кам' + "'" + 'яний дракон прокидається перед останніми дверима. Для перемоги потрібні два влучні удари.',
+      hp: 2,
+      target: 11
+    };
+  }
+  const choices = [
+    { type:'monster', icon:'👹', title:'Печерний гоблін', text:'Гоблін перегородив шлях і вже тягнеться до твоєї торби.', target:8 },
+    { type:'monster', icon:'🕷️', title:'Гігантський павук', text:'Із темної стелі спускається величезний павук.', target:9 },
+    { type:'chest', icon:'🧰', title:'Забута скриня', text:'Посеред кімнати стоїть стара скриня. Занадто вже підозріло тихо.' },
+    { type:'trap', icon:'⚙️', title:'Коридор пасток', text:'Плити під ногами клацають. Механізм уже запущено.' },
+    { type:'shrine', icon:'✨', title:'Стародавнє святилище', text:'М' + "'" + 'яке світло огортає старий вівтар. Тут можна перепочити.' }
+  ];
+  return { ...choices[dungeonRandom(0, choices.length - 1)] };
+}
+
+function startDungeonRun() {
+  dungeonState = defaultDungeonState();
+  dungeonState.active = true;
+  dungeonState.room = 1;
+  dungeonState.encounter = dungeonEncounterForRoom(1);
+  dungeonState.message = 'Ти входиш у першу кімнату. Обери дію.';
+  dungeonLog('Похід розпочато.');
+  saveDungeonState();
+  renderDungeon();
+}
+
+function finishDungeon(won) {
+  dungeonState.active = false;
+  dungeonState.finished = true;
+  dungeonState.won = Boolean(won);
+  if (won) {
+    const bonus = dungeonRandom(20, 35);
+    dungeonState.gold += bonus;
+    dungeonState.message = `<strong>Перемога!</strong> Підземелля пройдено. Бонус зі скарбниці: +${bonus} 🪙`;
+    dungeonLog(`Боса переможено. Загальна здобич: ${dungeonState.gold} золота.`);
+  } else {
+    dungeonState.message = `<strong>Поразка.</strong> Сили закінчилися. У похід можна вирушити знову.`;
+    dungeonLog('Похід завершився поразкою.');
+  }
+  saveDungeonState();
+  renderDungeon();
+}
+
+function dungeonDamage(amount, reason) {
+  dungeonState.hp = Math.max(0, dungeonState.hp - amount);
+  dungeonLog(`${reason}: −${amount} HP.`);
+  if (dungeonState.hp <= 0) {
+    finishDungeon(false);
+    return true;
+  }
+  return false;
+}
+
+function resolveMonsterAttack() {
+  const e = dungeonState.encounter;
+  const roll = dungeonRollD20();
+  const target = Number(e.target || 8);
+  if (roll >= target) {
+    if (e.type === 'boss') {
+      e.hp = Math.max(0, Number(e.hp || 1) - 1);
+      if (e.hp <= 0) {
+        dungeonState.lastRollText = `d20: ${roll} — влучний удар`;
+        dungeonLog(`Критична сутичка: ${roll}. Сторожа переможено.`);
+        finishDungeon(true);
+        return;
+      }
+      dungeonState.lastRollText = `d20: ${roll} — влучно`;
+      dungeonState.message = `<strong>Влучання!</strong> У боса залишилось ${e.hp} ❤️.`;
+      dungeonLog(`Удар по босу: ${roll}.`);
+    } else {
+      const gold = dungeonRandom(6, 13);
+      dungeonState.gold += gold;
+      dungeonState.lastRollText = `d20: ${roll} — успіх`;
+      dungeonState.message = `<strong>Перемога!</strong> Ти отримуєш +${gold} 🪙.`;
+      dungeonLog(`${e.title}: перемога, +${gold} золота.`);
+      e.resolved = true;
+    }
+  } else {
+    const damage = e.type === 'boss' ? dungeonRandom(2, 3) : dungeonRandom(1, 2);
+    dungeonState.lastRollText = `d20: ${roll} — невдача`;
+    dungeonState.message = `Атака не вдалася. Ти отримуєш ${damage} шкоди.`;
+    if (dungeonDamage(damage, e.title)) return;
+  }
+  saveDungeonState();
+  renderDungeon();
+}
+
+function drinkDungeonPotion() {
+  if (dungeonState.potions <= 0 || dungeonState.hp >= dungeonState.maxHp) return;
+  dungeonState.potions -= 1;
+  const healed = Math.min(4, dungeonState.maxHp - dungeonState.hp);
+  dungeonState.hp += healed;
+  dungeonState.message = `<strong>Зілля випито.</strong> +${healed} HP.`;
+  dungeonLog(`Використано зілля: +${healed} HP.`);
+  saveDungeonState();
+  renderDungeon();
+}
+
+function resolveChest(choice) {
+  const e = dungeonState.encounter;
+  let gold = 0;
+  if (choice === 'inspect') {
+    const roll = dungeonRollD20();
+    dungeonState.lastRollText = `d20: ${roll} — перевірка скрині`;
+    if (roll >= 8) {
+      gold = dungeonRandom(8, 16);
+      dungeonState.message = `<strong>Пасток немає.</strong> У скрині +${gold} 🪙.`;
+    } else {
+      gold = dungeonRandom(4, 9);
+      dungeonState.message = `Ти нічого підозрілого не знаходиш, але забираєш +${gold} 🪙.`;
+    }
+  } else {
+    if (Math.random() < .25) {
+      dungeonState.message = `Це був мімік! Скриня кусає тебе.`;
+      if (dungeonDamage(2, 'Мімік')) return;
+      gold = dungeonRandom(3, 7);
+    } else {
+      gold = dungeonRandom(10, 20);
+      dungeonState.message = `<strong>Джекпот!</strong> У скрині +${gold} 🪙.`;
+    }
+  }
+  dungeonState.gold += gold;
+  dungeonLog(`Скриня: +${gold} золота.`);
+  e.resolved = true;
+  saveDungeonState();
+  renderDungeon();
+}
+
+function resolveTrap(choice) {
+  const e = dungeonState.encounter;
+  const roll = dungeonRollD20();
+  const target = choice === 'disarm' ? 12 : 9;
+  dungeonState.lastRollText = `d20: ${roll} — ${choice === 'disarm' ? 'знешкодження' : 'ухилення'}`;
+  if (roll >= target) {
+    if (choice === 'disarm') {
+      const gold = dungeonRandom(5, 10);
+      dungeonState.gold += gold;
+      dungeonState.message = `<strong>Механізм знешкоджено.</strong> Усередині знайдено +${gold} 🪙.`;
+      dungeonLog(`Пастку знешкоджено: +${gold} золота.`);
+    } else {
+      dungeonState.message = `<strong>Вчасно!</strong> Ти проходиш пастку без ушкоджень.`;
+      dungeonLog('Пастку пройдено без шкоди.');
+    }
+  } else {
+    const damage = choice === 'disarm' ? 3 : 2;
+    dungeonState.message = `Не вийшло. Механізм спрацьовує: −${damage} HP.`;
+    if (dungeonDamage(damage, 'Пастка')) return;
+  }
+  e.resolved = true;
+  saveDungeonState();
+  renderDungeon();
+}
+
+function resolveShrine(choice) {
+  const e = dungeonState.encounter;
+  if (choice === 'heal') {
+    const healed = Math.min(3, dungeonState.maxHp - dungeonState.hp);
+    dungeonState.hp += healed;
+    dungeonState.message = healed ? `<strong>Світло лікує тебе.</strong> +${healed} HP.` : `Твоє здоров'я вже повне.`;
+    dungeonLog(`Святилище: +${healed} HP.`);
+  } else {
+    dungeonState.potions += 1;
+    dungeonState.message = `<strong>Благословення отримано.</strong> +1 🧪.`;
+    dungeonLog('Святилище: отримано зілля.');
+  }
+  e.resolved = true;
+  saveDungeonState();
+  renderDungeon();
+}
+
+function continueDungeon() {
+  if (!dungeonState.active || !dungeonState.encounter?.resolved) return;
+  if (dungeonState.room >= dungeonState.maxRooms) {
+    finishDungeon(true);
+    return;
+  }
+  dungeonState.room += 1;
+  dungeonState.encounter = dungeonEncounterForRoom(dungeonState.room);
+  dungeonState.lastRoll = null;
+  dungeonState.lastRollText = '';
+  dungeonState.message = dungeonState.room === dungeonState.maxRooms
+    ? 'Ти дістався останньої кімнати. Попереду бос.'
+    : 'Нова кімната. Що робитимеш?';
+  dungeonLog(`Вхід у кімнату ${dungeonState.room}.`);
+  saveDungeonState();
+  renderDungeon();
+}
+
+function renderDungeonProgress() {
+  const root = document.getElementById('dungeonProgress');
+  if (!root) return;
+  root.innerHTML = Array.from({length: 5}, (_, i) => {
+    const n = i + 1;
+    const cls = [
+      'dungeon-room-node',
+      n < dungeonState.room || dungeonState.finished && dungeonState.won ? 'done' : '',
+      n === dungeonState.room && dungeonState.active ? 'active' : '',
+      n === 5 ? 'boss' : ''
+    ].filter(Boolean).join(' ');
+    return `<div class="${cls}">${n}</div>`;
+  }).join('');
+}
+
+function dungeonActionButton(label, action, extraClass = '') {
+  return `<button type="button" class="dungeon-action ${extraClass}" data-dungeon-action="${action}">${label}</button>`;
+}
+
+function renderDungeonActions() {
+  const root = document.getElementById('dungeonActions');
+  if (!root) return;
+  if (!dungeonState.active) {
+    root.innerHTML = dungeonActionButton('Новий похід', 'restart', 'primary');
+    return;
+  }
+
+  const e = dungeonState.encounter || {};
+  if (e.resolved) {
+    root.innerHTML = dungeonActionButton(
+      dungeonState.room >= dungeonState.maxRooms ? 'Забрати нагороду' : 'До наступної кімнати →',
+      'continue',
+      'primary'
+    );
+    return;
+  }
+
+  if (e.type === 'monster' || e.type === 'boss') {
+    root.innerHTML =
+      dungeonActionButton('⚔️ Атакувати · d20', 'attack', 'primary') +
+      dungeonActionButton(`🧪 Випити зілля (${dungeonState.potions})`, 'potion');
+  } else if (e.type === 'chest') {
+    root.innerHTML =
+      dungeonActionButton('🔓 Відкрити', 'chest-open', 'primary') +
+      dungeonActionButton('🔎 Перевірити · d20', 'chest-inspect');
+  } else if (e.type === 'trap') {
+    root.innerHTML =
+      dungeonActionButton('🏃 Ухилитися · d20', 'trap-evade', 'primary') +
+      dungeonActionButton('🛠 Знешкодити · d20', 'trap-disarm');
+  } else if (e.type === 'shrine') {
+    root.innerHTML =
+      dungeonActionButton('❤️ Відновити HP', 'shrine-heal', 'primary') +
+      dungeonActionButton('🧪 Взяти зілля', 'shrine-potion');
+  }
+
+  root.querySelectorAll('[data-dungeon-action]').forEach(btn => {
+    if (btn.dataset.dungeonAction === 'potion') {
+      btn.disabled = dungeonState.potions <= 0 || dungeonState.hp >= dungeonState.maxHp;
+    }
+  });
+}
+
+function handleDungeonAction(action) {
+  if (action === 'restart') return startDungeonRun();
+  if (action === 'continue') return continueDungeon();
+  if (action === 'attack') return resolveMonsterAttack();
+  if (action === 'potion') return drinkDungeonPotion();
+  if (action === 'chest-open') return resolveChest('open');
+  if (action === 'chest-inspect') return resolveChest('inspect');
+  if (action === 'trap-evade') return resolveTrap('evade');
+  if (action === 'trap-disarm') return resolveTrap('disarm');
+  if (action === 'shrine-heal') return resolveShrine('heal');
+  if (action === 'shrine-potion') return resolveShrine('potion');
+}
+
+function renderDungeon() {
+  const start = document.getElementById('dungeonStart');
+  const encounterWrap = document.getElementById('dungeonEncounter');
+  if (!start || !encounterWrap) return;
+
+  document.getElementById('dungeonHp').textContent = `${dungeonState.hp}/${dungeonState.maxHp}`;
+  document.getElementById('dungeonGold').textContent = String(dungeonState.gold);
+  document.getElementById('dungeonPotions').textContent = String(dungeonState.potions);
+  renderDungeonProgress();
+
+  const logWrap = document.getElementById('dungeonLog');
+  const logList = document.getElementById('dungeonLogList');
+  if (logWrap && logList) {
+    logWrap.hidden = dungeonState.log.length === 0;
+    logList.innerHTML = dungeonState.log.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+  }
+
+  if (!dungeonState.active && !dungeonState.finished) {
+    start.hidden = false;
+    encounterWrap.hidden = true;
+    return;
+  }
+
+  start.hidden = true;
+  encounterWrap.hidden = false;
+
+  const e = dungeonState.encounter || {
+    icon: dungeonState.won ? '🏆' : '💀',
+    title: dungeonState.won ? 'Підземелля пройдено' : 'Похід завершено',
+    text: dungeonState.won ? 'Ти дістався скарбниці та повертаєшся до клубу зі здобиччю.' : 'Цього разу підземелля виявилося сильнішим.'
+  };
+
+  document.getElementById('dungeonSceneIcon').textContent = dungeonState.finished ? (dungeonState.won ? '🏆' : '💀') : (e.icon || '⚔️');
+  document.getElementById('dungeonRoomLabel').textContent = dungeonState.finished
+    ? 'Результат походу'
+    : `Кімната ${dungeonState.room} / ${dungeonState.maxRooms}`;
+  document.getElementById('dungeonEncounterTitle').textContent = dungeonState.finished
+    ? (dungeonState.won ? 'Перемога!' : 'Поразка')
+    : (e.title || 'Невідомість');
+  document.getElementById('dungeonEncounterText').textContent = dungeonState.finished
+    ? (dungeonState.won ? `Ти виніс ${dungeonState.gold} золота.` : `Здобуто золота: ${dungeonState.gold}.`)
+    : (e.text || '');
+  document.getElementById('dungeonMessage').innerHTML = dungeonState.message || 'Обери дію.';
+
+  const roll = document.getElementById('dungeonRoll');
+  const d20 = document.getElementById('dungeonD20');
+  const rollText = document.getElementById('dungeonRollText');
+  if (dungeonState.lastRoll) {
+    roll.classList.add('show');
+    d20.textContent = String(dungeonState.lastRoll);
+    rollText.textContent = dungeonState.lastRollText || 'Кидок d20';
+  } else {
+    roll.classList.remove('show');
+    d20.textContent = '—';
+    rollText.textContent = 'Кидок d20';
+  }
+  renderDungeonActions();
+}
+
+async function loadDungeonProfile() {
+  if (dungeonProfileCache) {
+    renderDungeonProfile(dungeonProfileCache);
+    return;
+  }
+  try {
+    const res = await fetch('/api/profile/me', { headers: telegramAuthHeaders() });
+    const data = res.ok ? await res.json() : {};
+    dungeonProfileCache = data || {};
+  } catch (_) {
+    dungeonProfileCache = {};
+  }
+  renderDungeonProfile(dungeonProfileCache);
+}
+
+function renderDungeonProfile(profile) {
+  const name = profile?.display_name || username || 'Гравець';
+  const avatar = document.getElementById('dungeonAvatar');
+  if (avatar) {
+    avatar.innerHTML = profile?.photo_url
+      ? `<img src="${escapeHtml(profile.photo_url)}" alt="${escapeHtml(name)}" decoding="async">`
+      : escapeHtml(profileInitials(name));
+  }
+  const nameEl = document.getElementById('dungeonPlayerName');
+  if (nameEl) nameEl.textContent = name;
+  const titleEl = document.getElementById('dungeonPlayerTitle');
+  if (titleEl) titleEl.textContent = `${profile?.title || 'Новачок'} · LV ${Math.max(1, Number(profile?.level) || 1)}`;
+}
+
+function initDungeonTab() {
+  loadDungeonProfile();
+  renderDungeon();
+}
+
+document.getElementById('dungeonStartBtn')?.addEventListener('click', startDungeonRun);
+document.getElementById('dungeonActions')?.addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-dungeon-action]');
+  if (!btn || btn.disabled) return;
+  handleDungeonAction(btn.dataset.dungeonAction);
+});
+document.querySelector('.nav-btn[data-view="view-dungeon"]')?.addEventListener('click', initDungeonTab);
+renderDungeon();
 
 </script>
 
