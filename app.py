@@ -1874,6 +1874,7 @@ def get_profile_summary():
         "gold": int(profile.get("gold") or 0),
         "title": cosmetics.get("title_label") or _profile_title(level),
         "cosmetics": cosmetics,
+        "shop_items": _profile_shop_state(profile, cosmetics),
     })
 
 

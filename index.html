@@ -8949,12 +8949,27 @@ async function loadProfileShopModal() {
   root.className = 'profile-shop-modal-loading';
   root.innerHTML = 'Завантажую магазин…';
   try {
-    const res = await fetch('/api/profile/summary', { headers: telegramAuthHeaders(), cache:'no-store' });
-    const data = await res.json().catch(() => ({}));
+    let res = await fetch('/api/profile/summary', { headers: telegramAuthHeaders(), cache:'no-store' });
+    let data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'profile_error');
+
+    // Старі/кешовані версії summary могли не містити каталогу магазину.
+    // У такому випадку беремо повний профіль замість показу порожнього вікна.
+    if (!Array.isArray(data.shop_items) || !data.shop_items.length) {
+      const fullRes = await fetch('/api/profile/me', { headers: telegramAuthHeaders(), cache:'no-store' });
+      const fullData = await fullRes.json().catch(() => ({}));
+      if (fullRes.ok && Array.isArray(fullData.shop_items) && fullData.shop_items.length) {
+        data = fullData;
+      }
+    }
+
     profileShopModalData = data;
     root.className = '';
     root.innerHTML = profileShopHtml(data);
+    if (!root.innerHTML.trim()) {
+      root.className = 'profile-shop-modal-loading';
+      root.innerHTML = 'Магазин тимчасово не отримав каталог товарів. Закрий його та відкрий ще раз.';
+    }
   } catch (e) {
     root.className = 'profile-shop-modal-loading';
     root.innerHTML = 'Не вдалося завантажити магазин. Спробуй ще раз.';
