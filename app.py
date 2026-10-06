@@ -1593,7 +1593,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp",
+                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp",
                 "limit": 1,
             },
             timeout=20,
@@ -1602,6 +1602,12 @@ def get_my_profile():
             existing_profile = old.json()[0]
     except Exception:
         logging.exception("Не вдалося прочитати поточні досягнення профілю")
+
+    # Якщо користувач завантажив власну аватарку, не перезаписуємо її Telegram-фото при кожному GET.
+    if existing_profile:
+        saved_photo_url = str(existing_profile.get("photo_url") or "").strip()
+        if saved_photo_url:
+            photo_url = saved_photo_url
 
     previous_earned = set()
     achievements_initialized = False
@@ -1703,6 +1709,158 @@ def get_my_profile():
         "next_xp_reward": next_xp_reward,
     })
 
+
+@app.route("/api/profile/summary", methods=["GET"])
+def get_profile_summary():
+    """Легкий профіль для головного екрана без важкого перерахунку статистики/досягнень."""
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    username = (user.get("username") or "").lstrip("@").lower()
+    display_name = " ".join(x for x in [user.get("first_name"), user.get("last_name")] if x).strip() or username or "Гравець"
+    profile = {}
+    try:
+        resp = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{user_id}",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "limit": 1,
+            },
+            timeout=10,
+        )
+        if resp.ok and resp.json():
+            profile = resp.json()[0]
+    except Exception:
+        logging.exception("Не вдалося швидко завантажити профіль для головного екрана")
+
+    xp = int(profile.get("xp") or 0)
+    level = max(1, xp // 250 + 1)
+    _, cosmetics, _ = _resolve_profile_cosmetics(level, profile)
+    photo_url = str(profile.get("photo_url") or "").strip() or _profile_avatar_url(user_id)
+    return jsonify({
+        "telegram_user_id": user_id,
+        "username": profile.get("username") or username,
+        "display_name": profile.get("display_name") or display_name,
+        "photo_url": photo_url,
+        "xp": xp,
+        "level": level,
+        "title": cosmetics.get("title_label") or _profile_title(level),
+        "cosmetics": cosmetics,
+    })
+
+
+@app.route("/api/profile/avatar", methods=["POST"])
+def upload_profile_avatar():
+    """Завантаження власної аватарки користувача з телефону."""
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    if request.content_length and request.content_length > 6 * 1024 * 1024:
+        return jsonify({"error": "avatar_too_large"}), 413
+
+    avatar_file = request.files.get("avatar")
+    if not avatar_file or not avatar_file.filename:
+        return jsonify({"error": "avatar_required"}), 400
+
+    mimetype = str(avatar_file.mimetype or "").lower()
+    if not mimetype.startswith("image/"):
+        return jsonify({"error": "avatar_must_be_image"}), 400
+
+    user_id = int(user.get("id"))
+    username = (user.get("username") or "").lstrip("@").lower()
+    display_name = " ".join(x for x in [user.get("first_name"), user.get("last_name")] if x).strip() or username or "Гравець"
+
+    old_url = ""
+    try:
+        current = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={"telegram_user_id": f"eq.{user_id}", "select": "photo_url", "limit": 1},
+            timeout=15,
+        )
+        if current.ok and current.json():
+            old_url = str(current.json()[0].get("photo_url") or "").strip()
+    except Exception:
+        logging.exception("Не вдалося прочитати попередню аватарку")
+
+    try:
+        new_url = upload_file(avatar_file, "avatars")
+    except Exception:
+        logging.exception("Не вдалося завантажити аватарку у Storage")
+        return jsonify({"error": "avatar_upload_failed"}), 500
+
+    payload = {
+        "telegram_user_id": user_id,
+        "username": username,
+        "display_name": display_name,
+        "photo_url": new_url,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        up = requests.post(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"},
+            params={"on_conflict": "telegram_user_id"},
+            json=payload,
+            timeout=20,
+        )
+        if not up.ok:
+            delete_file(new_url)
+            return jsonify({"error": "profile_update_failed"}), 500
+    except Exception:
+        delete_file(new_url)
+        logging.exception("Не вдалося зберегти нову аватарку в профілі")
+        return jsonify({"error": "profile_update_failed"}), 500
+
+    if old_url and old_url != new_url:
+        delete_file(old_url)
+
+    return jsonify({"status": "ok", "photo_url": new_url})
+
+
+@app.route("/api/profile/avatar", methods=["DELETE"])
+def reset_profile_avatar():
+    """Повертає Telegram-аватар і видаляє попередню власну аватарку зі Storage."""
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    old_url = ""
+    try:
+        current = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={"telegram_user_id": f"eq.{user_id}", "select": "photo_url", "limit": 1},
+            timeout=15,
+        )
+        if current.ok and current.json():
+            old_url = str(current.json()[0].get("photo_url") or "").strip()
+    except Exception:
+        pass
+
+    telegram_photo = _profile_avatar_url(user_id)
+    try:
+        up = requests.patch(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"telegram_user_id": f"eq.{user_id}"},
+            json={"photo_url": telegram_photo, "updated_at": datetime.now(timezone.utc).isoformat()},
+            timeout=20,
+        )
+        if not up.ok:
+            return jsonify({"error": "profile_update_failed"}), 500
+    except Exception:
+        return jsonify({"error": "profile_update_failed"}), 500
+
+    if old_url and old_url != telegram_photo:
+        delete_file(old_url)
+    return jsonify({"status": "ok", "photo_url": telegram_photo})
 
 
 @app.route("/api/profile/cosmetics", methods=["POST"])
@@ -2025,7 +2183,7 @@ def get_public_profiles():
                 "telegram_user_id": row.get("telegram_user_id"),
                 "username": row.get("username") or "",
                 "display_name": row.get("display_name") or row.get("username") or "Гравець",
-                "photo_url": _profile_avatar_url(row.get("telegram_user_id")),
+                "photo_url": str(row.get("photo_url") or "").strip() or _profile_avatar_url(row.get("telegram_user_id")),
                 "xp": xp,
                 "level": level,
                 "title": public_title,
