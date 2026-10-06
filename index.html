@@ -1386,7 +1386,6 @@
 
   /* ---------- Чарник персонажа ---------- */
   .char-list { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 76px; }
-  #panel-character .char-list { padding: 0 0 76px; }
   .char-card {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -3921,10 +3920,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
       Ініціатива
     </button>
-    <button class="tool-tab-btn" data-tool="character">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z"/></svg>
-      Чарник
-    </button>
   </div>
 
   <!-- Кубики -->
@@ -4054,13 +4049,6 @@
     </div>
   </div>
 
-  <!-- Чарник персонажа -->
-  <div class="tool-panel" id="panel-character">
-    <div class="char-list" id="charList"></div>
-    <button class="fab" onclick="openNewCharacter()">
-      <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
-  </div>
 </div>
 
 <!-- ==================== ВКЛАДКА: ПОДІЇ ==================== -->
@@ -7352,7 +7340,7 @@ function quickToolsForGame(game) {
   const tools = [];
   if (/flip\s*7|flip\s*seven/.test(hay)) tools.push({ label:'Flip Seven', tool:'counters', mode:'flip7', primary:true });
   if (/d&d|dnd|dungeons|dragon|rpg|рольов/.test(hay)) {
-    tools.push({ label:'Кубики', tool:'dice', primary:true }, { label:'Ініціатива', tool:'initiative' }, { label:'Чарник', tool:'character' });
+    tools.push({ label:'Кубики', tool:'dice', primary:true }, { label:'Ініціатива', tool:'initiative' });
   }
   if (!tools.some(t => t.tool === 'picker')) tools.push({ label:'Перший гравець', tool:'picker' });
   if (!tools.some(t => t.tool === 'counters')) tools.push({ label:'Лічильники', tool:'counters', mode:'simple' });
