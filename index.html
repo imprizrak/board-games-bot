@@ -8964,8 +8964,9 @@ function shopPreviewHtml(item) {
     return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${frameClass}">🎲</div></div>`;
   }
   if (item.type === 'coupon') {
-    const label = item.id === 'shop_coupon_gift_royal' ? 'ROYAL GIFT' : item.id === 'shop_coupon_gift_large' ? 'GIFT PLUS' : 'GIFT';
-    return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">🎟 ${label}</div></div>`;
+    const label = item.id === 'shop_coupon_gift_royal' ? 'BOARD GAME' : item.id === 'shop_coupon_gift_large' ? 'MERCH MUG' : 'STICKER PACK';
+    const icon = item.id === 'shop_coupon_gift_royal' ? '🎲' : item.id === 'shop_coupon_gift_large' ? '☕' : '✨';
+    return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">${icon} ${label}</div></div>`;
   }
   const palettes = {
     shop_theme_forest: ['#0b2117','#315b48','#d6bc67'],
