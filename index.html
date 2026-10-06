@@ -4859,14 +4859,14 @@
       <div class="dungeon-start" id="dungeonStart">
         <div class="dungeon-start-icon">🏰</div>
         <h2>Підземелля Про100 Настолки</h2>
-        <p>П'ять кімнат, випадкові зустрічі, скарби та фінальний бос. Ризикуй, кидай d20 і спробуй винести якомога більше золота.</p>
+        <p>Десять кімнат, випадкові зустрічі, скарби та фінальний бос. Ризикуй, кидай d20 і спробуй винести якомога більше золота.</p>
         <button type="button" class="dungeon-action primary" id="dungeonStartBtn">Почати похід</button>
       </div>
 
       <div id="dungeonEncounter" hidden>
         <div class="dungeon-scene">
           <div class="dungeon-scene-icon" id="dungeonSceneIcon">⚔️</div>
-          <div class="dungeon-room-label" id="dungeonRoomLabel">Кімната 1 / 5</div>
+          <div class="dungeon-room-label" id="dungeonRoomLabel">Кімната 1 / 10</div>
           <div class="dungeon-encounter-title" id="dungeonEncounterTitle">Невідомість</div>
           <p class="dungeon-encounter-text" id="dungeonEncounterText"></p>
         </div>
@@ -4934,7 +4934,7 @@
   </button>
   <button class="nav-btn" data-view="view-dungeon">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V8l7-4 7 4v12"/><path d="M8 20v-5h8v5M9 9h.01M15 9h.01"/><path d="M3.5 20h17"/></svg></span>
-    <span>Пригода</span>
+    <span>Данж</span>
   </button>
   <button class="nav-btn" data-view="view-community">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
@@ -9103,6 +9103,7 @@ checkMyAchievements(); // background achievement check
 
 /* ==================== ПІДЗЕМЕЛЛЯ: МІНІГРА ==================== */
 const DUNGEON_STORAGE_KEY = 'styloteka_dungeon_v1';
+const DUNGEON_MAX_ROOMS = 10;
 let dungeonProfileCache = null;
 let dungeonState = loadDungeonState();
 
@@ -9112,7 +9113,7 @@ function defaultDungeonState() {
     finished: false,
     won: false,
     room: 0,
-    maxRooms: 5,
+    maxRooms: DUNGEON_MAX_ROOMS,
     hp: 10,
     maxHp: 10,
     gold: 0,
@@ -9133,7 +9134,7 @@ function loadDungeonState() {
     const raw = localStorage.getItem(DUNGEON_STORAGE_KEY);
     if (!raw) return defaultDungeonState();
     const saved = JSON.parse(raw);
-    return { ...defaultDungeonState(), ...saved };
+    return { ...defaultDungeonState(), ...saved, maxRooms: DUNGEON_MAX_ROOMS };
   } catch (_) {
     return defaultDungeonState();
   }
@@ -9163,7 +9164,7 @@ function dungeonLog(text) {
 }
 
 function dungeonEncounterForRoom(room) {
-  if (room >= 5) {
+  if (room >= DUNGEON_MAX_ROOMS) {
     return {
       type: 'boss',
       icon: '🐉',
@@ -9407,13 +9408,13 @@ function continueDungeon() {
 function renderDungeonProgress() {
   const root = document.getElementById('dungeonProgress');
   if (!root) return;
-  root.innerHTML = Array.from({length: 5}, (_, i) => {
+  root.innerHTML = Array.from({length: DUNGEON_MAX_ROOMS}, (_, i) => {
     const n = i + 1;
     const cls = [
       'dungeon-room-node',
       n < dungeonState.room || dungeonState.finished && dungeonState.won ? 'done' : '',
       n === dungeonState.room && dungeonState.active ? 'active' : '',
-      n === 5 ? 'boss' : ''
+      n === DUNGEON_MAX_ROOMS ? 'boss' : ''
     ].filter(Boolean).join(' ');
     return `<div class="${cls}">${n}</div>`;
   }).join('');
