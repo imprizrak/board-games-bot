@@ -4717,7 +4717,7 @@ function renderGamesGrid() {
     card.onclick = () => openViewModal(game);
 
     const img = game.cover_url
-      ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" loading="lazy" decoding="async">`
+      ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">`
       : `<div class="placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></div>`;
 
     const tagsHtml = game.tags ? `<div class="card-tags">${escapeHtml(game.tags)}</div>` : "";
@@ -5340,242 +5340,6 @@ async function submitWishlist() {
 }
 
 /* ==================== ІСТОРІЯ ІГРОВИХ ВЕЧОРІВ ==================== */
-
-
-
-/* ==================== ТАЙМЕР ХОДУ (ШАХОВИЙ ГОДИННИК) ==================== */
-let timerPlayers = [
-  { id: 1, name: "Гравець 1", seconds: 600 },
-  { id: 2, name: "Гравець 2", seconds: 600 },
-];
-let nextTimerId = 3;
-let timerActiveIndex = 0;
-let timerRunning = false;
-let timerInterval = null;
-
-function formatClock(totalSeconds) {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const m = Math.floor(s / 60);
-  const rem = s % 60;
-  return `${m}:${rem.toString().padStart(2, "0")}`;
-}
-
-function renderTimers() {
-  const list = document.getElementById("timerList");
-  list.innerHTML = "";
-
-  timerPlayers.forEach((p, idx) => {
-    const row = document.createElement("div");
-    row.className = "timer-player" + (idx === timerActiveIndex ? " active-turn" : "");
-    row.innerHTML = `
-      <input class="tp-name" data-id="${p.id}" value="${p.name}">
-      <div class="tp-clock">${formatClock(p.seconds)}</div>
-    `;
-    row.querySelector(".tp-name").addEventListener("click", (e) => e.stopPropagation());
-    row.querySelector(".tp-name").addEventListener("input", (e) => { p.name = e.target.value; });
-    row.addEventListener("click", () => passTimerTurn(idx));
-    list.appendChild(row);
-  });
-
-  const runBtn = document.getElementById("timerRunBtn");
-  if (runBtn) runBtn.textContent = timerRunning ? "Пауза" : "Старт";
-}
-
-function passTimerTurn(clickedIndex) {
-  if (!timerRunning) return;
-  if (clickedIndex !== timerActiveIndex) return;
-  timerActiveIndex = (timerActiveIndex + 1) % timerPlayers.length;
-  if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
-  renderTimers();
-}
-
-function toggleTimerRun() {
-  timerRunning = !timerRunning;
-  if (timerRunning) {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      const active = timerPlayers[timerActiveIndex];
-      if (active && active.seconds > 0) {
-        active.seconds -= 1;
-        renderTimers();
-      }
-    }, 1000);
-  } else {
-    clearInterval(timerInterval);
-  }
-  renderTimers();
-}
-
-function addTimerPlayer() {
-  const minutesInput = document.getElementById("timerMinutesInput");
-  const minutes = parseInt(minutesInput.value, 10) || 10;
-  timerPlayers.push({ id: nextTimerId, name: `Гравець ${nextTimerId}`, seconds: minutes * 60 });
-  nextTimerId++;
-  renderTimers();
-}
-
-function applyTimerMinutes() {
-  const minutesInput = document.getElementById("timerMinutesInput");
-  const minutes = parseInt(minutesInput.value, 10) || 10;
-  timerPlayers.forEach(p => { p.seconds = minutes * 60; });
-  timerActiveIndex = 0;
-  timerRunning = false;
-  clearInterval(timerInterval);
-  renderTimers();
-}
-
-function resetTimers() {
-  applyTimerMinutes();
-}
-
-renderTimers();
-
-/* ==================== КОЛЕСО ВИПАДКОВОГО ВИБОРУ ==================== */
-const wheelColors = ["#e2a63a", "#244a78", "#28598f", "#2f4f8f", "#2c3d63", "#4a4030", "#315f91", "#2f6e6a", "#e0533d", "#3f8fd1"];
-let wheelSpinning = false;
-let wheelCurrentRotation = 0;
-
-function buildWheelFace(games) {
-  const circle = document.getElementById("wheelCircle");
-  if (games.length === 0) {
-    circle.style.background = "var(--card-bg)";
-    return;
-  }
-  const step = 360 / games.length;
-  const stops = games.map((g, i) => `${wheelColors[i % wheelColors.length]} ${i * step}deg ${(i + 1) * step}deg`).join(", ");
-  circle.style.background = `conic-gradient(${stops})`;
-}
-
-function spinWheel() {
-  if (wheelSpinning) return;
-  const games = allGames;
-  if (!games || games.length < 2) {
-    tg.showAlert("Додай хоча б дві гри в бібліотеку, щоб крутити колесо");
-    return;
-  }
-
-  buildWheelFace(games);
-  wheelSpinning = true;
-  document.getElementById("wheelResult").textContent = "";
-
-  const winnerIndex = Math.floor(Math.random() * games.length);
-  const step = 360 / games.length;
-  const sliceCenter = winnerIndex * step + step / 2;
-  // Кілька повних обертів + зупинка так, щоб вказівник (зверху) показав на обраний сектор
-  const extraSpins = 4 * 360;
-  const targetRotation = wheelCurrentRotation + extraSpins + (360 - sliceCenter);
-
-  const circle = document.getElementById("wheelCircle");
-  circle.style.transform = `rotate(${targetRotation}deg)`;
-  wheelCurrentRotation = targetRotation % 360;
-
-  if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
-
-  setTimeout(() => {
-    wheelSpinning = false;
-    document.getElementById("wheelResult").textContent = games[winnerIndex].name;
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
-  }, 4100);
-}
-
-/* ==================== ТРЕКЕР ІНІЦІАТИВИ D&D ==================== */
-let initiativeCombatants = [
-  { id: 1, name: "Герой 1", init: 10, hp: "" },
-  { id: 2, name: "Ворог 1", init: 8, hp: "" },
-];
-let nextInitiativeId = 3;
-let initiativeCurrentIndex = 0;
-let initiativeRound = 1;
-
-function renderInitiative() {
-  const list = document.getElementById("initiativeList");
-  list.innerHTML = "";
-
-  initiativeCombatants.forEach((c, idx) => {
-    const row = document.createElement("div");
-    row.className = "initiative-row" + (idx === initiativeCurrentIndex ? " current-turn" : "");
-    row.innerHTML = `
-      <div>
-        <span class="init-label">ІНІЦ</span>
-        <input type="text" inputmode="numeric" class="init-value" data-id="${c.id}" data-field="init" value="${c.init}">
-      </div>
-      <input type="text" class="init-name" data-id="${c.id}" value="${c.name}">
-      <div>
-        <span class="init-label">ХП</span>
-        <input type="text" inputmode="numeric" class="init-hp" data-id="${c.id}" data-field="hp" value="${c.hp}">
-      </div>
-      <button class="item-remove" data-id="${c.id}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
-      </button>
-    `;
-    list.appendChild(row);
-  });
-
-  list.querySelectorAll(".init-name").forEach(input => {
-    input.addEventListener("input", () => {
-      const c = initiativeCombatants.find(x => x.id == input.dataset.id);
-      if (c) c.name = input.value;
-    });
-  });
-  list.querySelectorAll(".init-value").forEach(input => {
-    input.addEventListener("input", () => {
-      const c = initiativeCombatants.find(x => x.id == input.dataset.id);
-      if (c) c.init = parseInt(input.value, 10) || 0;
-    });
-  });
-  list.querySelectorAll(".init-hp").forEach(input => {
-    input.addEventListener("input", () => {
-      const c = initiativeCombatants.find(x => x.id == input.dataset.id);
-      if (c) c.hp = input.value;
-    });
-  });
-  list.querySelectorAll(".item-remove").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idx = initiativeCombatants.findIndex(x => x.id == btn.dataset.id);
-      if (idx === -1) return;
-      initiativeCombatants.splice(idx, 1);
-      if (initiativeCurrentIndex >= initiativeCombatants.length) initiativeCurrentIndex = 0;
-      renderInitiative();
-    });
-  });
-
-  document.getElementById("initiativeRoundBanner").textContent = `Раунд ${initiativeRound}`;
-}
-
-function addInitiativeCombatant() {
-  initiativeCombatants.push({ id: nextInitiativeId, name: `Учасник ${nextInitiativeId}`, init: 10, hp: "" });
-  nextInitiativeId++;
-  renderInitiative();
-}
-
-function sortInitiative() {
-  const currentId = initiativeCombatants[initiativeCurrentIndex] ? initiativeCombatants[initiativeCurrentIndex].id : null;
-  initiativeCombatants.sort((a, b) => b.init - a.init);
-  if (currentId !== null) {
-    initiativeCurrentIndex = initiativeCombatants.findIndex(c => c.id === currentId);
-    if (initiativeCurrentIndex === -1) initiativeCurrentIndex = 0;
-  }
-  renderInitiative();
-}
-
-function nextInitiativeTurn() {
-  if (initiativeCombatants.length === 0) return;
-  initiativeCurrentIndex++;
-  if (initiativeCurrentIndex >= initiativeCombatants.length) {
-    initiativeCurrentIndex = 0;
-    initiativeRound++;
-  }
-  if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
-  renderInitiative();
-}
-
-function resetInitiative() {
-  initiativeCurrentIndex = 0;
-  initiativeRound = 1;
-  renderInitiative();
-}
-
-renderInitiative();
 
 
 
@@ -6559,6 +6323,7 @@ abilityIds.forEach(key => {
 
 function renderCharacters() {
   const list = document.getElementById("charList");
+  if (!list) return;
   list.innerHTML = "";
 
   if (characters.length === 0) {
@@ -6710,6 +6475,7 @@ let homeActivityCache = [];
 let communityMembersCache = [];
 
 function showMainView(viewId) {
+  if (!document.getElementById(viewId)) viewId = 'view-home';
   if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
@@ -6761,7 +6527,7 @@ function activityIcon(type) {
 
 function activityHtml(item) {
   const image = item.image_url
-    ? `<img src="${escapeHtml(item.image_url)}" alt="" loading="lazy" decoding="async">`
+    ? `<img src="${escapeHtml(item.image_url)}" alt="" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">`
     : escapeHtml(activityIcon(item.activity_type));
   return `<div class="activity-item">
     <div class="activity-thumb">${image}</div>
@@ -6789,7 +6555,7 @@ function gameByName(name) {
 
 function renderHomeGameCard(game, meta = '') {
   const cover = game?.cover_url
-    ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" loading="lazy" decoding="async">`
+    ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">`
     : `<div class="home-game-placeholder">🎲</div>`;
   const safeGame = game || {name:'Без назви'};
   return `<button type="button" class="home-game-card" data-home-game="${escapeHtml(safeGame.name || '')}">
@@ -6942,7 +6708,10 @@ async function loadHomeHub(force = false) {
     const eventsPromise = fetch('/api/events?scope=upcoming', {cache:'no-store'})
       .then(async res => res.ok ? await res.json() : [])
       .then(events => renderHomeNextEvent(Array.isArray(events) ? events : []))
-      .catch(e => console.warn('Home events load failed', e));
+      .catch(e => {
+        console.warn('Home events load failed', e);
+        renderHomeNextEvent([]);
+      });
 
     const historyPromise = fetch('/api/history', {cache:'no-store'})
       .then(async res => res.ok ? await res.json() : [])
@@ -7261,6 +7030,10 @@ function mcRandomize() {
 try { localStorage.removeItem("boardgames_active_session_v1"); } catch (_) {}
 
 function openToolPanel(tool, mode = null) {
+  if (!document.getElementById('panel-' + tool)) {
+    tool = 'dice';
+    mode = null;
+  }
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-home'));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-tools'));
   document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
@@ -8291,7 +8064,6 @@ async function applyInitialDeepLink() {
 applyInitialDeepLink();
 checkMyAchievements(); // background achievement check
 
-renderCharacters();
 </script>
 
 </body>
