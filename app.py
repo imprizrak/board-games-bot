@@ -1597,6 +1597,33 @@ def _profile_shop_catalog():
             "price": 950,
             "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
         },
+        {
+            "id": "shop_coupon_gift_basic",
+            "type": "coupon",
+            "icon": "✨",
+            "name": "Стікерпак Styloteka",
+            "value": "shop_coupon_gift_basic",
+            "price": 1500,
+            "description": "Подарунковий купон на фірмовий стікерпак Styloteka.",
+        },
+        {
+            "id": "shop_coupon_gift_large",
+            "type": "coupon",
+            "icon": "☕",
+            "name": "Чашка мерчу Styloteka",
+            "value": "shop_coupon_gift_large",
+            "price": 2500,
+            "description": "Преміальний купон на фірмову чашку мерчу Styloteka.",
+        },
+        {
+            "id": "shop_coupon_gift_royal",
+            "type": "coupon",
+            "icon": "🎲",
+            "name": "Настільна гра",
+            "value": "shop_coupon_gift_royal",
+            "price": 4000,
+            "description": "Головний приз магазину — купон на настільну гру.",
+        },
     ]
 
 
