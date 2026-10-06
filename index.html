@@ -2208,16 +2208,38 @@
     overflow: hidden;
     display: flex;
     align-items: center;
-    gap: 14px;
-    min-height: 108px;
-    margin: 4px 0 16px;
-    padding: 16px;
-    border: 1px solid var(--hub-line);
-    border-radius: 18px;
+    gap: 16px;
+    min-height: 132px;
+    margin: 6px 0 18px;
+    padding: 18px 18px 17px;
+    border: 1px solid rgba(227,191,85,.34);
+    border-radius: 20px;
     background:
-      radial-gradient(circle at 90% 0%, rgba(122,167,255,0.20), transparent 42%),
-      radial-gradient(circle at 0% 100%, rgba(212,175,55,0.12), transparent 45%),
-      linear-gradient(135deg, #13243a, #0a1523);
+      linear-gradient(115deg, rgba(227,191,85,.08), transparent 24%),
+      radial-gradient(circle at 90% 6%, rgba(80,132,216,.20), transparent 40%),
+      linear-gradient(145deg, #12233a 0%, #0a1728 58%, #07111d 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.06),
+      inset 0 -22px 42px rgba(0,0,0,.14),
+      0 8px 24px rgba(0,0,0,.25);
+  }
+
+  .mmorpg-player-card {
+    cursor: pointer;
+    isolation: isolate;
+  }
+  .mmorpg-player-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent, rgba(227,191,85,.10), transparent) top / 72% 1px no-repeat,
+      linear-gradient(90deg, transparent, rgba(111,159,232,.10), transparent) bottom / 66% 1px no-repeat;
+    z-index: 0;
+  }
+  .mmorpg-player-card:active {
+    transform: scale(.995);
   }
 
   .home-avatar, .club-member-avatar {
@@ -2232,47 +2254,225 @@
     font-weight: 800;
   }
 
+  .mmorpg-avatar-wrap {
+    position: relative;
+    flex: 0 0 88px;
+    width: 88px;
+    height: 100px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 2;
+  }
+
   .home-avatar {
-    width: 66px;
-    height: 66px;
-    border-radius: 16px;
-    font-size: 21px;
+    width: 82px;
+    height: 82px;
+    border-radius: 18px;
+    border: 2px solid #cda743;
+    outline: 1px solid rgba(255,255,255,.10);
+    box-shadow:
+      0 0 0 3px rgba(8,17,31,.72),
+      0 0 0 4px rgba(205,167,67,.23),
+      0 10px 20px rgba(0,0,0,.28);
+    font-size: 23px;
   }
 
   .home-avatar img, .club-member-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
   }
 
-  .home-welcome-main { min-width: 0; flex: 1; }
-  .home-eyebrow {
-    color: var(--muted);
-    font-size: 12px;
-    margin-bottom: 3px;
-  }
-  .home-user-name {
-    color: var(--text);
-    font-family: 'Cinzel', serif;
-    font-size: 19px;
-    font-weight: 800;
-    line-height: 1.2;
-    overflow-wrap: anywhere;
-  }
-  .home-level-line {
+  .mmorpg-level-medallion {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    min-width: 54px;
+    height: 27px;
+    padding: 0 9px;
+    border-radius: 999px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 8px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d9b64b;
+    background:
+      linear-gradient(180deg, #253a59 0%, #101d30 100%);
+    box-shadow:
+      0 0 0 2px rgba(8,17,31,.82),
+      0 3px 8px rgba(0,0,0,.35);
+    color: #f8e7a9;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: .08em;
+    white-space: nowrap;
+  }
+
+  .home-welcome-main {
+    position: relative;
+    min-width: 0;
+    flex: 1;
+    z-index: 2;
+  }
+
+  .home-eyebrow {
+    color: #8fa9c9;
+    font-size: 9px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: .14em;
+    margin-bottom: 4px;
+  }
+  .mmorpg-eyebrow span {
+    color: #d4af37;
+    font-size: 8px;
+    margin: 0 2px;
+  }
+
+  .home-user-name {
+    color: #fff8ee;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: clamp(21px, 6vw, 28px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: .01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 2px 8px rgba(0,0,0,.38);
+  }
+
+  .mmorpg-title {
+    margin-top: 4px;
+    color: #dfc06b;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: .035em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mmorpg-xp-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    color: #aebed3;
+    font-size: 9px;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .mmorpg-xp-head strong {
+    color: #e8d397;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .035em;
+    white-space: nowrap;
+  }
+
+  .mmorpg-xp-track {
+    position: relative;
+    height: 10px;
+    margin-top: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(111,159,232,.30);
+    border-radius: 999px;
+    background: rgba(2,8,15,.72);
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,.45),
+      0 0 0 1px rgba(255,255,255,.025);
+  }
+  .mmorpg-xp-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    border-radius: inherit;
+    background:
+      linear-gradient(90deg, #355f9f 0%, #6f9fe8 55%, #e0bd57 100%);
+    box-shadow:
+      0 0 11px rgba(111,159,232,.34);
+    transition: width .35s ease-out;
+  }
+  .mmorpg-xp-shine {
+    position: absolute;
+    inset: 1px 2px auto;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.44), transparent);
+    opacity: .55;
+    pointer-events: none;
+  }
+
+  .mmorpg-next-level {
+    margin-top: 5px;
+    color: #7188a6;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .home-level-line {
+    display: none;
   }
   .home-level-chip {
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: rgba(122,167,255,0.12);
-    border: 1px solid rgba(122,167,255,0.26);
-    color: #dce7ff;
-    font-size: 11px;
-    font-weight: 700;
+    display: none;
+  }
+
+  .mmorpg-corner {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    pointer-events: none;
+    opacity: .55;
+    z-index: 1;
+  }
+  .mmorpg-corner-tl {
+    top: 8px;
+    left: 8px;
+    border-top: 1px solid rgba(227,191,85,.35);
+    border-left: 1px solid rgba(227,191,85,.35);
+    border-radius: 10px 0 0 0;
+  }
+  .mmorpg-corner-br {
+    right: 8px;
+    bottom: 8px;
+    border-right: 1px solid rgba(111,159,232,.28);
+    border-bottom: 1px solid rgba(111,159,232,.28);
+    border-radius: 0 0 10px 0;
+  }
+
+  @media (max-width: 380px) {
+    .home-welcome {
+      gap: 12px;
+      padding: 15px 14px 14px;
+      min-height: 124px;
+    }
+    .mmorpg-avatar-wrap {
+      flex-basis: 76px;
+      width: 76px;
+      height: 91px;
+    }
+    .home-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+    }
+    .mmorpg-level-medallion {
+      min-width: 50px;
+      height: 25px;
+    }
+    .home-user-name {
+      font-size: 20px;
+    }
+    .mmorpg-xp-head {
+      margin-top: 10px;
+    }
   }
 
   .steam-section {
@@ -3489,25 +3689,6 @@
     white-space: nowrap;
   }
 
-  .home-welcome {
-    align-items: center;
-    gap: 14px;
-    min-height: 108px;
-  }
-  .home-user-name {
-    line-height: 1.22;
-  }
-  .home-level-line {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 7px;
-  }
-  .home-level-chip {
-    margin: 0 !important;
-    white-space: nowrap;
-  }
-
   .lib-subtabs {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3784,13 +3965,30 @@
   <div class="steam-view">
     <header>Про100 Настолки</header>
 
-    <div class="home-welcome" id="homeWelcome">
-      <div class="home-avatar" id="homeAvatar">🎲</div>
-      <div class="home-welcome-main">
-        <div class="home-eyebrow">Твій ігровий простір</div>
-        <div class="home-user-name" id="homeUserName">Завантаження…</div>
-        <div class="home-level-line" id="homeLevelLine"></div>
+    <div class="home-welcome mmorpg-player-card" id="homeWelcome" role="button" tabindex="0" onclick="showMainView('view-profile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showMainView('view-profile');}">
+      <div class="mmorpg-avatar-wrap">
+        <div class="home-avatar" id="homeAvatar">🎲</div>
+        <div class="mmorpg-level-medallion" id="homeLevelBadge">LV 1</div>
       </div>
+
+      <div class="home-welcome-main">
+        <div class="home-eyebrow mmorpg-eyebrow"><span>✦</span> ПРОФІЛЬ ГРАВЦЯ <span>✦</span></div>
+        <div class="home-user-name" id="homeUserName">Завантаження…</div>
+        <div class="mmorpg-title" id="homeTitleLine">Новачок</div>
+
+        <div class="mmorpg-xp-head">
+          <span>Досвід</span>
+          <strong id="homeXpText">0 / 250 XP</strong>
+        </div>
+        <div class="mmorpg-xp-track" aria-label="Прогрес досвіду">
+          <div class="mmorpg-xp-fill" id="homeXpFill"></div>
+          <div class="mmorpg-xp-shine"></div>
+        </div>
+        <div class="mmorpg-next-level" id="homeNextLevel">До наступного рівня: 250 XP</div>
+      </div>
+
+      <div class="mmorpg-corner mmorpg-corner-tl"></div>
+      <div class="mmorpg-corner mmorpg-corner-br"></div>
     </div>
 
     <section class="steam-section">
@@ -6583,6 +6781,15 @@ function bindHomeGameCards(root) {
 
 function renderHomeProfile(profile) {
   const name = profile?.display_name || username || 'Гравець';
+  const level = Math.max(1, Number(profile?.level) || 1);
+  const totalXp = Math.max(0, Number(profile?.xp) || 0);
+  const xpPerLevel = Math.max(1, Number(profile?.xp_per_level) || 250);
+  const levelXp = Number.isFinite(Number(profile?.level_xp))
+    ? Math.max(0, Math.min(xpPerLevel, Number(profile.level_xp)))
+    : (totalXp % xpPerLevel);
+  const progress = Math.max(0, Math.min(100, (levelXp / xpPerLevel) * 100));
+  const xpNeeded = Math.max(0, xpPerLevel - levelXp);
+
   const avatar = document.getElementById('homeAvatar');
   if (avatar) {
     avatar.classList.remove('frame-steel','frame-gold','frame-legendary');
@@ -6592,14 +6799,26 @@ function renderHomeProfile(profile) {
       ? `<img src="${escapeHtml(profile.photo_url)}" alt="${escapeHtml(name)}" decoding="async">`
       : escapeHtml(profileInitials(name));
   }
+
   const nameEl = document.getElementById('homeUserName');
   if (nameEl) nameEl.textContent = name;
-  const line = document.getElementById('homeLevelLine');
-  if (line) {
-    line.innerHTML = `<span class="home-level-chip">Рівень ${Number(profile?.level) || 1}</span>
-      <span class="home-level-chip">${escapeHtml(profile?.title || 'Новачок')}</span>
-      <span class="home-level-chip">${Number(profile?.xp) || 0} XP</span>`;
-  }
+
+  const titleEl = document.getElementById('homeTitleLine');
+  if (titleEl) titleEl.textContent = profile?.title || 'Новачок';
+
+  const levelBadge = document.getElementById('homeLevelBadge');
+  if (levelBadge) levelBadge.textContent = `LV ${level}`;
+
+  const xpText = document.getElementById('homeXpText');
+  if (xpText) xpText.textContent = `${levelXp} / ${xpPerLevel} XP`;
+
+  const xpFill = document.getElementById('homeXpFill');
+  if (xpFill) xpFill.style.width = `${progress}%`;
+
+  const nextLevel = document.getElementById('homeNextLevel');
+  if (nextLevel) nextLevel.textContent = xpNeeded
+    ? `До рівня ${level + 1}: ${xpNeeded} XP`
+    : `Рівень ${level + 1} відкрито`;
 }
 
 function eventNamesForHome(ev) {
