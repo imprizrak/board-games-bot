@@ -4992,7 +4992,7 @@
       <div class="dungeon-start" id="dungeonStart">
         <div class="dungeon-start-icon">🏰</div>
         <h2>Підземелля Про100 Настолки</h2>
-        <p>Десять кімнат, випадкові зустрічі, різні рішення, рідкісні скарби та фінальний бос. Можна ризикувати, оборонятися, тікати або шукати безпечний шлях. Золото тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
+        <p>Десять кімнат, випадкові зустрічі, різні рішення, рідкісні скарби та фінальний бос. Можна ризикувати, оборонятися, тікати або шукати безпечний шлях. Після перемоги над босом фінальний жереб дає 50% шанс на перемогу і 50% на поразку. Золото тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
         <button type="button" class="dungeon-action primary" id="dungeonStartBtn">Почати похід</button>
       </div>
 
@@ -9465,7 +9465,7 @@ async function settleDungeonReward() {
   }
 }
 
-function finishDungeon(won) {
+function finishDungeon(won, reason = '') {
   dungeonState.active = false;
   dungeonState.finished = true;
   dungeonState.won = Boolean(won);
@@ -9479,8 +9479,13 @@ function finishDungeon(won) {
     const savedGold = Math.floor(gatheredGold * 0.25);
     const lostGold = gatheredGold - savedGold;
     dungeonState.gold = savedGold;
-    dungeonState.message = `<strong>Поразка.</strong> Ти втрачаєш більшість здобичі. Врятовано ${savedGold} 🪙 із ${gatheredGold}${lostGold ? `, втрачено ${lostGold}` : ''}.`;
-    dungeonLog(`Похід завершено. Врятовано ${savedGold} із ${gatheredGold} золота.`);
+    const defeatIntro = reason === 'final_coinflip'
+      ? '<strong>Поразка — жереб 50/50 випав не на твою користь.</strong>'
+      : '<strong>Поразка.</strong>';
+    dungeonState.message = `${defeatIntro} Ти втрачаєш більшість здобичі. Врятовано ${savedGold} 🪙 із ${gatheredGold}${lostGold ? `, втрачено ${lostGold}` : ''}.`;
+    dungeonLog(reason === 'final_coinflip'
+      ? `Фінальний жереб 50/50: поразка. Врятовано ${savedGold} із ${gatheredGold} золота.`
+      : `Похід завершено. Врятовано ${savedGold} із ${gatheredGold} золота.`);
   }
   saveDungeonState();
   renderDungeon();
@@ -9512,9 +9517,14 @@ function resolveMonsterAttack(style = 'normal') {
       const hitDamage = isHeavy ? 2 : 1;
       e.hp = Math.max(0, Number(e.hp || 1) - hitDamage);
       if (e.hp <= 0) {
-        dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — вирішальний удар`;
-        dungeonLog(`${isHeavy ? 'Сильна атака' : 'Атака'} по босу: ${totalRoll}. Сторожа переможено.`);
-        finishDungeon(true);
+        const finalWin = Math.random() < 0.5;
+        dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — вирішальний удар · доля 50/50`;
+        dungeonLog(`${isHeavy ? 'Сильна атака' : 'Атака'} по босу: ${totalRoll}. Фінальний шанс: ${finalWin ? 'перемога' : 'поразка'} (50/50).`);
+        if (finalWin) {
+          finishDungeon(true);
+        } else {
+          finishDungeon(false, 'final_coinflip');
+        }
         return;
       }
       dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — влучно`;
