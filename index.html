@@ -3710,6 +3710,7 @@
 
     <label>Нова обкладинка (залиш порожнім, щоб не змінювати)</label>
     <input type="file" id="editCover" accept="image/*">
+    <div style="color:var(--muted); font-size:13px; margin-top:6px;">Фон буде автоматично прибраний перед завантаженням, а обкладинка збережеться як PNG з прозорістю.</div>
 
     <label>Посилання на правила</label>
     <input type="url" id="editRulesUrl" placeholder="https://site.com/rules">
@@ -3739,6 +3740,7 @@
 
     <label>Обкладинка (картинка)</label>
     <input type="file" id="inputCover" accept="image/*">
+    <div style="color:var(--muted); font-size:13px; margin-top:6px;">Фон буде автоматично прибраний перед завантаженням, а обкладинка збережеться як PNG з прозорістю.</div>
 
     <label>Посилання на правила</label>
     <input type="url" id="inputRulesUrl" placeholder="https://site.com/rules">
@@ -4058,6 +4060,160 @@ document.querySelectorAll(".tool-tab-btn").forEach(btn => {
   });
 });
 
+/* ==================== АВТОМАТИЧНЕ ПРИБИРАННЯ ФОНУ ОБКЛАДИНОК ==================== */
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Не вдалося створити PNG')), 'image/png');
+  });
+}
+
+async function decodeCoverImage(file) {
+  if ('createImageBitmap' in window) {
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch (_) {
+      try { return await createImageBitmap(file); } catch (_) {}
+    }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const node = new Image();
+      node.onload = () => resolve(node);
+      node.onerror = () => reject(new Error('Не вдалося прочитати зображення'));
+      node.src = url;
+    });
+    return img;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function median(values) {
+  if (!values.length) return 0;
+  values.sort((a, b) => a - b);
+  return values[Math.floor(values.length / 2)];
+}
+
+async function prepareTransparentGameCover(file) {
+  if (!file || !String(file.type || '').startsWith('image/')) return file;
+
+  const image = await decodeCoverImage(file);
+  const srcW = image.width || image.naturalWidth || 1;
+  const srcH = image.height || image.naturalHeight || 1;
+  const maxSide = 1400; // не перевантажує мобільний Telegram WebView
+  const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return file;
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(image, 0, 0, w, h);
+  if (typeof image.close === 'function') image.close();
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const px = imageData.data;
+  const count = w * h;
+
+  // Якщо PNG уже має прозорий фон — зберігаємо його як є.
+  let transparentSamples = 0;
+  let sampled = 0;
+  const sampleStep = Math.max(1, Math.floor(count / 12000));
+  for (let i = 0; i < count; i += sampleStep) {
+    sampled++;
+    if (px[i * 4 + 3] < 245) transparentSamples++;
+  }
+  if (sampled && transparentSamples / sampled > 0.01) {
+    const blob = await canvasToPngBlob(canvas);
+    const base = (file.name || 'cover').replace(/\.[^.]+$/, '');
+    return new File([blob], `${base}.png`, { type: 'image/png', lastModified: Date.now() });
+  }
+
+  // Визначаємо фон за кольорами вздовж зовнішнього краю.
+  const rs = [], gs = [], bs = [];
+  const edgeStride = Math.max(1, Math.floor(Math.max(w, h) / 180));
+  const addPixel = (x, y) => {
+    const i = (y * w + x) * 4;
+    if (px[i + 3] < 20) return;
+    rs.push(px[i]); gs.push(px[i + 1]); bs.push(px[i + 2]);
+  };
+  for (let x = 0; x < w; x += edgeStride) { addPixel(x, 0); addPixel(x, h - 1); }
+  for (let y = 0; y < h; y += edgeStride) { addPixel(0, y); addPixel(w - 1, y); }
+
+  const bgR = median(rs), bgG = median(gs), bgB = median(bs);
+  const edgeDistances = [];
+  for (let i = 0; i < rs.length; i++) {
+    const dr = rs[i] - bgR, dg = gs[i] - bgG, db = bs[i] - bgB;
+    edgeDistances.push(Math.sqrt(dr * dr + dg * dg + db * db));
+  }
+  const spread = median(edgeDistances);
+  const hardThreshold = Math.max(38, Math.min(78, 42 + spread * 1.7));
+  const softThreshold = Math.min(110, hardThreshold + 28);
+
+  const distAt = idx => {
+    const o = idx * 4;
+    const dr = px[o] - bgR, dg = px[o + 1] - bgG, db = px[o + 2] - bgB;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  };
+  const candidate = idx => px[idx * 4 + 3] > 0 && distAt(idx) <= hardThreshold;
+
+  // Flood fill тільки від країв, тому світлі деталі всередині коробки не зникають.
+  const seen = new Uint8Array(count);
+  const removed = new Uint8Array(count);
+  const queue = new Int32Array(count);
+  let head = 0, tail = 0;
+  const enqueue = idx => {
+    if (seen[idx] || !candidate(idx)) return;
+    seen[idx] = 1;
+    queue[tail++] = idx;
+  };
+  for (let x = 0; x < w; x++) { enqueue(x); enqueue((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { enqueue(y * w); enqueue(y * w + w - 1); }
+
+  while (head < tail) {
+    const idx = queue[head++];
+    removed[idx] = 1;
+    const x = idx % w, y = (idx / w) | 0;
+    if (x > 0) enqueue(idx - 1);
+    if (x + 1 < w) enqueue(idx + 1);
+    if (y > 0) enqueue(idx - w);
+    if (y + 1 < h) enqueue(idx + w);
+  }
+
+  let removedCount = 0;
+  for (let i = 0; i < count; i++) {
+    if (removed[i]) {
+      px[i * 4 + 3] = 0;
+      removedCount++;
+    }
+  }
+
+  // М'який край: напівпрозорі пікселі навколо видаленої області.
+  if (removedCount > count * 0.01) {
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        if (removed[idx]) continue;
+        if (!(removed[idx - 1] || removed[idx + 1] || removed[idx - w] || removed[idx + w])) continue;
+        const d = distAt(idx);
+        if (d < softThreshold) {
+          const t = Math.max(0, Math.min(1, (d - hardThreshold) / Math.max(1, softThreshold - hardThreshold)));
+          px[idx * 4 + 3] = Math.min(px[idx * 4 + 3], Math.round(255 * t));
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  const blob = await canvasToPngBlob(canvas);
+  const base = (file.name || 'cover').replace(/\.[^.]+$/, '');
+  return new File([blob], `${base}.png`, { type: 'image/png', lastModified: Date.now() });
+}
+
 /* ==================== БІБЛІОТЕКА ІГОР ==================== */
 let allGames = [];
 let activeGenreFilter = null;
@@ -4207,9 +4363,17 @@ async function submitEdit() {
   formData.append("tags", document.getElementById("editTags").value);
   formData.append("rules_url", document.getElementById("editRulesUrl").value.trim());
 
-  const coverFile = document.getElementById("editCover").files[0];
+  const originalCoverFile = document.getElementById("editCover").files[0];
   const rulesFile = document.getElementById("editRules").files[0];
-  if (coverFile) formData.append("cover", coverFile);
+  if (originalCoverFile) {
+    try {
+      const coverFile = await prepareTransparentGameCover(originalCoverFile);
+      formData.append("cover", coverFile);
+    } catch (err) {
+      console.warn("Автовидалення фону не спрацювало, завантажуємо оригінал", err);
+      formData.append("cover", originalCoverFile);
+    }
+  }
   if (rulesFile) formData.append("rules", rulesFile);
 
   const res = await fetch(`/api/games/${currentGame.id}`, {
@@ -4260,10 +4424,18 @@ async function submitGame() {
   formData.append("rules_url", document.getElementById("inputRulesUrl").value.trim());
   formData.append("added_by", username);
 
-  const coverFile = document.getElementById("inputCover").files[0];
+  const originalCoverFile = document.getElementById("inputCover").files[0];
   const rulesFile = document.getElementById("inputRules").files[0];
 
-  if (coverFile) formData.append("cover", coverFile);
+  if (originalCoverFile) {
+    try {
+      const coverFile = await prepareTransparentGameCover(originalCoverFile);
+      formData.append("cover", coverFile);
+    } catch (err) {
+      console.warn("Автовидалення фону не спрацювало, завантажуємо оригінал", err);
+      formData.append("cover", originalCoverFile);
+    }
+  }
   if (rulesFile) formData.append("rules", rulesFile);
 
   const res = await fetch("/api/games", {
