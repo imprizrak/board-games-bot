@@ -3826,7 +3826,6 @@
         <button type="button" class="home-tool-btn" onclick="openToolPanel('picker')"><span class="home-tool-icon">👆</span><span>Вибір гравця</span></button>
         <button type="button" class="home-tool-btn" onclick="openToolPanel('counters','flip7')"><span class="home-tool-icon">7</span><span>Flip Seven</span></button>
         <button type="button" class="home-tool-btn" onclick="openToolPanel('dice')"><span class="home-tool-icon">🎲</span><span>Кубики</span></button>
-        <button type="button" class="home-tool-btn" onclick="openToolPanel('timer')"><span class="home-tool-icon">⏱</span><span>Таймер</span></button>
       </div>
     </section>
 
@@ -3907,18 +3906,6 @@
     <button class="tool-tab-btn" data-tool="counters">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 12.5h5M8 16h8"/></svg>
       Лічильники
-    </button>
-    <button class="tool-tab-btn" data-tool="timer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/></svg>
-      Таймер
-    </button>
-    <button class="tool-tab-btn" data-tool="wheel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 3"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>
-      Колесо
-    </button>
-    <button class="tool-tab-btn" data-tool="initiative">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
-      Ініціатива
     </button>
   </div>
 
@@ -4003,49 +3990,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </div>
-    </div>
-  </div>
-
-  <!-- Таймер ходу -->
-  <div class="tool-panel" id="panel-timer">
-    <div class="timer-setup-row">
-      <label>Хвилин на гравця:</label>
-      <input type="text" inputmode="numeric" id="timerMinutesInput" value="10">
-      <button class="btn secondary" style="margin-top:0;" onclick="applyTimerMinutes()">Застосувати</button>
-    </div>
-    <div class="timer-list" id="timerList"></div>
-    <div class="timer-controls">
-      <button class="btn secondary" onclick="addTimerPlayer()">+ Гравець</button>
-      <button class="btn secondary" onclick="toggleTimerRun()" id="timerRunBtn">Старт</button>
-      <button class="btn secondary" onclick="resetTimers()">Скинути</button>
-    </div>
-    <p class="roll-sub" style="padding:0; margin-top:10px;">Тисни на картку гравця, щоб передати хід наступному.</p>
-  </div>
-
-  <!-- Колесо випадкового вибору -->
-  <div class="tool-panel" id="panel-wheel">
-    <p class="roll-sub" style="padding:0 16px; margin-top:0; text-align:center;">Крутить колесо серед ігор із твоєї бібліотеки.</p>
-    <div class="wheel-wrap">
-      <div class="wheel-result" id="wheelResult">&nbsp;</div>
-      <div class="wheel-outer">
-        <div class="wheel-pointer"></div>
-        <div class="wheel-circle" id="wheelCircle"></div>
-      </div>
-      <button class="btn" style="max-width:220px;" onclick="spinWheel()">Крутити колесо</button>
-    </div>
-  </div>
-
-  <!-- Трекер ініціативи D&D -->
-  <div class="tool-panel" id="panel-initiative">
-    <div class="initiative-round-banner" id="initiativeRoundBanner">Раунд 1</div>
-    <div class="initiative-list" id="initiativeList"></div>
-    <div class="counters-actions">
-      <button class="btn secondary" onclick="addInitiativeCombatant()">+ Учасник</button>
-      <button class="btn secondary" onclick="sortInitiative()">Сортувати</button>
-    </div>
-    <div class="counters-actions" style="margin-top:8px;">
-      <button class="btn" onclick="nextInitiativeTurn()">Наступний хід</button>
-      <button class="btn secondary" onclick="resetInitiative()">Скинути бій</button>
     </div>
   </div>
 
@@ -7340,11 +7284,10 @@ function quickToolsForGame(game) {
   const tools = [];
   if (/flip\s*7|flip\s*seven/.test(hay)) tools.push({ label:'Flip Seven', tool:'counters', mode:'flip7', primary:true });
   if (/d&d|dnd|dungeons|dragon|rpg|рольов/.test(hay)) {
-    tools.push({ label:'Кубики', tool:'dice', primary:true }, { label:'Ініціатива', tool:'initiative' });
+    tools.push({ label:'Кубики', tool:'dice', primary:true });
   }
   if (!tools.some(t => t.tool === 'picker')) tools.push({ label:'Перший гравець', tool:'picker' });
   if (!tools.some(t => t.tool === 'counters')) tools.push({ label:'Лічильники', tool:'counters', mode:'simple' });
-  if (!tools.some(t => t.tool === 'timer')) tools.push({ label:'Таймер', tool:'timer' });
   return tools.slice(0, 6);
 }
 
