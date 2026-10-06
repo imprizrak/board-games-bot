@@ -4269,6 +4269,187 @@
     .bottom-nav button { padding-left: 1px !important; padding-right: 1px !important; }
   }
 
+
+  /* ==================== GOLD / SHOP ==================== */
+  .mmorpg-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+  .mmorpg-title-row .mmorpg-title {
+    min-width: 0;
+    flex: 1;
+  }
+  .mmorpg-wallet,
+  .profile-gold-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid rgba(227,191,85,.38);
+    border-radius: 999px;
+    background: rgba(227,191,85,.10);
+    color: #f1d77d;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+  .mmorpg-wallet {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  .profile-gold-badge {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .profile-shop-panel {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid rgba(227,191,85,.24);
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 92% 0%, rgba(227,191,85,.10), transparent 34%),
+      var(--card-bg);
+  }
+  .profile-shop-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 11px;
+  }
+  .profile-shop-title {
+    font-size: 15px;
+    font-weight: 850;
+    color: var(--text);
+  }
+  .profile-shop-balance {
+    color: #f0cf69;
+    font-size: 13px;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+  .profile-shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .profile-shop-item {
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,.025);
+  }
+  .profile-shop-item.owned {
+    border-color: rgba(111,159,232,.32);
+  }
+  .profile-shop-item.active {
+    border-color: rgba(227,191,85,.58);
+    background: rgba(227,191,85,.07);
+  }
+  .profile-shop-icon {
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .profile-shop-name {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .profile-shop-type {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .profile-shop-desc {
+    min-height: 44px;
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+  .profile-shop-action {
+    width: 100%;
+    min-height: 38px;
+    margin-top: 9px;
+    padding: 8px 9px;
+    border: 1px solid rgba(227,191,85,.38);
+    border-radius: 10px;
+    background: rgba(227,191,85,.10);
+    color: #f2d77f;
+    font-size: 11px;
+    font-weight: 850;
+  }
+  .profile-shop-action:disabled {
+    opacity: .55;
+  }
+  .profile-shop-item.active .profile-shop-action {
+    color: #a8d9b7;
+    border-color: rgba(89,177,123,.34);
+    background: rgba(89,177,123,.08);
+  }
+
+  .dungeon-wallet {
+    margin-top: 5px;
+    color: #d9c37f;
+    font-size: 11px;
+    font-weight: 750;
+  }
+
+  /* Store frames */
+  .profile-hero.frame-shop-bronze .profile-avatar,
+  .club-member-avatar.frame-shop-bronze,
+  .home-avatar.frame-shop-bronze {
+    border-color: #b97842 !important;
+    box-shadow: 0 0 0 2px rgba(185,120,66,.18), 0 0 20px rgba(185,120,66,.24);
+  }
+  .profile-hero.frame-shop-frost .profile-avatar,
+  .club-member-avatar.frame-shop-frost,
+  .home-avatar.frame-shop-frost {
+    border-color: #8fd8ff !important;
+    box-shadow: 0 0 0 2px rgba(143,216,255,.18), 0 0 22px rgba(90,174,238,.35);
+  }
+  .profile-hero.frame-shop-arcane .profile-avatar,
+  .club-member-avatar.frame-shop-arcane,
+  .home-avatar.frame-shop-arcane {
+    border-color: #b58cff !important;
+    box-shadow: 0 0 0 2px rgba(181,140,255,.20), 0 0 22px rgba(181,140,255,.32), 0 0 34px rgba(227,191,85,.14);
+  }
+
+  /* Store themes */
+  .profile-theme-shop-forest .profile-hero,
+  .profile-theme-shop-forest .profile-xp-card,
+  .profile-theme-shop-forest .profile-shop-panel {
+    background:
+      radial-gradient(circle at 90% 0%, rgba(129,185,111,.16), transparent 42%),
+      linear-gradient(145deg, #12271f, #091713);
+  }
+  .profile-theme-shop-crimson .profile-hero,
+  .profile-theme-shop-crimson .profile-xp-card,
+  .profile-theme-shop-crimson .profile-shop-panel {
+    background:
+      radial-gradient(circle at 90% 0%, rgba(194,78,76,.18), transparent 42%),
+      linear-gradient(145deg, #2a1518, #120b0e);
+  }
+  .profile-theme-shop-royal .profile-hero,
+  .profile-theme-shop-royal .profile-xp-card,
+  .profile-theme-shop-royal .profile-shop-panel {
+    background:
+      radial-gradient(circle at 90% 0%, rgba(199,163,72,.18), transparent 40%),
+      radial-gradient(circle at 0% 100%, rgba(125,87,193,.18), transparent 42%),
+      linear-gradient(145deg, #241b39, #0d0b18);
+  }
+
+  @media (max-width: 380px) {
+    .profile-shop-grid { grid-template-columns: 1fr; }
+    .mmorpg-wallet { padding: 3px 7px; font-size: 9px; }
+  }
+
 </style>
 </head>
 <body>
@@ -4288,7 +4469,10 @@
       <div class="home-welcome-main">
         <div class="home-eyebrow mmorpg-eyebrow"><span>✦</span> ПРОФІЛЬ ГРАВЦЯ <span>✦</span></div>
         <div class="home-user-name" id="homeUserName">Завантаження…</div>
-        <div class="mmorpg-title" id="homeTitleLine">Новачок</div>
+        <div class="mmorpg-title-row">
+          <div class="mmorpg-title" id="homeTitleLine">Новачок</div>
+          <div class="mmorpg-wallet">🪙 <strong id="homeGoldBalance">0</strong></div>
+        </div>
 
         <div class="mmorpg-xp-head">
           <span>Досвід</span>
@@ -4532,9 +4716,10 @@
         <div class="dungeon-kicker">Шукач пригод</div>
         <div class="dungeon-player-name" id="dungeonPlayerName">Гравець</div>
         <div class="dungeon-player-title" id="dungeonPlayerTitle">Новачок · LV 1</div>
+        <div class="dungeon-wallet">Гаманець: 🪙 <strong id="dungeonAccountGold">0</strong></div>
         <div class="dungeon-resources">
           <div class="dungeon-resource"><strong id="dungeonHp">10/10</strong><span>❤️ Здоров'я</span></div>
-          <div class="dungeon-resource"><strong id="dungeonGold">0</strong><span>🪙 Золото</span></div>
+          <div class="dungeon-resource"><strong id="dungeonGold">0</strong><span>🪙 Здобич</span></div>
           <div class="dungeon-resource"><strong id="dungeonPotions">1</strong><span>🧪 Зілля</span></div>
         </div>
       </div>
@@ -7167,7 +7352,7 @@ function renderHomeProfile(profile) {
 
   const avatar = document.getElementById('homeAvatar');
   if (avatar) {
-    avatar.classList.remove('frame-steel','frame-gold','frame-legendary');
+    avatar.classList.remove('frame-steel','frame-gold','frame-legendary','frame-shop-bronze','frame-shop-frost','frame-shop-arcane');
     const frameClass = cosmeticFrameClass(profile?.cosmetics?.frame_id || '');
     if (frameClass) avatar.classList.add(frameClass);
     avatar.innerHTML = profile?.photo_url
@@ -7180,6 +7365,9 @@ function renderHomeProfile(profile) {
 
   const titleEl = document.getElementById('homeTitleLine');
   if (titleEl) titleEl.textContent = profile?.title || 'Новачок';
+
+  const goldEl = document.getElementById('homeGoldBalance');
+  if (goldEl) goldEl.textContent = String(Math.max(0, Number(profile?.gold) || 0));
 
   const levelBadge = document.getElementById('homeLevelBadge');
   if (levelBadge) levelBadge.textContent = `LV ${level}`;
@@ -8369,12 +8557,18 @@ function cosmeticFrameClass(frameId) {
   if (frameId === 'frame_steel') return 'frame-steel';
   if (frameId === 'frame_gold') return 'frame-gold';
   if (frameId === 'frame_legendary') return 'frame-legendary';
+  if (frameId === 'shop_frame_bronze') return 'frame-shop-bronze';
+  if (frameId === 'shop_frame_frost') return 'frame-shop-frost';
+  if (frameId === 'shop_frame_arcane') return 'frame-shop-arcane';
   return '';
 }
 
 function cosmeticThemeClass(themeId) {
   if (themeId === 'theme_ocean') return 'profile-theme-ocean';
   if (themeId === 'theme_midnight') return 'profile-theme-midnight';
+  if (themeId === 'shop_theme_forest') return 'profile-theme-shop-forest';
+  if (themeId === 'shop_theme_crimson') return 'profile-theme-shop-crimson';
+  if (themeId === 'shop_theme_royal') return 'profile-theme-shop-royal';
   return '';
 }
 
@@ -8460,6 +8654,70 @@ function xpRewardsHtml(data) {
   `;
 }
 
+
+function shopTypeLabel(type) {
+  return type === 'frame' ? 'Рамка аватарки' : type === 'theme' ? 'Тема профілю' : 'Оформлення';
+}
+
+async function buyProfileShopItem(itemId) {
+  try {
+    const res = await fetch('/api/profile/shop/buy', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({item_id: itemId})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 409 || data.status === 'not_enough_gold') {
+      tg.showAlert(`Не вистачає золота. Потрібно ${Number(data.price) || 0} 🪙.`);
+      return;
+    }
+    if (!res.ok) {
+      tg.showAlert(data.error || 'Не вдалося купити предмет.');
+      return;
+    }
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    tg.showAlert('Предмет придбано ✨');
+    dungeonProfileCache = null;
+    await Promise.allSettled([loadMyProfile(), loadHomeHub(true)]);
+  } catch (e) {
+    tg.showAlert('Не вдалося купити предмет.');
+  }
+}
+
+function profileShopHtml(data) {
+  const items = Array.isArray(data.shop_items) ? data.shop_items : [];
+  const gold = Math.max(0, Number(data.gold) || 0);
+  if (!items.length) return '';
+  return `
+    <div class="profile-shop-panel">
+      <div class="profile-shop-head">
+        <div class="profile-shop-title">Крамниця оформлення</div>
+        <div class="profile-shop-balance">🪙 ${gold}</div>
+      </div>
+      <div class="profile-shop-grid">
+        ${items.map(item => {
+          const owned = Boolean(item.owned);
+          const active = Boolean(item.active);
+          const price = Math.max(0, Number(item.price) || 0);
+          const canBuy = gold >= price;
+          const action = active
+            ? `<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`
+            : owned
+              ? `<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`
+              : `<button type="button" class="profile-shop-action" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : ''}>Купити · 🪙 ${price}</button>`;
+          return `
+            <div class="profile-shop-item ${owned ? 'owned' : ''} ${active ? 'active' : ''}">
+              <div class="profile-shop-icon">${escapeHtml(item.icon || '🎁')}</div>
+              <div class="profile-shop-name">${escapeHtml(item.name || '')}</div>
+              <div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div>
+              <div class="profile-shop-desc">${escapeHtml(item.description || '')}</div>
+              ${action}
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
 function renderMyProfile(data) {
   const root = document.getElementById('profileContent');
   if (!root) return;
@@ -8493,6 +8751,7 @@ function renderMyProfile(data) {
         <div class="profile-title-row">
           <span class="profile-title">${escapeHtml(data.title || 'Новачок')}</span>
           <span class="profile-level-badge">Рівень ${Number(data.level) || 1}</span>
+          <span class="profile-gold-badge">🪙 ${Math.max(0, Number(data.gold) || 0)}</span>
         </div>
         ${activeBadge ? `<div class="profile-active-badge">${escapeHtml(activeBadge)}</div>` : ''}
         <div class="profile-avatar-actions">
@@ -8514,6 +8773,8 @@ function renderMyProfile(data) {
         досягнення: +${Number(data.achievement_bonus_xp) || 0} XP
       </div>
     </div>
+
+    ${profileShopHtml(data)}
 
     <div class="profile-section-title">Статистика</div>
     <div class="profile-stats-grid">
@@ -8618,7 +8879,7 @@ async function loadMyProfile() {
   if (!root) return;
   if (!root.dataset.loaded) root.innerHTML = '<div class="profile-loading">Завантажую профіль…</div>';
   try {
-    const res = await fetch('/api/profile/me', { headers: telegramAuthHeaders() });
+    const res = await fetch('/api/profile/summary', { headers: telegramAuthHeaders(), cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'profile_error');
     root.dataset.loaded = '1';
@@ -8675,6 +8936,9 @@ function defaultDungeonState() {
     maxHp: 10,
     gold: 0,
     potions: 1,
+    runId: '',
+    settled: false,
+    accountGold: 0,
     encounter: null,
     lastRoll: null,
     lastRollText: '',
@@ -8738,15 +9002,62 @@ function dungeonEncounterForRoom(room) {
   return { ...choices[dungeonRandom(0, choices.length - 1)] };
 }
 
-function startDungeonRun() {
-  dungeonState = defaultDungeonState();
-  dungeonState.active = true;
-  dungeonState.room = 1;
-  dungeonState.encounter = dungeonEncounterForRoom(1);
-  dungeonState.message = 'Ти входиш у першу кімнату. Обери дію.';
-  dungeonLog('Похід розпочато.');
-  saveDungeonState();
-  renderDungeon();
+async function startDungeonRun() {
+  try {
+    const res = await fetch('/api/dungeon/start', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.run_id) {
+      tg.showAlert(data.error || 'Не вдалося розпочати похід.');
+      return;
+    }
+
+    const accountGold = Math.max(0, Number(dungeonProfileCache?.gold) || 0);
+    dungeonState = defaultDungeonState();
+    dungeonState.runId = data.run_id;
+    dungeonState.accountGold = accountGold;
+    dungeonState.active = true;
+    dungeonState.room = 1;
+    dungeonState.encounter = dungeonEncounterForRoom(1);
+    dungeonState.message = 'Ти входиш у першу кімнату. Обери дію.';
+    dungeonLog('Похід розпочато.');
+    saveDungeonState();
+    renderDungeon();
+  } catch (e) {
+    tg.showAlert('Не вдалося розпочати похід. Перевір з’єднання.');
+  }
+}
+
+async function settleDungeonReward() {
+  if (!dungeonState.finished || dungeonState.settled || !dungeonState.runId) return;
+  try {
+    const res = await fetch('/api/dungeon/complete', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({
+        run_id: dungeonState.runId,
+        gold: dungeonState.gold,
+        won: Boolean(dungeonState.won)
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return;
+
+    dungeonState.settled = true;
+    dungeonState.accountGold = Math.max(0, Number(data.gold_balance) || dungeonState.accountGold || 0);
+    dungeonState.message += `<br><strong>На рахунок профілю зараховано +${Math.max(0, Number(data.reward_gold) || dungeonState.gold)} 🪙.</strong>`;
+    saveDungeonState();
+    dungeonProfileCache = dungeonProfileCache
+      ? {...dungeonProfileCache, gold: dungeonState.accountGold}
+      : {gold: dungeonState.accountGold};
+    renderDungeon();
+    renderDungeonProfile(dungeonProfileCache);
+  } catch (_) {
+    // Повторимо зарахування при наступному відкритті вкладки.
+  }
 }
 
 function finishDungeon(won) {
@@ -8759,11 +9070,12 @@ function finishDungeon(won) {
     dungeonState.message = `<strong>Перемога!</strong> Підземелля пройдено. Бонус зі скарбниці: +${bonus} 🪙`;
     dungeonLog(`Боса переможено. Загальна здобич: ${dungeonState.gold} золота.`);
   } else {
-    dungeonState.message = `<strong>Поразка.</strong> Сили закінчилися. У похід можна вирушити знову.`;
-    dungeonLog('Похід завершився поразкою.');
+    dungeonState.message = `<strong>Поразка.</strong> Здобуте золото все одно буде зараховано у твій профіль.`;
+    dungeonLog(`Похід завершено. Здобич: ${dungeonState.gold} золота.`);
   }
   saveDungeonState();
   renderDungeon();
+  settleDungeonReward();
 }
 
 function dungeonDamage(amount, reason) {
@@ -9072,11 +9384,14 @@ function renderDungeonProfile(profile) {
   if (nameEl) nameEl.textContent = name;
   const titleEl = document.getElementById('dungeonPlayerTitle');
   if (titleEl) titleEl.textContent = `${profile?.title || 'Новачок'} · LV ${Math.max(1, Number(profile?.level) || 1)}`;
+  const accountGold = document.getElementById('dungeonAccountGold');
+  if (accountGold) accountGold.textContent = String(Math.max(0, Number(profile?.gold ?? dungeonState.accountGold) || 0));
 }
 
 function initDungeonTab() {
   loadDungeonProfile();
   renderDungeon();
+  if (dungeonState.finished && !dungeonState.settled && dungeonState.runId) settleDungeonReward();
 }
 
 document.getElementById('dungeonStartBtn')?.addEventListener('click', startDungeonRun);

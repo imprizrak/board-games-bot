@@ -55,6 +55,9 @@ PROFILES_REST = f"{SUPABASE_URL}/rest/v1/profiles"
 ACTIVITY_REST = f"{SUPABASE_URL}/rest/v1/activity_feed"
 PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
 PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
+DUNGEON_RUNS_REST = f"{SUPABASE_URL}/rest/v1/dungeon_runs"
+DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
+PROFILE_SHOP_PURCHASE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/purchase_profile_shop_item"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -1519,10 +1522,109 @@ def _xp_reward_catalog(level):
     return rewards
 
 
+
+def _profile_shop_catalog():
+    """Косметика, яку можна придбати за золото з мінігри."""
+    return [
+        {
+            "id": "shop_frame_bronze",
+            "type": "frame",
+            "icon": "🟤",
+            "name": "Бронзова рамка",
+            "value": "shop_frame_bronze",
+            "price": 120,
+            "description": "Тепла бронзова рамка у стилі пригодницької гільдії.",
+        },
+        {
+            "id": "shop_frame_frost",
+            "type": "frame",
+            "icon": "❄️",
+            "name": "Крижана рамка",
+            "value": "shop_frame_frost",
+            "price": 220,
+            "description": "Холодне блакитне сяйво навколо аватарки.",
+        },
+        {
+            "id": "shop_frame_arcane",
+            "type": "frame",
+            "icon": "🔮",
+            "name": "Арканна рамка",
+            "value": "shop_frame_arcane",
+            "price": 380,
+            "description": "Фіолетово-золота рамка для справжнього героя.",
+        },
+        {
+            "id": "shop_theme_forest",
+            "type": "theme",
+            "icon": "🌿",
+            "name": "Смарагдовий ліс",
+            "value": "shop_theme_forest",
+            "price": 300,
+            "description": "Темно-зелена тема профілю з м'якими золотими акцентами.",
+        },
+        {
+            "id": "shop_theme_crimson",
+            "type": "theme",
+            "icon": "🔥",
+            "name": "Багряний рейд",
+            "value": "shop_theme_crimson",
+            "price": 450,
+            "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу.",
+        },
+        {
+            "id": "shop_theme_royal",
+            "type": "theme",
+            "icon": "👑",
+            "name": "Королівська ніч",
+            "value": "shop_theme_royal",
+            "price": 700,
+            "description": "Преміальна фіолетово-золота тема профілю.",
+        },
+    ]
+
+
+def _owned_shop_items(profile=None):
+    profile = profile or {}
+    raw = profile.get("owned_shop_items") or []
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = []
+    if not isinstance(raw, list):
+        raw = []
+    return {str(x) for x in raw if x}
+
+
+def _profile_shop_state(profile, cosmetics=None):
+    profile = profile or {}
+    cosmetics = cosmetics or {}
+    owned = _owned_shop_items(profile)
+    selected_by_type = {
+        "frame": str(cosmetics.get("frame_id") or ""),
+        "theme": str(cosmetics.get("theme_id") or ""),
+    }
+    result = []
+    for item in _profile_shop_catalog():
+        row = dict(item)
+        row["owned"] = row["id"] in owned
+        row["active"] = selected_by_type.get(row["type"]) == row["id"]
+        result.append(row)
+    return result
+
+
 def _resolve_profile_cosmetics(level, profile=None):
     profile = profile or {}
     rewards = _xp_reward_catalog(level)
     unlocked = {r["id"]: r for r in rewards if r.get("unlocked")}
+
+    owned_shop = _owned_shop_items(profile)
+    shop_available = {
+        item["id"]: item
+        for item in _profile_shop_catalog()
+        if item["id"] in owned_shop
+    }
+    available = {**unlocked, **shop_available}
 
     selected = {
         "title": profile.get("selected_title_reward") or "",
@@ -1531,15 +1633,15 @@ def _resolve_profile_cosmetics(level, profile=None):
         "theme": profile.get("selected_theme_reward") or "",
     }
 
-    # Якщо нагорода ще не відкрита або ID більше не існує — ігноруємо вибір.
+    # XP-нагороди доступні після рівня, магазинні — після покупки.
     for kind in tuple(selected):
         rid = selected[kind]
-        reward = unlocked.get(rid)
+        reward = available.get(rid)
         if not reward or reward.get("type") != kind:
             selected[kind] = ""
 
-    title_reward = unlocked.get(selected["title"])
-    badge_reward = unlocked.get(selected["badge"])
+    title_reward = available.get(selected["title"])
+    badge_reward = available.get(selected["badge"])
 
     cosmetics = {
         "title_id": selected["title"],
@@ -1593,7 +1695,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp",
+                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items",
                 "limit": 1,
             },
             timeout=20,
@@ -1707,6 +1809,8 @@ def get_my_profile():
         "xp_rewards": xp_rewards,
         "cosmetics": cosmetics,
         "next_xp_reward": next_xp_reward,
+        "gold": int((existing_profile or {}).get("gold") or 0),
+        "shop_items": _profile_shop_state(existing_profile or {}, cosmetics),
     })
 
 
@@ -1727,7 +1831,7 @@ def get_profile_summary():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,username,display_name,photo_url,xp,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
                 "limit": 1,
             },
             timeout=10,
@@ -1748,6 +1852,9 @@ def get_profile_summary():
         "photo_url": photo_url,
         "xp": xp,
         "level": level,
+        "level_xp": xp % 250,
+        "xp_per_level": 250,
+        "gold": int(profile.get("gold") or 0),
         "title": cosmetics.get("title_label") or _profile_title(level),
         "cosmetics": cosmetics,
     })
@@ -1878,7 +1985,7 @@ def set_profile_cosmetics():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,xp,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
                 "limit": 1,
             },
             timeout=20,
@@ -1894,6 +2001,13 @@ def set_profile_cosmetics():
     level = max(1, xp // 250 + 1)
     rewards = _xp_reward_catalog(level)
     unlocked = {r["id"]: r for r in rewards if r.get("unlocked")}
+    owned_shop = _owned_shop_items(profile)
+    shop_available = {
+        item["id"]: item
+        for item in _profile_shop_catalog()
+        if item["id"] in owned_shop
+    }
+    available = {**unlocked, **shop_available}
 
     field_map = {
         "title": "selected_title_reward",
@@ -1910,7 +2024,7 @@ def set_profile_cosmetics():
         if not reward_id:
             patch[field] = None
             continue
-        reward = unlocked.get(reward_id)
+        reward = available.get(reward_id)
         if not reward or reward.get("type") != kind:
             return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
         patch[field] = reward_id
@@ -1935,6 +2049,113 @@ def set_profile_cosmetics():
         return jsonify({"error": "profile_update_failed"}), 500
 
     return jsonify({"status": "ok"})
+
+
+
+@app.route("/api/profile/shop/buy", methods=["POST"])
+def buy_profile_shop_item():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    item_id = str(data.get("item_id") or "").strip()
+    catalog = {item["id"]: item for item in _profile_shop_catalog()}
+    if item_id not in catalog:
+        return jsonify({"error": "shop_item_not_found"}), 404
+
+    user_id = int(user.get("id"))
+    try:
+        resp = requests.post(
+            PROFILE_SHOP_PURCHASE_RPC,
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={"p_user_id": user_id, "p_item_id": item_id},
+            timeout=20,
+        )
+        if not resp.ok:
+            logging.warning("Помилка покупки косметики: %s", resp.text[:500])
+            return jsonify({"error": "shop_purchase_failed"}), 500
+        result = resp.json()
+        if isinstance(result, list) and result:
+            result = result[0]
+        if not isinstance(result, dict):
+            result = {}
+        if result.get("status") == "not_enough_gold":
+            return jsonify(result), 409
+        return jsonify(result)
+    except Exception:
+        logging.exception("Не вдалося придбати предмет профілю")
+        return jsonify({"error": "shop_purchase_failed"}), 500
+
+
+@app.route("/api/dungeon/start", methods=["POST"])
+def start_dungeon_run():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    try:
+        resp = requests.post(
+            DUNGEON_RUNS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            json={"telegram_user_id": user_id},
+            timeout=20,
+        )
+        if not resp.ok:
+            logging.warning("Не вдалося створити похід: %s", resp.text[:500])
+            return jsonify({"error": "dungeon_start_failed"}), 500
+        rows = resp.json()
+        if not rows:
+            return jsonify({"error": "dungeon_start_failed"}), 500
+        return jsonify({"status": "ok", "run_id": rows[0].get("id")})
+    except Exception:
+        logging.exception("Не вдалося створити похід")
+        return jsonify({"error": "dungeon_start_failed"}), 500
+
+
+@app.route("/api/dungeon/complete", methods=["POST"])
+def complete_dungeon_run():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    run_id = str(data.get("run_id") or "").strip()
+    if not re.match(r"^[0-9a-fA-F-]{36}$", run_id):
+        return jsonify({"error": "invalid_run_id"}), 400
+
+    try:
+        reward_gold = int(data.get("gold") or 0)
+    except Exception:
+        reward_gold = 0
+    reward_gold = max(0, min(120, reward_gold))
+    won = bool(data.get("won"))
+    user_id = int(user.get("id"))
+
+    try:
+        resp = requests.post(
+            DUNGEON_SETTLE_RPC,
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={
+                "p_run_id": run_id,
+                "p_user_id": user_id,
+                "p_gold": reward_gold,
+                "p_won": won,
+            },
+            timeout=20,
+        )
+        if not resp.ok:
+            logging.warning("Не вдалося зарахувати золото: %s", resp.text[:500])
+            return jsonify({"error": "dungeon_settlement_failed"}), 500
+        result = resp.json()
+        if isinstance(result, list) and result:
+            result = result[0]
+        return jsonify(result if isinstance(result, dict) else {"status": "ok"})
+    except Exception:
+        logging.exception("Не вдалося зарахувати золото з підземелля")
+        return jsonify({"error": "dungeon_settlement_failed"}), 500
+
 
 
 
@@ -2164,7 +2385,7 @@ def get_public_profiles():
             PROFILES_REST,
             headers=HEADERS,
             params={
-                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,updated_at",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,updated_at",
                 "order": "xp.desc,updated_at.desc",
                 "limit": 100,
             },
