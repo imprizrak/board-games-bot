@@ -57,7 +57,6 @@ PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
 PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 DUNGEON_RUNS_REST = f"{SUPABASE_URL}/rest/v1/dungeon_runs"
 DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
-PROFILE_SHOP_PURCHASE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/purchase_profile_shop_item"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -1554,6 +1553,15 @@ def _profile_shop_catalog():
             "description": "Фіолетово-золота рамка для справжнього героя.",
         },
         {
+            "id": "shop_frame_dragonfire",
+            "type": "frame",
+            "icon": "🐉",
+            "name": "Вогонь дракона",
+            "value": "shop_frame_dragonfire",
+            "price": 560,
+            "description": "Вогняна рамка з теплим червоно-золотим сяйвом.",
+        },
+        {
             "id": "shop_theme_forest",
             "type": "theme",
             "icon": "🌿",
@@ -1579,6 +1587,15 @@ def _profile_shop_catalog():
             "value": "shop_theme_royal",
             "price": 700,
             "description": "Преміальна фіолетово-золота тема профілю.",
+        },
+        {
+            "id": "shop_theme_starlight",
+            "type": "theme",
+            "icon": "✨",
+            "name": "Зоряне сяйво",
+            "value": "shop_theme_starlight",
+            "price": 950,
+            "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
         },
     ]
 
@@ -2052,6 +2069,114 @@ def set_profile_cosmetics():
 
 
 
+def _purchase_profile_shop_item_atomic(user_id, item):
+    """Атомарно списує золото і додає косметику до профілю без окремого RPC.
+
+    Умова PATCH по поточному балансу не дозволяє двом одночасним натисканням
+    витратити одне й те саме золото двічі. Якщо інший запит уже змінив баланс,
+    ми перечитуємо профіль і повторюємо перевірку один раз.
+    """
+    item_id = str(item.get("id") or "")
+    item_type = str(item.get("type") or "")
+    price = max(0, int(item.get("price") or 0))
+    selected_field = {
+        "frame": "selected_frame_reward",
+        "theme": "selected_theme_reward",
+    }.get(item_type)
+
+    for _ in range(2):
+        try:
+            current = requests.get(
+                PROFILES_REST,
+                headers=HEADERS,
+                params={
+                    "telegram_user_id": f"eq.{user_id}",
+                    "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
+                    "limit": 1,
+                },
+                timeout=20,
+            )
+        except Exception:
+            logging.exception("Не вдалося прочитати профіль перед покупкою")
+            return {"error": "shop_profile_lookup_failed"}, 503
+
+        if not current.ok:
+            logging.warning("Помилка читання профілю перед покупкою: %s", current.text[:500])
+            return {"error": "shop_profile_lookup_failed"}, 503
+        rows = current.json()
+        if not rows:
+            return {"error": "profile_not_found"}, 404
+
+        profile = rows[0]
+        raw_gold = profile.get("gold")
+        gold = max(0, int(raw_gold or 0))
+        owned = _owned_shop_items(profile)
+
+        if item_id in owned:
+            return {
+                "status": "already_owned",
+                "item_id": item_id,
+                "gold_balance": gold,
+            }, 200
+
+        if gold < price:
+            return {
+                "status": "not_enough_gold",
+                "item_id": item_id,
+                "price": price,
+                "gold_balance": gold,
+                "missing_gold": price - gold,
+            }, 409
+
+        patch = {
+            "gold": gold - price,
+            "owned_shop_items": sorted(owned | {item_id}),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        # Після покупки одразу застосовуємо рамку/тему — користувач відразу бачить результат.
+        if selected_field:
+            patch[selected_field] = item_id
+
+        params = {
+            "telegram_user_id": f"eq.{user_id}",
+            "gold": "is.null" if raw_gold is None else f"eq.{gold}",
+            "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
+        }
+        try:
+            updated = requests.patch(
+                PROFILES_REST,
+                headers={
+                    **HEADERS,
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation",
+                },
+                params=params,
+                json=patch,
+                timeout=20,
+            )
+        except Exception:
+            logging.exception("Не вдалося списати золото за покупку")
+            return {"error": "shop_purchase_failed"}, 503
+
+        if not updated.ok:
+            logging.warning("Помилка збереження покупки: %s", updated.text[:500])
+            return {"error": "shop_purchase_failed"}, 500
+
+        changed = updated.json()
+        if changed:
+            return {
+                "status": "purchased",
+                "item_id": item_id,
+                "item_type": item_type,
+                "price": price,
+                "gold_balance": max(0, gold - price),
+                "equipped": bool(selected_field),
+            }, 200
+        # Баланс змінився між GET і PATCH — ще раз перечитуємо профіль.
+
+    return {"error": "shop_purchase_conflict"}, 409
+
+
 @app.route("/api/profile/shop/buy", methods=["POST"])
 def buy_profile_shop_item():
     user = _request_telegram_user()
@@ -2061,31 +2186,12 @@ def buy_profile_shop_item():
     data = request.get_json(silent=True) or {}
     item_id = str(data.get("item_id") or "").strip()
     catalog = {item["id"]: item for item in _profile_shop_catalog()}
-    if item_id not in catalog:
+    item = catalog.get(item_id)
+    if not item:
         return jsonify({"error": "shop_item_not_found"}), 404
 
-    user_id = int(user.get("id"))
-    try:
-        resp = requests.post(
-            PROFILE_SHOP_PURCHASE_RPC,
-            headers={**HEADERS, "Content-Type": "application/json"},
-            json={"p_user_id": user_id, "p_item_id": item_id},
-            timeout=20,
-        )
-        if not resp.ok:
-            logging.warning("Помилка покупки косметики: %s", resp.text[:500])
-            return jsonify({"error": "shop_purchase_failed"}), 500
-        result = resp.json()
-        if isinstance(result, list) and result:
-            result = result[0]
-        if not isinstance(result, dict):
-            result = {}
-        if result.get("status") == "not_enough_gold":
-            return jsonify(result), 409
-        return jsonify(result)
-    except Exception:
-        logging.exception("Не вдалося придбати предмет профілю")
-        return jsonify({"error": "shop_purchase_failed"}), 500
+    payload, status = _purchase_profile_shop_item_atomic(int(user.get("id")), item)
+    return jsonify(payload), status
 
 
 @app.route("/api/dungeon/start", methods=["POST"])

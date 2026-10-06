@@ -4445,6 +4445,134 @@
       linear-gradient(145deg, #241b39, #0d0b18);
   }
 
+  .profile-shop-subtitle {
+    margin: -4px 0 12px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .profile-shop-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+    margin-bottom: 9px;
+    border-radius: 12px;
+    background: rgba(0,0,0,.16);
+    border: 1px solid rgba(255,255,255,.05);
+  }
+  .profile-shop-preview-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-size: 20px;
+  }
+  .profile-shop-theme-preview {
+    display: flex;
+    width: calc(100% - 20px);
+    height: 42px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.09);
+  }
+  .profile-shop-theme-swatch { flex: 1; }
+  .profile-shop-missing {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 9px;
+    text-align: center;
+  }
+  .profile-shop-preview-avatar.frame-shop-bronze {
+    border-color: #b97842 !important;
+    box-shadow: 0 0 0 2px rgba(185,120,66,.18), 0 0 20px rgba(185,120,66,.24);
+  }
+  .profile-shop-preview-avatar.frame-shop-frost {
+    border-color: #8fd8ff !important;
+    box-shadow: 0 0 0 2px rgba(143,216,255,.18), 0 0 22px rgba(90,174,238,.35);
+  }
+  .profile-shop-preview-avatar.frame-shop-arcane {
+    border-color: #b58cff !important;
+    box-shadow: 0 0 0 2px rgba(181,140,255,.20), 0 0 22px rgba(181,140,255,.32), 0 0 34px rgba(227,191,85,.14);
+  }
+  .profile-hero.frame-shop-dragonfire .profile-avatar,
+  .club-member-avatar.frame-shop-dragonfire,
+  .home-avatar.frame-shop-dragonfire,
+  .profile-shop-preview-avatar.frame-shop-dragonfire {
+    border-color: #ff8b52 !important;
+    box-shadow: 0 0 0 2px rgba(255,139,82,.18), 0 0 22px rgba(215,68,45,.34), 0 0 34px rgba(233,184,76,.15);
+  }
+  .profile-theme-shop-starlight .profile-hero,
+  .profile-theme-shop-starlight .profile-xp-card,
+  .profile-theme-shop-starlight .profile-shop-panel {
+    background:
+      radial-gradient(circle at 88% 0%, rgba(118,161,255,.20), transparent 38%),
+      radial-gradient(circle at 8% 100%, rgba(178,117,255,.16), transparent 42%),
+      linear-gradient(145deg, #111932, #090d1c);
+  }
+
+  /* Куплена тема оформлює весь Mini App, а не лише картку профілю. */
+  body.profile-theme-ocean {
+    --bg: #061522;
+    --card-bg: #0d2437;
+    --border: #285879;
+    --accent: #63b9e8;
+    --accent-dark: #3c8ab5;
+    --muted: #a5bfd0;
+    --bg-texture: radial-gradient(circle at 50% -10%, rgba(49,137,190,.34), transparent 55%), linear-gradient(180deg, #071a29 0%, #040d16 100%);
+  }
+  body.profile-theme-midnight {
+    --bg: #090b12;
+    --card-bg: #151925;
+    --border: #373f56;
+    --accent: #c8b6ff;
+    --accent-dark: #8e79cc;
+    --muted: #aeb3c5;
+    --bg-texture: radial-gradient(circle at 50% -8%, rgba(116,95,177,.26), transparent 55%), linear-gradient(180deg, #0e111b 0%, #06070d 100%);
+  }
+  body.profile-theme-shop-forest {
+    --bg: #07150f;
+    --card-bg: #10251c;
+    --border: #315b48;
+    --accent: #d6bc67;
+    --accent-dark: #aa8d3d;
+    --muted: #a8c0b0;
+    --bg-texture: radial-gradient(circle at 50% -10%, rgba(75,137,93,.28), transparent 55%), linear-gradient(180deg, #0b2117 0%, #050e0a 100%);
+  }
+  body.profile-theme-shop-crimson {
+    --bg: #16090c;
+    --card-bg: #2a1419;
+    --border: #65343c;
+    --accent: #e4a45c;
+    --accent-dark: #b7753e;
+    --muted: #c6a8ad;
+    --bg-texture: radial-gradient(circle at 50% -10%, rgba(173,62,65,.28), transparent 55%), linear-gradient(180deg, #241014 0%, #0d0608 100%);
+  }
+  body.profile-theme-shop-royal {
+    --bg: #0e0918;
+    --card-bg: #211832;
+    --border: #59457c;
+    --accent: #e0c266;
+    --accent-dark: #aa8b37;
+    --muted: #bdb2ce;
+    --bg-texture: radial-gradient(circle at 50% -8%, rgba(115,77,181,.32), transparent 52%), radial-gradient(circle at 92% 20%, rgba(210,174,74,.14), transparent 38%), linear-gradient(180deg, #181027 0%, #08060e 100%);
+  }
+  body.profile-theme-shop-starlight {
+    --bg: #071020;
+    --card-bg: #111b35;
+    --border: #3e5689;
+    --accent: #9ec7ff;
+    --accent-dark: #6e91ca;
+    --muted: #aebbd6;
+    --bg-texture: radial-gradient(circle at 48% -8%, rgba(83,125,220,.34), transparent 50%), radial-gradient(circle at 96% 18%, rgba(169,101,224,.18), transparent 38%), linear-gradient(180deg, #0b1630 0%, #050915 100%);
+  }
+  body { transition: background-color .22s ease, color .22s ease; }
+
   @media (max-width: 380px) {
     .profile-shop-grid { grid-template-columns: 1fr; }
     .mmorpg-wallet { padding: 3px 7px; font-size: 9px; }
@@ -7340,6 +7468,7 @@ function bindHomeGameCards(root) {
 }
 
 function renderHomeProfile(profile) {
+  applyGlobalProfileTheme(profile?.cosmetics?.theme_id || '');
   const name = profile?.display_name || username || 'Гравець';
   const level = Math.max(1, Number(profile?.level) || 1);
   const totalXp = Math.max(0, Number(profile?.xp) || 0);
@@ -7352,7 +7481,7 @@ function renderHomeProfile(profile) {
 
   const avatar = document.getElementById('homeAvatar');
   if (avatar) {
-    avatar.classList.remove('frame-steel','frame-gold','frame-legendary','frame-shop-bronze','frame-shop-frost','frame-shop-arcane');
+    avatar.classList.remove('frame-steel','frame-gold','frame-legendary','frame-shop-bronze','frame-shop-frost','frame-shop-arcane','frame-shop-dragonfire');
     const frameClass = cosmeticFrameClass(profile?.cosmetics?.frame_id || '');
     if (frameClass) avatar.classList.add(frameClass);
     avatar.innerHTML = profile?.photo_url
@@ -8560,6 +8689,7 @@ function cosmeticFrameClass(frameId) {
   if (frameId === 'shop_frame_bronze') return 'frame-shop-bronze';
   if (frameId === 'shop_frame_frost') return 'frame-shop-frost';
   if (frameId === 'shop_frame_arcane') return 'frame-shop-arcane';
+  if (frameId === 'shop_frame_dragonfire') return 'frame-shop-dragonfire';
   return '';
 }
 
@@ -8569,7 +8699,23 @@ function cosmeticThemeClass(themeId) {
   if (themeId === 'shop_theme_forest') return 'profile-theme-shop-forest';
   if (themeId === 'shop_theme_crimson') return 'profile-theme-shop-crimson';
   if (themeId === 'shop_theme_royal') return 'profile-theme-shop-royal';
+  if (themeId === 'shop_theme_starlight') return 'profile-theme-shop-starlight';
   return '';
+}
+
+const PROFILE_THEME_CLASSES = [
+  'profile-theme-ocean',
+  'profile-theme-midnight',
+  'profile-theme-shop-forest',
+  'profile-theme-shop-crimson',
+  'profile-theme-shop-royal',
+  'profile-theme-shop-starlight'
+];
+
+function applyGlobalProfileTheme(themeId) {
+  const themeClass = cosmeticThemeClass(themeId || '');
+  document.body.classList.remove(...PROFILE_THEME_CLASSES);
+  if (themeClass) document.body.classList.add(themeClass);
 }
 
 function rewardTypeLabel(type) {
@@ -8656,10 +8802,34 @@ function xpRewardsHtml(data) {
 
 
 function shopTypeLabel(type) {
-  return type === 'frame' ? 'Рамка аватарки' : type === 'theme' ? 'Тема профілю' : 'Оформлення';
+  return type === 'frame' ? 'Рамка аватарки' : type === 'theme' ? 'Тема оформлення' : 'Оформлення';
 }
 
+function shopPreviewHtml(item) {
+  if (item.type === 'frame') {
+    const frameClass = cosmeticFrameClass(item.id || '');
+    return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${frameClass}">🎲</div></div>`;
+  }
+  const palettes = {
+    shop_theme_forest: ['#0b2117','#315b48','#d6bc67'],
+    shop_theme_crimson: ['#241014','#65343c','#e4a45c'],
+    shop_theme_royal: ['#181027','#6f51a1','#e0c266'],
+    shop_theme_starlight: ['#0b1630','#536fd1','#b268df']
+  };
+  const palette = palettes[item.id] || ['#111827','#334155','#d4af37'];
+  return `<div class="profile-shop-preview"><div class="profile-shop-theme-preview">${palette.map(c => `<span class="profile-shop-theme-swatch" style="background:${c}"></span>`).join('')}</div></div>`;
+}
+
+let shopPurchaseInFlight = '';
 async function buyProfileShopItem(itemId) {
+  if (shopPurchaseInFlight) return;
+  shopPurchaseInFlight = itemId;
+  const btn = document.querySelector(`[data-shop-buy="${itemId}"]`);
+  const previousText = btn?.textContent || '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Купую…';
+  }
   try {
     const res = await fetch('/api/profile/shop/buy', {
       method: 'POST',
@@ -8668,7 +8838,8 @@ async function buyProfileShopItem(itemId) {
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 409 || data.status === 'not_enough_gold') {
-      tg.showAlert(`Не вистачає золота. Потрібно ${Number(data.price) || 0} 🪙.`);
+      const missing = Math.max(0, Number(data.missing_gold) || ((Number(data.price) || 0) - (Number(data.gold_balance) || 0)));
+      tg.showAlert(`Не вистачає золота${missing ? `. Потрібно ще ${missing} 🪙` : ''}.`);
       return;
     }
     if (!res.ok) {
@@ -8676,11 +8847,17 @@ async function buyProfileShopItem(itemId) {
       return;
     }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    tg.showAlert('Предмет придбано ✨');
+    tg.showAlert(data.status === 'already_owned' ? 'Цей предмет уже у твоїй колекції.' : 'Придбано й одразу застосовано ✨');
     dungeonProfileCache = null;
     await Promise.allSettled([loadMyProfile(), loadHomeHub(true)]);
   } catch (e) {
     tg.showAlert('Не вдалося купити предмет.');
+  } finally {
+    shopPurchaseInFlight = '';
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = previousText;
+    }
   }
 }
 
@@ -8691,22 +8868,25 @@ function profileShopHtml(data) {
   return `
     <div class="profile-shop-panel">
       <div class="profile-shop-head">
-        <div class="profile-shop-title">Крамниця оформлення</div>
+        <div class="profile-shop-title">🛍 Крамниця оформлення</div>
         <div class="profile-shop-balance">🪙 ${gold}</div>
       </div>
+      <div class="profile-shop-subtitle">Купуй рамки для аватарки та теми за золото з пригод. Покупки залишаються у твоїй колекції назавжди.</div>
       <div class="profile-shop-grid">
         ${items.map(item => {
           const owned = Boolean(item.owned);
           const active = Boolean(item.active);
           const price = Math.max(0, Number(item.price) || 0);
-          const canBuy = gold >= price;
+          const missing = Math.max(0, price - gold);
+          const canBuy = missing === 0;
           const action = active
             ? `<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`
             : owned
               ? `<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`
-              : `<button type="button" class="profile-shop-action" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : ''}>Купити · 🪙 ${price}</button>`;
+              : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : 'disabled'}>Купити · 🪙 ${price}</button>${canBuy ? '' : `<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
           return `
             <div class="profile-shop-item ${owned ? 'owned' : ''} ${active ? 'active' : ''}">
+              ${shopPreviewHtml(item)}
               <div class="profile-shop-icon">${escapeHtml(item.icon || '🎁')}</div>
               <div class="profile-shop-name">${escapeHtml(item.name || '')}</div>
               <div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div>
@@ -8736,6 +8916,7 @@ function renderMyProfile(data) {
   const cosmetics = data.cosmetics || {};
   const frameClass = cosmeticFrameClass(cosmetics.frame_id || '');
   const themeClass = cosmeticThemeClass(cosmetics.theme_id || '');
+  applyGlobalProfileTheme(cosmetics.theme_id || '');
   const activeBadge = cosmetics.badge_label || '';
   root.className = themeClass;
   root.innerHTML = `
