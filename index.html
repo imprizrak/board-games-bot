@@ -3305,22 +3305,6 @@
 
     <section class="steam-section">
       <div class="steam-section-head">
-        <h2 class="steam-section-title">Продовжити</h2>
-      </div>
-      <div class="continue-card" id="homeContinueCard">
-        <div class="continue-label">Активна сесія</div>
-        <div class="continue-title" id="homeContinueTitle">Ігрова сесія</div>
-        <div class="continue-meta" id="homeContinueMeta"></div>
-        <div class="continue-actions">
-          <button type="button" class="steam-small-btn primary" id="homeResumeBtn">Продовжити</button>
-          <button type="button" class="steam-small-btn" id="homeFinishBtn">Завершити</button>
-        </div>
-      </div>
-      <div class="empty" id="homeNoSession" style="padding:18px 10px;">Немає незавершеної сесії.</div>
-    </section>
-
-    <section class="steam-section">
-      <div class="steam-section-head">
         <h2 class="steam-section-title">Найближча подія</h2>
         <button type="button" class="steam-section-link" onclick="showMainView('view-events')">Усі події</button>
       </div>
@@ -3420,16 +3404,6 @@
 <div class="view" id="view-tools">
   <header>Ігрові інструменти</header>
   <button class="tools-return" type="button" onclick="showMainView('view-home')">← Повернутися на головну</button>
-
-  <div class="session-banner" id="activeSessionBanner">
-    <div class="session-top">
-      <div><div class="session-title" id="activeSessionTitle">Незавершена сесія</div><div class="session-meta" id="activeSessionMeta"></div></div>
-    </div>
-    <div class="session-actions">
-      <button class="btn" type="button" id="resumeSessionBtn">Продовжити</button>
-      <button class="btn secondary" type="button" id="finishSessionBtn">Завершити</button>
-    </div>
-  </div>
 
   <div class="tools-tabs">
     <button class="tool-tab-btn active" data-tool="dice">
@@ -6195,23 +6169,6 @@ function renderHomeProfile(profile) {
   }
 }
 
-function renderHomeSession() {
-  loadActiveSessionRecord();
-  const card = document.getElementById('homeContinueCard');
-  const empty = document.getElementById('homeNoSession');
-  if (!card || !empty) return;
-  if (!activeSession) {
-    card.classList.remove('show');
-    empty.style.display = '';
-    return;
-  }
-  empty.style.display = 'none';
-  card.classList.add('show');
-  document.getElementById('homeContinueTitle').textContent = activeSession.gameName || 'Ігрова сесія';
-  const mins = activeSession.startedAt ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000)) : 0;
-  document.getElementById('homeContinueMeta').textContent = `${sessionToolLabel(activeSession)}${mins ? ` · ${mins} хв` : ''}`;
-}
-
 function eventNamesForHome(ev) {
   const names = eventGameNames(ev);
   return names.length ? names.join(' · ') : 'Ігрова зустріч';
@@ -6275,7 +6232,6 @@ function renderHomeNewGames(games) {
 }
 
 async function loadHomeHub() {
-  renderHomeSession();
   try {
     const [profileRes, historyRes, eventsRes, activityRes] = await Promise.all([
       fetch('/api/profile/me', {headers: telegramAuthHeaders()}),
@@ -6404,14 +6360,6 @@ function renderGameDetailStats(game) {
 }
 
 
-document.getElementById('homeResumeBtn')?.addEventListener('click', () => {
-  if (activeSession) openToolPanel(activeSession.tool || 'counters', activeSession.mode || null);
-});
-document.getElementById('homeFinishBtn')?.addEventListener('click', async () => {
-  await finishActiveSession();
-  renderHomeSession();
-  loadHomeHub();
-});
 
 document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
   if (btn.dataset.view === 'view-home') loadHomeHub();
@@ -6600,100 +6548,9 @@ function mcRandomize() {
 
 
 
-/* ==================== ПОКРАЩЕННЯ 2/4/6/7 ==================== */
-const ACTIVE_SESSION_KEY = "boardgames_active_session_v1";
-let activeSession = null;
-let historyFromSession = false;
 
-function safeJsonParse(raw, fallback = null) {
-  try { return JSON.parse(raw); } catch (_) { return fallback; }
-}
-
-function loadActiveSessionRecord() {
-  try { activeSession = safeJsonParse(localStorage.getItem(ACTIVE_SESSION_KEY), null); } catch (_) { activeSession = null; }
-  return activeSession;
-}
-
-function currentCountersMode() {
-  const active = document.querySelector('.counters-subtab-btn.active');
-  return active ? active.dataset.mode : 'simple';
-}
-
-function captureActiveState() {
-  if (!activeSession) return;
-  activeSession.updatedAt = Date.now();
-  activeSession.state = {
-    counters: { players: counterPlayers, nextId: nextCounterId },
-    flip7: { players: flip7Players, nextId: nextFlip7Id, round: flip7Round, activeId: flip7ActiveId, builder: flip7Builder },
-    timer: { players: timerPlayers, nextId: nextTimerId, activeIndex: timerActiveIndex },
-    initiative: { combatants: initiativeCombatants, nextId: nextInitiativeId, currentIndex: initiativeCurrentIndex, round: initiativeRound }
-  };
-  try { localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(activeSession)); } catch (_) {}
-  renderActiveSessionBanner();
-}
-
-function ensureActiveSession(tool = 'counters', gameName = null, mode = null) {
-  if (!activeSession) {
-    activeSession = { gameName: gameName || 'Ігрова сесія', tool, mode: mode || null, startedAt: Date.now(), updatedAt: Date.now(), state: {} };
-  } else {
-    if (gameName) activeSession.gameName = gameName;
-    if (tool) activeSession.tool = tool;
-    if (mode !== null) activeSession.mode = mode;
-  }
-  captureActiveState();
-}
-
-function restoreActiveSessionState() {
-  loadActiveSessionRecord();
-  if (!activeSession || !activeSession.state) { renderActiveSessionBanner(); return; }
-  const st = activeSession.state;
-  if (st.counters?.players?.length) {
-    counterPlayers = st.counters.players;
-    nextCounterId = Number(st.counters.nextId) || (Math.max(...counterPlayers.map(p => Number(p.id) || 0)) + 1);
-    renderCounters();
-  }
-  if (st.flip7?.players?.length) {
-    flip7Players = st.flip7.players;
-    nextFlip7Id = Number(st.flip7.nextId) || (Math.max(...flip7Players.map(p => Number(p.id) || 0)) + 1);
-    flip7Round = Number(st.flip7.round) || 1;
-    flip7ActiveId = st.flip7.activeId ?? flip7Players[0]?.id ?? null;
-    flip7Builder = st.flip7.builder || { numbers: [], x2: false, mods: {}, flip7: false };
-    renderFlip7();
-  }
-  if (st.timer?.players?.length) {
-    timerPlayers = st.timer.players;
-    nextTimerId = Number(st.timer.nextId) || (Math.max(...timerPlayers.map(p => Number(p.id) || 0)) + 1);
-    timerActiveIndex = Math.min(Number(st.timer.activeIndex) || 0, Math.max(0, timerPlayers.length - 1));
-    timerRunning = false;
-    clearInterval(timerInterval);
-    renderTimers();
-  }
-  if (st.initiative?.combatants?.length) {
-    initiativeCombatants = st.initiative.combatants;
-    nextInitiativeId = Number(st.initiative.nextId) || (Math.max(...initiativeCombatants.map(p => Number(p.id) || 0)) + 1);
-    initiativeCurrentIndex = Math.min(Number(st.initiative.currentIndex) || 0, Math.max(0, initiativeCombatants.length - 1));
-    initiativeRound = Number(st.initiative.round) || 1;
-    renderInitiative();
-  }
-  renderActiveSessionBanner();
-}
-
-function sessionToolLabel(session) {
-  if (!session) return '';
-  if (session.tool === 'counters' && session.mode === 'flip7') return `Flip Seven · раунд ${session.state?.flip7?.round || flip7Round || 1}`;
-  const labels = { dice:'Кубики', picker:'Вибір гравця', counters:'Лічильники', timer:'Таймер', wheel:'Колесо', initiative:'Ініціатива', character:'Чарник' };
-  return labels[session.tool] || 'Ігрові додатки';
-}
-
-function renderActiveSessionBanner() {
-  const banner = document.getElementById('activeSessionBanner');
-  if (!banner) return;
-  banner.classList.toggle('show', !!activeSession);
-  if (!activeSession) return;
-  document.getElementById('activeSessionTitle').textContent = activeSession.gameName || 'Незавершена сесія';
-  const mins = activeSession.startedAt ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000)) : 0;
-  document.getElementById('activeSessionMeta').textContent = `${sessionToolLabel(activeSession)}${mins ? ` · ${mins} хв` : ''} · автозбереження увімкнено`;
-}
+// Старі дані активної сесії більше не використовуються.
+try { localStorage.removeItem("boardgames_active_session_v1"); } catch (_) {}
 
 function openToolPanel(tool, mode = null) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-home'));
@@ -6711,8 +6568,6 @@ function openToolPanel(tool, mode = null) {
 
 function openGameTool(gameName, tool, mode = null) {
   closeModal('viewModal');
-  activeSession = { gameName: gameName || 'Ігрова сесія', tool, mode, startedAt: Date.now(), updatedAt: Date.now(), state: {} };
-  captureActiveState();
   openToolPanel(tool, mode);
 }
 
@@ -6824,69 +6679,6 @@ async function prepareHistoryProfiles(preselectedNames = [], winnerName = '', de
   renderHistoryProfilePicker(preselectedNames, winnerName, defaultToMe);
 }
 
-function activeSessionPlayers() {
-  if (!activeSession) return [];
-  if (activeSession.tool === 'counters' && activeSession.mode === 'flip7') return (flip7Players || []).map(p => p.name).filter(Boolean);
-  if (activeSession.tool === 'counters') return (counterPlayers || []).map(p => p.name).filter(Boolean);
-  if (activeSession.tool === 'timer') return (timerPlayers || []).map(p => p.name).filter(Boolean);
-  if (activeSession.tool === 'initiative') return (initiativeCombatants || []).map(p => p.name).filter(Boolean);
-  return [];
-}
-
-function activeSessionWinner() {
-  if (activeSession?.tool === 'counters' && activeSession?.mode === 'flip7' && flip7Players?.length) {
-    const max = Math.max(...flip7Players.map(p => Number(p.total) || 0));
-    const winners = flip7Players.filter(p => (Number(p.total) || 0) === max);
-    return winners.length === 1 ? winners[0].name : '';
-  }
-  if (activeSession?.tool === 'counters' && counterPlayers?.length) {
-    const max = Math.max(...counterPlayers.map(p => Number(p.score) || 0));
-    const winners = counterPlayers.filter(p => (Number(p.score) || 0) === max);
-    return winners.length === 1 ? winners[0].name : '';
-  }
-  return '';
-}
-
-async function finishActiveSession() {
-  if (!activeSession) return;
-  captureActiveState();
-  const today = new Date().toISOString().slice(0, 10);
-  const sessionPlayers = activeSessionPlayers();
-  const sessionWinner = activeSessionWinner();
-
-  document.getElementById('historyGameName').value = activeSession.gameName || '';
-  document.getElementById('historyDate').value = today;
-  document.getElementById('historyPlayers').value = '';
-  document.getElementById('historyWinner').value = '';
-  document.getElementById('historyDuration').value = activeSession.startedAt
-    ? Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000))
-    : '';
-  document.getElementById('historyNote').value = '';
-
-  await prepareHistoryProfiles(sessionPlayers, sessionWinner, false);
-
-  // Якщо у сесії були гості без профілю — залишаємо їх у текстовому полі.
-  const profileNames = new Set(
-    selectedHistoryProfiles().map(p => normalizeHistoryPerson(historyProfileName(p)))
-  );
-  const guestNames = sessionPlayers.filter(name => !profileNames.has(normalizeHistoryPerson(name)));
-  document.getElementById('historyPlayers').value = guestNames.join(', ');
-
-  const selectedWinnerId = document.getElementById('historyWinnerProfile')?.value || '';
-  if (!selectedWinnerId && sessionWinner) {
-    document.getElementById('historyWinner').value = sessionWinner;
-  }
-
-  historyFromSession = true;
-  document.getElementById('historyModal').classList.add('open');
-}
-
-
-function clearActiveSession() {
-  activeSession = null;
-  try { localStorage.removeItem(ACTIVE_SESSION_KEY); } catch (_) {}
-  renderActiveSessionBanner();
-}
 
 async function openHistoryModal() {
   const today = new Date().toISOString().slice(0, 10);
@@ -6896,7 +6688,6 @@ async function openHistoryModal() {
   document.getElementById('historyWinner').value = '';
   document.getElementById('historyDuration').value = '';
   document.getElementById('historyNote').value = '';
-  historyFromSession = false;
 
   await prepareHistoryProfiles([], '', true);
   document.getElementById('historyModal').classList.add('open');
@@ -6959,8 +6750,6 @@ async function submitHistory() {
   }
 
   closeModal('historyModal');
-  if (historyFromSession) clearActiveSession();
-  historyFromSession = false;
   loadHistory();
   loadStats();
   checkMyAchievements();
@@ -7488,16 +7277,7 @@ function initMasterclass() {
   renderMasterclass(); loadMasterclassBookings(); if(mcState.date)loadMasterclassSlots();
 }
 
-/* Додаткові слухачі автозбереження */
-document.querySelectorAll('.tool-tab-btn').forEach(btn => btn.addEventListener('click', () => { ensureActiveSession(btn.dataset.tool, activeSession?.gameName || null, btn.dataset.tool === 'counters' ? currentCountersMode() : null); }));
-document.querySelectorAll('.counters-subtab-btn').forEach(btn => btn.addEventListener('click', () => { ensureActiveSession('counters', activeSession?.gameName || null, btn.dataset.mode); }));
 document.querySelectorAll('.lib-subtab-btn').forEach(btn => btn.addEventListener('click', () => { if (btn.dataset.lib === 'stats') loadStats(); }));
-document.getElementById('resumeSessionBtn')?.addEventListener('click', () => { if (activeSession) openToolPanel(activeSession.tool || 'counters', activeSession.mode || null); });
-document.getElementById('finishSessionBtn')?.addEventListener('click', finishActiveSession);
-setInterval(() => { if (activeSession) captureActiveState(); }, 1500);
-document.addEventListener('visibilitychange', () => { if (document.hidden && activeSession) captureActiveState(); });
-window.addEventListener('beforeunload', () => { if (activeSession) captureActiveState(); });
-restoreActiveSessionState();
 
 loadMyProfile();
 
