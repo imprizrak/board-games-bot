@@ -4859,7 +4859,7 @@
       <div class="dungeon-start" id="dungeonStart">
         <div class="dungeon-start-icon">🏰</div>
         <h2>Підземелля Про100 Настолки</h2>
-        <p>Десять кімнат, випадкові зустрічі, скарби та фінальний бос. Ризикуй, кидай d20 і спробуй винести якомога більше золота.</p>
+        <p>Десять кімнат, випадкові зустрічі, рідкісні скарби та фінальний бос. Золото тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
         <button type="button" class="dungeon-action primary" id="dungeonStartBtn">Почати похід</button>
       </div>
 
@@ -9247,13 +9247,17 @@ function finishDungeon(won) {
   dungeonState.finished = true;
   dungeonState.won = Boolean(won);
   if (won) {
-    const bonus = dungeonRandom(20, 35);
+    const bonus = dungeonRandom(4, 7);
     dungeonState.gold += bonus;
     dungeonState.message = `<strong>Перемога!</strong> Підземелля пройдено. Бонус зі скарбниці: +${bonus} 🪙`;
     dungeonLog(`Боса переможено. Загальна здобич: ${dungeonState.gold} золота.`);
   } else {
-    dungeonState.message = `<strong>Поразка.</strong> Здобуте золото все одно буде зараховано у твій профіль.`;
-    dungeonLog(`Похід завершено. Здобич: ${dungeonState.gold} золота.`);
+    const gatheredGold = Math.max(0, Number(dungeonState.gold) || 0);
+    const savedGold = Math.floor(gatheredGold * 0.25);
+    const lostGold = gatheredGold - savedGold;
+    dungeonState.gold = savedGold;
+    dungeonState.message = `<strong>Поразка.</strong> Ти втрачаєш більшість здобичі. Врятовано ${savedGold} 🪙 із ${gatheredGold}${lostGold ? `, втрачено ${lostGold}` : ''}.`;
+    dungeonLog(`Похід завершено. Врятовано ${savedGold} із ${gatheredGold} золота.`);
   }
   saveDungeonState();
   renderDungeon();
@@ -9287,7 +9291,7 @@ function resolveMonsterAttack() {
       dungeonState.message = `<strong>Влучання!</strong> У боса залишилось ${e.hp} ❤️.`;
       dungeonLog(`Удар по босу: ${roll}.`);
     } else {
-      const gold = dungeonRandom(6, 13);
+      const gold = dungeonRandom(1, 3);
       dungeonState.gold += gold;
       dungeonState.lastRollText = `d20: ${roll} — успіх`;
       dungeonState.message = `<strong>Перемога!</strong> Ти отримуєш +${gold} 🪙.`;
@@ -9322,20 +9326,20 @@ function resolveChest(choice) {
     const roll = dungeonRollD20();
     dungeonState.lastRollText = `d20: ${roll} — перевірка скрині`;
     if (roll >= 8) {
-      gold = dungeonRandom(8, 16);
+      gold = dungeonRandom(2, 4);
       dungeonState.message = `<strong>Пасток немає.</strong> У скрині +${gold} 🪙.`;
     } else {
-      gold = dungeonRandom(4, 9);
+      gold = dungeonRandom(1, 2);
       dungeonState.message = `Ти нічого підозрілого не знаходиш, але забираєш +${gold} 🪙.`;
     }
   } else {
     if (Math.random() < .25) {
       dungeonState.message = `Це був мімік! Скриня кусає тебе.`;
       if (dungeonDamage(2, 'Мімік')) return;
-      gold = dungeonRandom(3, 7);
+      gold = 1;
     } else {
-      gold = dungeonRandom(10, 20);
-      dungeonState.message = `<strong>Джекпот!</strong> У скрині +${gold} 🪙.`;
+      gold = dungeonRandom(2, 5);
+      dungeonState.message = `<strong>Рідкісна знахідка!</strong> У скрині +${gold} 🪙.`;
     }
   }
   dungeonState.gold += gold;
@@ -9352,7 +9356,7 @@ function resolveTrap(choice) {
   dungeonState.lastRollText = `d20: ${roll} — ${choice === 'disarm' ? 'знешкодження' : 'ухилення'}`;
   if (roll >= target) {
     if (choice === 'disarm') {
-      const gold = dungeonRandom(5, 10);
+      const gold = dungeonRandom(1, 2);
       dungeonState.gold += gold;
       dungeonState.message = `<strong>Механізм знешкоджено.</strong> Усередині знайдено +${gold} 🪙.`;
       dungeonLog(`Пастку знешкоджено: +${gold} золота.`);
