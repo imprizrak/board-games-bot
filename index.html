@@ -4859,7 +4859,7 @@
       <div class="dungeon-start" id="dungeonStart">
         <div class="dungeon-start-icon">🏰</div>
         <h2>Підземелля Про100 Настолки</h2>
-        <p>Десять кімнат, випадкові зустрічі, рідкісні скарби та фінальний бос. Золото тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
+        <p>Десять кімнат, випадкові зустрічі, різні рішення, рідкісні скарби та фінальний бос. Можна ризикувати, оборонятися, тікати або шукати безпечний шлях. Золото тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
         <button type="button" class="dungeon-action primary" id="dungeonStartBtn">Почати похід</button>
       </div>
 
@@ -9169,7 +9169,7 @@ function dungeonEncounterForRoom(room) {
       type: 'boss',
       icon: '🐉',
       title: 'Сторож скарбниці',
-      text: 'Кам' + "'" + 'яний дракон прокидається перед останніми дверима. Для перемоги потрібні два влучні удари.',
+      text: 'Кам' + "'" + 'яний дракон прокидається перед останніми дверима. Звичайною атакою його треба влучити двічі, а сильний удар може завершити бій одразу.',
       hp: 2,
       target: 11
     };
@@ -9177,9 +9177,12 @@ function dungeonEncounterForRoom(room) {
   const choices = [
     { type:'monster', icon:'👹', title:'Печерний гоблін', text:'Гоблін перегородив шлях і вже тягнеться до твоєї торби.', target:8 },
     { type:'monster', icon:'🕷️', title:'Гігантський павук', text:'Із темної стелі спускається величезний павук.', target:9 },
+    { type:'monster', icon:'🦂', title:'Кам’яний скорпіон', text:'Панцирний скорпіон виповзає з тріщини й відтинає шлях назад.', target:10 },
     { type:'chest', icon:'🧰', title:'Забута скриня', text:'Посеред кімнати стоїть стара скриня. Занадто вже підозріло тихо.' },
     { type:'trap', icon:'⚙️', title:'Коридор пасток', text:'Плити під ногами клацають. Механізм уже запущено.' },
-    { type:'shrine', icon:'✨', title:'Стародавнє святилище', text:'М' + "'" + 'яке світло огортає старий вівтар. Тут можна перепочити.' }
+    { type:'shrine', icon:'✨', title:'Стародавнє святилище', text:'М' + "'" + 'яке світло огортає старий вівтар. Тут можна перепочити.' },
+    { type:'spirit', icon:'👻', title:'Блукаючий дух', text:'Напівпрозора постать мовчки стежить за тобою біля зруйнованої арки.' },
+    { type:'door', icon:'🚪', title:'Запечатані двері', text:'На дверях немає ручки — лише старий замок і подряпини навколо нього.' }
   ];
   return { ...choices[dungeonRandom(0, choices.length - 1)] };
 }
@@ -9274,35 +9277,80 @@ function dungeonDamage(amount, reason) {
   return false;
 }
 
-function resolveMonsterAttack() {
+function resolveMonsterAttack(style = 'normal') {
   const e = dungeonState.encounter;
-  const roll = dungeonRollD20();
-  const target = Number(e.target || 8);
-  if (roll >= target) {
+  const rawRoll = dungeonRollD20();
+  const attackBonus = Math.max(0, Number(e.attackBonus) || 0);
+  e.attackBonus = 0;
+  const totalRoll = rawRoll + attackBonus;
+  const isHeavy = style === 'heavy';
+  const target = Number(e.target || 8) + (isHeavy ? 3 : 0);
+  const bonusText = attackBonus ? ` + ${attackBonus}` : '';
+
+  if (totalRoll >= target) {
     if (e.type === 'boss') {
-      e.hp = Math.max(0, Number(e.hp || 1) - 1);
+      const hitDamage = isHeavy ? 2 : 1;
+      e.hp = Math.max(0, Number(e.hp || 1) - hitDamage);
       if (e.hp <= 0) {
-        dungeonState.lastRollText = `d20: ${roll} — влучний удар`;
-        dungeonLog(`Критична сутичка: ${roll}. Сторожа переможено.`);
+        dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — вирішальний удар`;
+        dungeonLog(`${isHeavy ? 'Сильна атака' : 'Атака'} по босу: ${totalRoll}. Сторожа переможено.`);
         finishDungeon(true);
         return;
       }
-      dungeonState.lastRollText = `d20: ${roll} — влучно`;
+      dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — влучно`;
       dungeonState.message = `<strong>Влучання!</strong> У боса залишилось ${e.hp} ❤️.`;
-      dungeonLog(`Удар по босу: ${roll}.`);
+      dungeonLog(`Удар по босу: ${totalRoll}.`);
     } else {
-      const gold = dungeonRandom(1, 3);
+      const gold = isHeavy ? dungeonRandom(2, 4) : dungeonRandom(1, 3);
       dungeonState.gold += gold;
-      dungeonState.lastRollText = `d20: ${roll} — успіх`;
-      dungeonState.message = `<strong>Перемога!</strong> Ти отримуєш +${gold} 🪙.`;
+      dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — успіх`;
+      dungeonState.message = isHeavy
+        ? `<strong>Потужний удар!</strong> Ти ризикнув і отримуєш +${gold} 🪙.`
+        : `<strong>Перемога!</strong> Ти отримуєш +${gold} 🪙.`;
       dungeonLog(`${e.title}: перемога, +${gold} золота.`);
       e.resolved = true;
     }
   } else {
-    const damage = e.type === 'boss' ? dungeonRandom(2, 3) : dungeonRandom(1, 2);
-    dungeonState.lastRollText = `d20: ${roll} — невдача`;
-    dungeonState.message = `Атака не вдалася. Ти отримуєш ${damage} шкоди.`;
+    const baseDamage = e.type === 'boss' ? dungeonRandom(2, 3) : dungeonRandom(1, 2);
+    const damage = baseDamage + (isHeavy ? 1 : 0);
+    dungeonState.lastRollText = `d20: ${rawRoll}${bonusText} — невдача`;
+    dungeonState.message = isHeavy
+      ? `Ризикована атака провалилась. Ти відкрився й отримуєш ${damage} шкоди.`
+      : `Атака не вдалася. Ти отримуєш ${damage} шкоди.`;
     if (dungeonDamage(damage, e.title)) return;
+  }
+  saveDungeonState();
+  renderDungeon();
+}
+
+function prepareDungeonDefense() {
+  const e = dungeonState.encounter;
+  const roll = dungeonRollD20();
+  dungeonState.lastRollText = `d20: ${roll} — оборона`;
+  if (roll >= 7) {
+    e.attackBonus = 2;
+    dungeonState.message = `<strong>Вдалий захист.</strong> Ти вивчив рухи ворога: +2 до наступної атаки.`;
+    dungeonLog(`${e.title}: підготовлено контратаку (+2).`);
+  } else {
+    dungeonState.message = `Ти не встигаєш закритися й отримуєш 1 шкоди.`;
+    if (dungeonDamage(1, e.title)) return;
+  }
+  saveDungeonState();
+  renderDungeon();
+}
+
+function tryDungeonEscape() {
+  const e = dungeonState.encounter;
+  if (e.type === 'boss') return;
+  const roll = dungeonRollD20();
+  dungeonState.lastRollText = `d20: ${roll} — втеча`;
+  if (roll >= 9) {
+    e.resolved = true;
+    dungeonState.message = `<strong>Ти вислизнув.</strong> Нагороди немає, але здоров’я збережено.`;
+    dungeonLog(`${e.title}: сутичку оминуто.`);
+  } else {
+    dungeonState.message = `Втекти не вдалося. Ворог дістає тебе: −1 HP.`;
+    if (dungeonDamage(1, e.title)) return;
   }
   saveDungeonState();
   renderDungeon();
@@ -9322,7 +9370,11 @@ function drinkDungeonPotion() {
 function resolveChest(choice) {
   const e = dungeonState.encounter;
   let gold = 0;
-  if (choice === 'inspect') {
+  if (choice === 'leave') {
+    e.resolved = true;
+    dungeonState.message = `Ти вирішуєш не ризикувати й залишаєш скриню недоторканою.`;
+    dungeonLog('Підозрілу скриню залишено позаду.');
+  } else if (choice === 'inspect') {
     const roll = dungeonRollD20();
     dungeonState.lastRollText = `d20: ${roll} — перевірка скрині`;
     if (roll >= 8) {
@@ -9331,6 +9383,18 @@ function resolveChest(choice) {
     } else {
       gold = dungeonRandom(1, 2);
       dungeonState.message = `Ти нічого підозрілого не знаходиш, але забираєш +${gold} 🪙.`;
+    }
+    e.resolved = true;
+  } else if (choice === 'force') {
+    const roll = dungeonRollD20();
+    dungeonState.lastRollText = `d20: ${roll} — злам замка`;
+    if (roll >= 11) {
+      gold = dungeonRandom(3, 5);
+      dungeonState.message = `<strong>Замок здається!</strong> Усередині рідкісна здобич: +${gold} 🪙.`;
+      e.resolved = true;
+    } else {
+      dungeonState.message = `Замок вибухає маленькою пасткою: −2 HP. Скриня ще не відкрита.`;
+      if (dungeonDamage(2, 'Пастка на скрині')) return;
     }
   } else {
     if (Math.random() < .25) {
@@ -9341,31 +9405,44 @@ function resolveChest(choice) {
       gold = dungeonRandom(2, 5);
       dungeonState.message = `<strong>Рідкісна знахідка!</strong> У скрині +${gold} 🪙.`;
     }
+    e.resolved = true;
   }
   dungeonState.gold += gold;
-  dungeonLog(`Скриня: +${gold} золота.`);
-  e.resolved = true;
+  if (gold) dungeonLog(`Скриня: +${gold} золота.`);
   saveDungeonState();
   renderDungeon();
 }
 
 function resolveTrap(choice) {
   const e = dungeonState.encounter;
+  if (choice === 'brace') {
+    dungeonState.message = `Ти закриваєшся й проходиш крізь механізм ціною 1 HP.`;
+    e.resolved = true;
+    if (dungeonDamage(1, 'Обережний прохід')) return;
+    saveDungeonState();
+    renderDungeon();
+    return;
+  }
+
   const roll = dungeonRollD20();
-  const target = choice === 'disarm' ? 12 : 9;
-  dungeonState.lastRollText = `d20: ${roll} — ${choice === 'disarm' ? 'знешкодження' : 'ухилення'}`;
+  const target = choice === 'disarm' ? 12 : (choice === 'slow' ? 7 : 9);
+  const label = choice === 'disarm' ? 'знешкодження' : (choice === 'slow' ? 'обережний прохід' : 'ухилення');
+  dungeonState.lastRollText = `d20: ${roll} — ${label}`;
   if (roll >= target) {
     if (choice === 'disarm') {
       const gold = dungeonRandom(1, 2);
       dungeonState.gold += gold;
       dungeonState.message = `<strong>Механізм знешкоджено.</strong> Усередині знайдено +${gold} 🪙.`;
       dungeonLog(`Пастку знешкоджено: +${gold} золота.`);
+    } else if (choice === 'slow') {
+      dungeonState.message = `<strong>Терпіння спрацювало.</strong> Ти повільно минаєш усі небезпечні плити.`;
+      dungeonLog('Пастку пройдено дуже обережно.');
     } else {
       dungeonState.message = `<strong>Вчасно!</strong> Ти проходиш пастку без ушкоджень.`;
       dungeonLog('Пастку пройдено без шкоди.');
     }
   } else {
-    const damage = choice === 'disarm' ? 3 : 2;
+    const damage = choice === 'disarm' ? 3 : (choice === 'slow' ? 1 : 2);
     dungeonState.message = `Не вийшло. Механізм спрацьовує: −${damage} HP.`;
     if (dungeonDamage(damage, 'Пастка')) return;
   }
@@ -9376,17 +9453,112 @@ function resolveTrap(choice) {
 
 function resolveShrine(choice) {
   const e = dungeonState.encounter;
-  if (choice === 'heal') {
+  if (choice === 'leave') {
+    dungeonState.message = `Ти не торкаєшся стародавньої магії й ідеш далі.`;
+    dungeonLog('Святилище залишено без дотику.');
+  } else if (choice === 'heal') {
     const healed = Math.min(3, dungeonState.maxHp - dungeonState.hp);
     dungeonState.hp += healed;
     dungeonState.message = healed ? `<strong>Світло лікує тебе.</strong> +${healed} HP.` : `Твоє здоров'я вже повне.`;
     dungeonLog(`Святилище: +${healed} HP.`);
+  } else if (choice === 'pray') {
+    const roll = dungeonRollD20();
+    dungeonState.lastRollText = `d20: ${roll} — молитва`;
+    if (roll >= 13) {
+      dungeonState.maxHp += 1;
+      dungeonState.hp += 1;
+      dungeonState.message = `<strong>Рідкісне благословення!</strong> Максимальне здоров’я +1 до кінця походу.`;
+      dungeonLog('Святилище: максимальне HP +1.');
+    } else {
+      dungeonState.message = `Вівтар мовчить. Цього разу благословення не буде.`;
+      dungeonLog('Святилище не відповіло на молитву.');
+    }
   } else {
     dungeonState.potions += 1;
     dungeonState.message = `<strong>Благословення отримано.</strong> +1 🧪.`;
     dungeonLog('Святилище: отримано зілля.');
   }
   e.resolved = true;
+  saveDungeonState();
+  renderDungeon();
+}
+
+function resolveSpirit(choice) {
+  const e = dungeonState.encounter;
+  if (choice === 'ignore') {
+    dungeonState.message = `Ти не відповідаєш духові й тихо проходиш повз.`;
+    dungeonLog('Блукаючого духа проігноровано.');
+    e.resolved = true;
+  } else if (choice === 'talk') {
+    const roll = dungeonRollD20();
+    dungeonState.lastRollText = `d20: ${roll} — розмова з духом`;
+    if (roll >= 9) {
+      if (dungeonState.hp < dungeonState.maxHp) {
+        const healed = Math.min(2, dungeonState.maxHp - dungeonState.hp);
+        dungeonState.hp += healed;
+        dungeonState.message = `<strong>Дух згадує минуле.</strong> Його холодне світло відновлює +${healed} HP.`;
+        dungeonLog(`Дух допоміг: +${healed} HP.`);
+      } else {
+        dungeonState.potions += 1;
+        dungeonState.message = `<strong>Дух довірився тобі.</strong> Ти отримуєш старе зілля +1 🧪.`;
+        dungeonLog('Дух подарував зілля.');
+      }
+    } else {
+      dungeonState.message = `Дух розчиняється, не сказавши ані слова.`;
+      dungeonLog('Розмова з духом не вдалася.');
+    }
+    e.resolved = true;
+  } else {
+    const roll = dungeonRollD20();
+    dungeonState.lastRollText = `d20: ${roll} — виклик духові`;
+    if (roll >= 12) {
+      const gold = dungeonRandom(2, 4);
+      dungeonState.gold += gold;
+      dungeonState.message = `<strong>Ти витримуєш випробування.</strong> Дух залишає +${gold} 🪙.`;
+      dungeonLog(`Випробування духа: +${gold} золота.`);
+      e.resolved = true;
+    } else {
+      dungeonState.message = `Дух висмоктує тепло з кімнати: −2 HP.`;
+      if (dungeonDamage(2, 'Прокляття духа')) return;
+      e.resolved = true;
+    }
+  }
+  saveDungeonState();
+  renderDungeon();
+}
+
+function resolveDoor(choice) {
+  const e = dungeonState.encounter;
+  if (choice === 'leave') {
+    dungeonState.message = `Ти знаходиш вузький обхідний прохід і не чіпаєш двері.`;
+    dungeonLog('Запечатані двері обійдено.');
+    e.resolved = true;
+  } else {
+    const roll = dungeonRollD20();
+    const target = choice === 'pick' ? 10 : (choice === 'force' ? 8 : 7);
+    const label = choice === 'pick' ? 'відмичка' : (choice === 'force' ? 'силовий удар' : 'прислухатися');
+    dungeonState.lastRollText = `d20: ${roll} — ${label}`;
+    if (roll >= target) {
+      if (choice === 'pick') {
+        const gold = dungeonRandom(1, 3);
+        dungeonState.gold += gold;
+        dungeonState.message = `<strong>Замок відкрито тихо.</strong> За дверима сховано +${gold} 🪙.`;
+        dungeonLog(`Таємні двері: +${gold} золота.`);
+      } else if (choice === 'force') {
+        dungeonState.message = `<strong>Двері вибито.</strong> Шлях відкрито, але шум лунає всім підземеллям.`;
+        dungeonLog('Запечатані двері вибито силою.');
+      } else {
+        dungeonState.message = `<strong>Ти чуєш клацання механізму.</strong> Вдається відкрити без ризику й пройти далі.`;
+        dungeonLog('Механізм дверей розгадано на слух.');
+      }
+      e.resolved = true;
+    } else {
+      const damage = choice === 'force' ? 2 : 1;
+      dungeonState.message = `Невдала спроба активує прихований механізм: −${damage} HP.`;
+      if (dungeonDamage(damage, 'Запечатані двері')) return;
+      e.resolved = choice !== 'pick';
+    }
+  }
   saveDungeonState();
   renderDungeon();
 }
@@ -9449,19 +9621,41 @@ function renderDungeonActions() {
   if (e.type === 'monster' || e.type === 'boss') {
     root.innerHTML =
       dungeonActionButton('⚔️ Атакувати · d20', 'attack', 'primary') +
+      dungeonActionButton('💥 Сильний удар · d20', 'heavy-attack', 'danger') +
+      dungeonActionButton('🛡 Захист і контратака · d20', 'defend') +
+      (e.type === 'boss' ? '' : dungeonActionButton('🏃 Спробувати втекти · d20', 'escape')) +
       dungeonActionButton(`🧪 Випити зілля (${dungeonState.potions})`, 'potion');
   } else if (e.type === 'chest') {
     root.innerHTML =
-      dungeonActionButton('🔓 Відкрити', 'chest-open', 'primary') +
-      dungeonActionButton('🔎 Перевірити · d20', 'chest-inspect');
+      dungeonActionButton('🔓 Відкрити одразу', 'chest-open', 'primary') +
+      dungeonActionButton('🔎 Перевірити · d20', 'chest-inspect') +
+      dungeonActionButton('🔨 Зламати замок · d20', 'chest-force', 'danger') +
+      dungeonActionButton('🚶 Не чіпати', 'chest-leave');
   } else if (e.type === 'trap') {
     root.innerHTML =
       dungeonActionButton('🏃 Ухилитися · d20', 'trap-evade', 'primary') +
-      dungeonActionButton('🛠 Знешкодити · d20', 'trap-disarm');
+      dungeonActionButton('🛠 Знешкодити · d20', 'trap-disarm') +
+      dungeonActionButton('🐢 Пройти повільно · d20', 'trap-slow') +
+      dungeonActionButton('🛡 Прийняти удар · −1 HP', 'trap-brace', 'danger') +
+      dungeonActionButton(`🧪 Випити зілля (${dungeonState.potions})`, 'potion');
   } else if (e.type === 'shrine') {
     root.innerHTML =
-      dungeonActionButton('❤️ Відновити HP', 'shrine-heal', 'primary') +
-      dungeonActionButton('🧪 Взяти зілля', 'shrine-potion');
+      dungeonActionButton('❤️ Відновити до 3 HP', 'shrine-heal', 'primary') +
+      dungeonActionButton('🧪 Взяти зілля', 'shrine-potion') +
+      dungeonActionButton('🙏 Просити благословення · d20', 'shrine-pray') +
+      dungeonActionButton('🚶 Не торкатися', 'shrine-leave');
+  } else if (e.type === 'spirit') {
+    root.innerHTML =
+      dungeonActionButton('💬 Заговорити · d20', 'spirit-talk', 'primary') +
+      dungeonActionButton('⚔️ Кинути виклик · d20', 'spirit-challenge', 'danger') +
+      dungeonActionButton('👁 Спостерігати й пройти повз', 'spirit-ignore') +
+      dungeonActionButton(`🧪 Випити зілля (${dungeonState.potions})`, 'potion');
+  } else if (e.type === 'door') {
+    root.innerHTML =
+      dungeonActionButton('🗝 Відкрити відмичкою · d20', 'door-pick', 'primary') +
+      dungeonActionButton('💪 Вибити двері · d20', 'door-force', 'danger') +
+      dungeonActionButton('👂 Прислухатися · d20', 'door-listen') +
+      dungeonActionButton('↩️ Знайти обхід', 'door-leave');
   }
 
   root.querySelectorAll('[data-dungeon-action]').forEach(btn => {
@@ -9474,14 +9668,30 @@ function renderDungeonActions() {
 function handleDungeonAction(action) {
   if (action === 'restart') return startDungeonRun();
   if (action === 'continue') return continueDungeon();
-  if (action === 'attack') return resolveMonsterAttack();
+  if (action === 'attack') return resolveMonsterAttack('normal');
+  if (action === 'heavy-attack') return resolveMonsterAttack('heavy');
+  if (action === 'defend') return prepareDungeonDefense();
+  if (action === 'escape') return tryDungeonEscape();
   if (action === 'potion') return drinkDungeonPotion();
   if (action === 'chest-open') return resolveChest('open');
   if (action === 'chest-inspect') return resolveChest('inspect');
+  if (action === 'chest-force') return resolveChest('force');
+  if (action === 'chest-leave') return resolveChest('leave');
   if (action === 'trap-evade') return resolveTrap('evade');
   if (action === 'trap-disarm') return resolveTrap('disarm');
+  if (action === 'trap-slow') return resolveTrap('slow');
+  if (action === 'trap-brace') return resolveTrap('brace');
   if (action === 'shrine-heal') return resolveShrine('heal');
   if (action === 'shrine-potion') return resolveShrine('potion');
+  if (action === 'shrine-pray') return resolveShrine('pray');
+  if (action === 'shrine-leave') return resolveShrine('leave');
+  if (action === 'spirit-talk') return resolveSpirit('talk');
+  if (action === 'spirit-challenge') return resolveSpirit('challenge');
+  if (action === 'spirit-ignore') return resolveSpirit('ignore');
+  if (action === 'door-pick') return resolveDoor('pick');
+  if (action === 'door-force') return resolveDoor('force');
+  if (action === 'door-listen') return resolveDoor('listen');
+  if (action === 'door-leave') return resolveDoor('leave');
 }
 
 function renderDungeon() {
