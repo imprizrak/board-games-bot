@@ -23,6 +23,13 @@
     --parchment: #f2e6c8;
     --parchment-text: #2c2010;
     --parchment-border: #b98f2f;
+    --parchment-texture:
+      radial-gradient(circle at 18% 16%, rgba(255,249,234,0.62) 0 3%, transparent 3.3%),
+      radial-gradient(circle at 82% 24%, rgba(120,84,33,0.13) 0 2.2%, transparent 2.6%),
+      radial-gradient(circle at 28% 78%, rgba(120,84,33,0.10) 0 2%, transparent 2.4%),
+      linear-gradient(118deg, transparent 0 16%, rgba(134,97,43,0.16) 16.4% 17%, transparent 17.4% 38%, rgba(255,250,236,0.16) 38.4% 39%, transparent 39.4% 64%, rgba(126,90,38,0.13) 64.4% 65%, transparent 65.4% 100%),
+      linear-gradient(62deg, transparent 0 24%, rgba(117,82,35,0.10) 24.4% 25%, transparent 25.4% 49%, rgba(255,250,236,0.13) 49.4% 50%, transparent 50.4% 74%, rgba(115,80,33,0.11) 74.4% 75%, transparent 75.4% 100%),
+      linear-gradient(180deg, #efe1bf 0%, #e1cd9f 48%, #ceb178 100%);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -68,12 +75,23 @@
     padding: 12px 12px 76px;
   }
   .card {
-    background: var(--parchment);
+    background: var(--parchment-texture);
     border: 2px solid var(--parchment-border);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.25), 0 4px 14px rgba(0,0,0,0.45);
+    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.22), inset 0 1px 0 rgba(255,247,227,0.45), inset 0 -12px 18px rgba(117,84,35,0.10), 0 4px 14px rgba(0,0,0,0.45);
     cursor: pointer;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(121deg, transparent 0 26px, rgba(112,78,31,0.10) 26px 27px, transparent 27px 60px),
+      repeating-linear-gradient(57deg, transparent 0 34px, rgba(255,250,235,0.10) 34px 35px, transparent 35px 78px);
+    opacity: 0.45;
+    mix-blend-mode: multiply;
   }
   .card img {
     width: 100%;
@@ -87,7 +105,7 @@
   .card .placeholder {
     width: 100%;
     aspect-ratio: 1 / 1;
-    background: linear-gradient(135deg, #e8d8ae, #f2e6c8);
+    background: var(--parchment-texture);
     color: var(--parchment-border);
     display: flex;
     align-items: center;
@@ -99,6 +117,9 @@
     font-weight: 700;
     color: var(--parchment-text);
     border-top: 1px solid rgba(185, 143, 47, 0.35);
+    background: linear-gradient(180deg, rgba(245,236,213,0.58), rgba(225,204,159,0.58));
+    position: relative;
+    z-index: 1;
   }
   .fab {
     position: fixed;
