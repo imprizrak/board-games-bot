@@ -227,6 +227,9 @@ function coinRushSpawn() {
 
 function coinRushDrawCoin(ctx, c, now) {
   const x = c.x + Math.sin(now / 350 + c.phase) * c.sway;
+  const crystalSkin = document.body.classList.contains('coin-skin-crystal');
+  const runeSkin = document.body.classList.contains('coin-skin-rune');
+  const clubSkin = document.body.classList.contains('coin-skin-styloteka');
   ctx.save();
   ctx.translate(x, c.y);
   ctx.rotate(Math.sin(now / 260 + c.phase) * .14);
@@ -248,7 +251,7 @@ function coinRushDrawCoin(ctx, c, now) {
   ctx.fillStyle = c.rare ? '#fff' : '#684005';
   ctx.font = `800 ${Math.round(c.r)}px Georgia,serif`;
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(c.rare ? '✦' : '●', 0, 1);
+  ctx.fillText(c.rare ? '✦' : (crystalSkin ? '◆' : runeSkin ? '✧' : clubSkin ? '🎲' : '●'), 0, 1);
   ctx.restore();
 }
 
@@ -5431,6 +5434,71 @@ document.addEventListener('click', event => {
       linear-gradient(145deg, #111932, #090d1c);
   }
 
+
+  /* ===== Магазин v2: rarity + premium cosmetics ===== */
+  .profile-shop-rarity {
+    display:inline-flex; align-items:center; min-height:20px; margin:0 0 7px;
+    padding:3px 7px; border-radius:999px; font-size:8px; font-weight:950;
+    letter-spacing:.08em; text-transform:uppercase; border:1px solid rgba(255,255,255,.12);
+    color:var(--muted); background:rgba(255,255,255,.04);
+  }
+  .profile-shop-item.rarity-rare { border-color:rgba(80,157,255,.26); }
+  .profile-shop-item.rarity-rare .profile-shop-rarity { color:#91c7ff; border-color:rgba(80,157,255,.35); background:rgba(80,157,255,.09); }
+  .profile-shop-item.rarity-epic { border-color:rgba(174,104,255,.30); }
+  .profile-shop-item.rarity-epic .profile-shop-rarity { color:#d0a9ff; border-color:rgba(174,104,255,.38); background:rgba(174,104,255,.10); }
+  .profile-shop-item.rarity-legendary { border-color:rgba(239,192,67,.42); box-shadow:inset 0 0 24px rgba(239,192,67,.035); }
+  .profile-shop-item.rarity-legendary .profile-shop-rarity { color:#f4d56f; border-color:rgba(239,192,67,.44); background:rgba(239,192,67,.10); }
+  .profile-shop-special-preview { gap:9px; flex-direction:column; color:var(--muted); font-size:9px; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }
+  .shop-preview-big { font-size:31px; line-height:1; }
+  .shop-preview-avatar { width:39px;height:39px;border-radius:50%;display:grid;place-items:center;background:#111b29;border:2px solid #d8b951;font-size:20px; }
+  .shop-preview-companion { position:absolute; transform:translate(25px,15px); font-size:24px; filter:drop-shadow(0 4px 5px rgba(0,0,0,.4)); }
+  .shop-preview-cards { padding:9px 12px;border-radius:8px;border:1px solid rgba(179,101,255,.42);background:linear-gradient(135deg,#26133f,#10172b);color:#d6b2ff;font-size:18px;letter-spacing:.18em; }
+  .profile-shop-background-preview { font-size:33px; overflow:hidden; }
+  .profile-shop-background-preview.profile-bg-tavern { background:radial-gradient(circle at 30% 20%,rgba(255,188,88,.24),transparent 28%),linear-gradient(145deg,#3b2115,#110d0b); }
+  .profile-shop-background-preview.profile-bg-dungeon { background:radial-gradient(circle at 80% 20%,rgba(224,112,54,.18),transparent 24%),linear-gradient(145deg,#282a2d,#0c0d10); }
+  .profile-shop-background-preview.profile-bg-cosmos { background:radial-gradient(circle at 28% 30%,#5367d8 0 2px,transparent 3px),radial-gradient(circle at 70% 55%,#c687ff 0 1px,transparent 2px),linear-gradient(145deg,#14133d,#06091c); }
+  .profile-shop-background-preview.profile-bg-dragonlair { background:radial-gradient(circle at 70% 60%,rgba(255,123,36,.28),transparent 34%),linear-gradient(145deg,#3c1510,#120a09); }
+
+  .home-avatar.frame-shop-lightning, .club-member-avatar.frame-shop-lightning,
+  .profile-hero.frame-shop-lightning .profile-avatar, .profile-shop-preview-avatar.frame-shop-lightning {
+    border-color:#9cdcff !important; box-shadow:0 0 0 2px rgba(156,220,255,.18),0 0 14px #4ba8ff,0 0 30px rgba(137,94,255,.45);
+    animation:shopLightningPulse 1.25s ease-in-out infinite alternate;
+  }
+  .home-avatar.frame-shop-void, .club-member-avatar.frame-shop-void,
+  .profile-hero.frame-shop-void .profile-avatar, .profile-shop-preview-avatar.frame-shop-void {
+    border-color:#bc7bff !important; box-shadow:0 0 0 2px rgba(188,123,255,.2),0 0 18px rgba(115,48,221,.7),inset 0 0 18px rgba(50,10,95,.35);
+    animation:shopVoidPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes shopLightningPulse { from{filter:brightness(.92);box-shadow:0 0 0 2px rgba(156,220,255,.14),0 0 9px #4ba8ff,0 0 20px rgba(137,94,255,.32)} to{filter:brightness(1.17);box-shadow:0 0 0 2px rgba(255,255,255,.35),0 0 22px #65d9ff,0 0 42px rgba(137,94,255,.72)} }
+  @keyframes shopVoidPulse { 0%,100%{transform:scale(1);filter:saturate(1)} 50%{transform:scale(1.025);filter:saturate(1.35) brightness(1.08)} }
+
+  body.profile-bg-tavern .mmorpg-player-card, body.profile-bg-tavern .profile-hero { background:radial-gradient(circle at 18% 18%,rgba(247,179,87,.23),transparent 31%),linear-gradient(145deg,#442719,#120d0a) !important; }
+  body.profile-bg-dungeon .mmorpg-player-card, body.profile-bg-dungeon .profile-hero { background:radial-gradient(circle at 83% 18%,rgba(221,109,56,.16),transparent 24%),repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 25px),linear-gradient(145deg,#292c30,#0c0e11) !important; }
+  body.profile-bg-cosmos .mmorpg-player-card, body.profile-bg-cosmos .profile-hero { background:radial-gradient(circle at 15% 22%,rgba(90,111,238,.34),transparent 29%),radial-gradient(circle at 82% 70%,rgba(193,100,255,.22),transparent 33%),linear-gradient(145deg,#151643,#07091c) !important; }
+  body.profile-bg-dragonlair .mmorpg-player-card, body.profile-bg-dragonlair .profile-hero { background:radial-gradient(circle at 80% 80%,rgba(255,95,34,.28),transparent 35%),radial-gradient(circle at 20% 15%,rgba(226,183,59,.14),transparent 24%),linear-gradient(145deg,#411711,#100907) !important; }
+
+  body.companion-owl .mmorpg-avatar-wrap::after, body.companion-owl .profile-avatar-button::after { content:'🦉'; }
+  body.companion-mimic .mmorpg-avatar-wrap::after, body.companion-mimic .profile-avatar-button::after { content:'🧰'; }
+  body.companion-ghost .mmorpg-avatar-wrap::after, body.companion-ghost .profile-avatar-button::after { content:'👻'; }
+  body.companion-dragon .mmorpg-avatar-wrap::after, body.companion-dragon .profile-avatar-button::after { content:'🐉'; }
+  body.companion-owl .mmorpg-avatar-wrap::after, body.companion-mimic .mmorpg-avatar-wrap::after, body.companion-ghost .mmorpg-avatar-wrap::after, body.companion-dragon .mmorpg-avatar-wrap::after,
+  body.companion-owl .profile-avatar-button::after, body.companion-mimic .profile-avatar-button::after, body.companion-ghost .profile-avatar-button::after, body.companion-dragon .profile-avatar-button::after {
+    position:absolute; right:-8px; bottom:-8px; z-index:8; font-size:30px; line-height:1; filter:drop-shadow(0 4px 6px rgba(0,0,0,.55)); animation:shopCompanionFloat 2.2s ease-in-out infinite;
+  }
+  .profile-avatar-button,.mmorpg-avatar-wrap{position:relative;}
+  @keyframes shopCompanionFloat { 0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-5px) rotate(4deg)} }
+
+  body.treasure-skin-neon .treasure-board { background:linear-gradient(145deg,#170c2c,#07142d);border-color:rgba(190,87,255,.45); }
+  body.treasure-skin-neon .treasure-card { background:linear-gradient(145deg,#31155a,#0c1838);border-color:rgba(194,95,255,.42);box-shadow:inset 0 0 18px rgba(156,68,255,.09); }
+  body.treasure-skin-pirate .treasure-board { background:linear-gradient(145deg,#3b2916,#171009);border-color:rgba(214,164,80,.4); }
+  body.treasure-skin-pirate .treasure-card { background:linear-gradient(145deg,#65441f,#25170d);border-color:rgba(224,180,96,.36); }
+  body.treasure-skin-dragon .treasure-board { background:radial-gradient(circle at 50% 100%,rgba(235,67,30,.22),transparent 45%),linear-gradient(145deg,#351111,#120808);border-color:rgba(235,111,50,.45); }
+  body.treasure-skin-dragon .treasure-card { background:linear-gradient(145deg,#5b1e18,#1d0b0b);border-color:rgba(244,157,63,.42); }
+
+  body.dungeon-skin-crypt .dungeon-card, body.dungeon-skin-crypt .dungeon-hero { background:radial-gradient(circle at 12% 10%,rgba(145,154,166,.12),transparent 35%),linear-gradient(145deg,#22262a,#0b0d0f);border-color:rgba(142,152,164,.28); }
+  body.dungeon-skin-arcane .dungeon-card, body.dungeon-skin-arcane .dungeon-hero { background:radial-gradient(circle at 85% 15%,rgba(154,76,240,.24),transparent 36%),linear-gradient(145deg,#291642,#0d1023);border-color:rgba(172,102,255,.34); }
+  body.dungeon-skin-inferno .dungeon-card, body.dungeon-skin-inferno .dungeon-hero { background:radial-gradient(circle at 75% 90%,rgba(255,79,21,.30),transparent 37%),linear-gradient(145deg,#43140d,#110807);border-color:rgba(244,102,43,.42); }
+
   /* Куплена тема оформлює весь Mini App, а не лише картку профілю. */
   body.profile-theme-ocean {
     --bg: #061522;
@@ -8671,6 +8739,7 @@ function bindHomeGameCards(root) {
 
 function renderHomeProfile(profile) {
   applyGlobalProfileTheme(profile?.cosmetics?.theme_id || '');
+  applyShopExtras(profile?.cosmetics || {});
   const name = profile?.display_name || username || 'Гравець';
   const level = Math.max(1, Number(profile?.level) || 1);
   const totalXp = Math.max(0, Number(profile?.xp) || 0);
@@ -8683,7 +8752,7 @@ function renderHomeProfile(profile) {
 
   const avatar = document.getElementById('homeAvatar');
   if (avatar) {
-    avatar.classList.remove('frame-steel','frame-gold','frame-legendary','frame-shop-bronze','frame-shop-frost','frame-shop-arcane','frame-shop-dragonfire');
+    avatar.classList.remove('frame-steel','frame-gold','frame-legendary','frame-shop-bronze','frame-shop-frost','frame-shop-arcane','frame-shop-dragonfire','frame-shop-lightning','frame-shop-void');
     const frameClass = cosmeticFrameClass(profile?.cosmetics?.frame_id || '');
     if (frameClass) avatar.classList.add(frameClass);
     avatar.innerHTML = profile?.photo_url
@@ -9892,6 +9961,8 @@ function cosmeticFrameClass(frameId) {
   if (frameId === 'shop_frame_frost') return 'frame-shop-frost';
   if (frameId === 'shop_frame_arcane') return 'frame-shop-arcane';
   if (frameId === 'shop_frame_dragonfire') return 'frame-shop-dragonfire';
+  if (frameId === 'shop_frame_lightning') return 'frame-shop-lightning';
+  if (frameId === 'shop_frame_void') return 'frame-shop-void';
   return '';
 }
 
@@ -9918,6 +9989,30 @@ function applyGlobalProfileTheme(themeId) {
   const themeClass = cosmeticThemeClass(themeId || '');
   document.body.classList.remove(...PROFILE_THEME_CLASSES);
   if (themeClass) document.body.classList.add(themeClass);
+}
+
+const SHOP_EXTRA_CLASSES = [
+  'profile-bg-tavern','profile-bg-dungeon','profile-bg-cosmos','profile-bg-dragonlair',
+  'companion-owl','companion-mimic','companion-ghost','companion-dragon',
+  'coin-skin-crystal','coin-skin-rune','coin-skin-styloteka',
+  'treasure-skin-neon','treasure-skin-pirate','treasure-skin-dragon',
+  'dungeon-skin-crypt','dungeon-skin-arcane','dungeon-skin-inferno'
+];
+function shopExtraClass(id) {
+  return ({
+    shop_background_tavern:'profile-bg-tavern', shop_background_dungeon:'profile-bg-dungeon', shop_background_cosmos:'profile-bg-cosmos', shop_background_dragonlair:'profile-bg-dragonlair',
+    shop_companion_owl:'companion-owl', shop_companion_mimic:'companion-mimic', shop_companion_ghost:'companion-ghost', shop_companion_dragon:'companion-dragon',
+    shop_coin_skin_crystal:'coin-skin-crystal', shop_coin_skin_rune:'coin-skin-rune', shop_coin_skin_styloteka:'coin-skin-styloteka',
+    shop_treasure_skin_neon:'treasure-skin-neon', shop_treasure_skin_pirate:'treasure-skin-pirate', shop_treasure_skin_dragon:'treasure-skin-dragon',
+    shop_dungeon_skin_crypt:'dungeon-skin-crypt', shop_dungeon_skin_arcane:'dungeon-skin-arcane', shop_dungeon_skin_inferno:'dungeon-skin-inferno'
+  })[id] || '';
+}
+function applyShopExtras(cosmetics={}) {
+  document.body.classList.remove(...SHOP_EXTRA_CLASSES);
+  ['background_id','companion_id','coin_skin_id','treasure_skin_id','dungeon_skin_id'].forEach(key => {
+    const cls = shopExtraClass(cosmetics?.[key] || '');
+    if (cls) document.body.classList.add(cls);
+  });
 }
 
 function rewardTypeLabel(type) {
@@ -9983,7 +10078,7 @@ async function resetProfileAppearance() {
     const res = await fetch('/api/profile/cosmetics', {
       method: 'POST',
       headers: telegramAuthHeaders({'Content-Type':'application/json'}),
-      body: JSON.stringify({frame:'', theme:''})
+      body: JSON.stringify({frame:'', theme:'', background:'', companion:'', coin_skin:'', treasure_skin:'', dungeon_skin:''})
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -10042,26 +10137,29 @@ function xpRewardsHtml(data) {
 function shopTypeLabel(type) {
   if (type === 'frame') return 'Рамка аватарки';
   if (type === 'theme') return 'Тема оформлення';
+  if (type === 'background') return 'Фон профілю';
+  if (type === 'companion') return 'Компаньйон';
+  if (type === 'coin_skin') return 'Скін Coin Rush';
+  if (type === 'treasure_skin') return 'Скін Скарбниці';
+  if (type === 'dungeon_skin') return 'Скін Данжу';
   if (type === 'coupon') return 'Подарунковий купон';
   return 'Оформлення';
 }
 
 function shopPreviewHtml(item) {
   if (item.type === 'frame') {
-    const frameClass = cosmeticFrameClass(item.id || '');
-    return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${frameClass}">🎲</div></div>`;
+    return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${cosmeticFrameClass(item.id || '')}">🎲</div></div>`;
   }
   if (item.type === 'coupon') {
     const label = item.id === 'shop_coupon_gift_royal' ? 'BOARD GAME' : item.id === 'shop_coupon_gift_large' ? 'MERCH MUG' : 'STICKER PACK';
-    const icon = item.id === 'shop_coupon_gift_royal' ? '🎲' : item.id === 'shop_coupon_gift_large' ? '☕' : '✨';
-    return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">${icon} ${label}</div></div>`;
+    return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">${escapeHtml(item.icon || '🎟️')} ${label}</div></div>`;
   }
-  const palettes = {
-    shop_theme_forest: ['#0b2117','#315b48','#d6bc67'],
-    shop_theme_crimson: ['#241014','#65343c','#e4a45c'],
-    shop_theme_royal: ['#181027','#6f51a1','#e0c266'],
-    shop_theme_starlight: ['#0b1630','#536fd1','#b268df']
-  };
+  if (item.type === 'companion') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-avatar">🙂</span><span class="shop-preview-companion">${escapeHtml(item.icon || '✨')}</span></div>`;
+  if (item.type === 'coin_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-big">${escapeHtml(item.icon || '🪙')}</span><span>Coin Rush</span></div>`;
+  if (item.type === 'treasure_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-cards">✦ ✦</span><span>${escapeHtml(item.icon || '🃏')}</span></div>`;
+  if (item.type === 'dungeon_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-big">${escapeHtml(item.icon || '🏰')}</span><span>Данж</span></div>`;
+  if (item.type === 'background') return `<div class="profile-shop-preview profile-shop-background-preview ${shopExtraClass(item.id)}"><span>${escapeHtml(item.icon || '🌌')}</span></div>`;
+  const palettes = {shop_theme_forest:['#0b2117','#315b48','#d6bc67'],shop_theme_crimson:['#241014','#65343c','#e4a45c'],shop_theme_royal:['#181027','#6f51a1','#e0c266'],shop_theme_starlight:['#0b1630','#536fd1','#b268df']};
   const palette = palettes[item.id] || ['#111827','#334155','#d4af37'];
   return `<div class="profile-shop-preview"><div class="profile-shop-theme-preview">${palette.map(c => `<span class="profile-shop-theme-swatch" style="background:${c}"></span>`).join('')}</div></div>`;
 }
@@ -10157,58 +10255,23 @@ async function openProfileShop() {
   await loadProfileShopModal();
 }
 
+function shopRarityLabel(rarity) { return ({common:'Звичайний',rare:'Рідкісний',epic:'Епічний',legendary:'Легендарний'})[rarity] || 'Звичайний'; }
+function shopSectionLabel(type) { return ({frame:'🖼️ Рамки',theme:'🎨 Теми',background:'🌌 Фони профілю',companion:'🐉 Компаньйони',coin_skin:'🪙 Скіни Coin Rush',treasure_skin:'🃏 Скіни Скарбниці',dungeon_skin:'🏰 Скіни Данжу',coupon:'🎟 Подарункові купони'})[type] || '✨ Інше'; }
+
 function profileShopHtml(data) {
   const items = Array.isArray(data.shop_items) ? data.shop_items : [];
   const gold = Math.max(0, Number(data.gold) || 0);
   if (!items.length) return '';
-
-  const cosmetics = items.filter(item => item.type !== 'coupon');
-  const coupons = items.filter(item => item.type === 'coupon');
-
+  const order = ['frame','theme','background','companion','coin_skin','treasure_skin','dungeon_skin','coupon'];
   const renderItem = (item) => {
-    const owned = Boolean(item.owned);
-    const active = Boolean(item.active);
-    const price = Math.max(0, Number(item.price) || 0);
-    const missing = Math.max(0, price - gold);
-    const canBuy = missing === 0;
-    let action = '';
-
-    if (item.type === 'coupon') {
-      action = owned
-        ? `<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>`
-        : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : 'disabled'}>Купити · 🪙 ${price}</button>${canBuy ? '' : `<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
-    } else {
-      action = active
-        ? `<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`
-        : owned
-          ? `<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`
-          : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy ? '' : 'disabled'}>Купити · 🪙 ${price}</button>${canBuy ? '' : `<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
-    }
-
-    return `
-      <div class="profile-shop-item ${item.type === 'coupon' ? 'coupon' : ''} ${owned ? 'owned' : ''} ${active ? 'active' : ''}">
-        ${shopPreviewHtml(item)}
-        <div class="profile-shop-icon">${escapeHtml(item.icon || '🎁')}</div>
-        <div class="profile-shop-name">${escapeHtml(item.name || '')}</div>
-        <div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div>
-        <div class="profile-shop-desc">${escapeHtml(item.description || '')}</div>
-        ${action}
-      </div>`;
+    const owned=Boolean(item.owned), active=Boolean(item.active), price=Math.max(0,Number(item.price)||0), missing=Math.max(0,price-gold), canBuy=missing===0;
+    let action='';
+    if (item.type==='coupon') action=owned?`<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · 🪙 ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
+    else action=active?`<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`:owned?`<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · 🪙 ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
+    return `<div class="profile-shop-item rarity-${escapeHtml(item.rarity||'common')} ${item.type==='coupon'?'coupon':''} ${owned?'owned':''} ${active?'active':''}">${shopPreviewHtml(item)}<div class="profile-shop-rarity">${shopRarityLabel(item.rarity)}</div><div class="profile-shop-icon">${escapeHtml(item.icon||'🎁')}</div><div class="profile-shop-name">${escapeHtml(item.name||'')}</div><div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div><div class="profile-shop-desc">${escapeHtml(item.description||'')}</div>${action}</div>`;
   };
-
-  return `
-    <div class="profile-shop-panel">
-      <div class="profile-shop-head">
-        <div class="profile-shop-title">🛍 Магазин</div>
-        <div class="profile-shop-balance">🪙 ${gold}</div>
-      </div>
-      <div class="profile-shop-subtitle">Купуй оформлення та преміальні подарункові купони за золото з Данжу. Куплені лоти залишаються у твоїй колекції назавжди.</div>
-      <button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button>
-      <div class="profile-shop-grid">
-        ${cosmetics.length ? `<div class="profile-shop-section-title">✨ Оформлення</div>${cosmetics.map(renderItem).join('')}` : ''}
-        ${coupons.length ? `<div class="profile-shop-section-title">🎟 Подарункові купони · найдорожчі лоти</div>${coupons.map(renderItem).join('')}` : ''}
-      </div>
-    </div>`;
+  const sections=order.map(type=>{const group=items.filter(x=>x.type===type);return group.length?`<div class="profile-shop-section-title">${shopSectionLabel(type)}</div>${group.map(renderItem).join('')}`:'';}).join('');
+  return `<div class="profile-shop-panel"><div class="profile-shop-head"><div class="profile-shop-title">🛍 Магазин</div><div class="profile-shop-balance">🪙 ${gold}</div></div><div class="profile-shop-subtitle">Рамки, теми, фони, компаньйони, скіни мініігор і подарункові купони. Куплене залишається у колекції назавжди.</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button><div class="profile-shop-grid">${sections}</div></div>`;
 }
 
 function renderMyProfile(data) {
@@ -10230,6 +10293,7 @@ function renderMyProfile(data) {
   const frameClass = cosmeticFrameClass(cosmetics.frame_id || '');
   const themeClass = cosmeticThemeClass(cosmetics.theme_id || '');
   applyGlobalProfileTheme(cosmetics.theme_id || '');
+  applyShopExtras(cosmetics);
   const activeBadge = cosmetics.badge_label || '';
   root.className = themeClass;
   root.innerHTML = `
