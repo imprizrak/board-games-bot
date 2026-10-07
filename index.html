@@ -10,298 +10,328 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 
-/* ==================== ЛОВИ МОНЕТИ · CANVAS ==================== */
-const COIN_CATCHER_DURATION = 20;
-const COIN_CATCHER_SPAWN_MS = 360;
-let coinCatcherState = {
-  running: false,
-  finishing: false,
+/* ==================== ЛОВИ МОНЕТИ · COIN RUSH v2 ==================== */
+const COIN_RUSH_DURATION_MS = 20000;
+const COIN_RUSH_SPAWN_MS = 360;
+const COIN_RUSH_PENDING_KEY = 'styloteka_coin_rush_pending_v2';
+
+const coinRush = {
+  active: false,
+  claiming: false,
   score: 0,
   caught: 0,
-  timeLeft: COIN_CATCHER_DURATION,
-  accountGold: 0,
-  runId: null,
+  gold: 0,
+  runId: '',
   startedAt: 0,
   lastFrameAt: 0,
-  spawnAccumulator: 0,
-  rafId: 0,
+  nextSpawnAt: 0,
+  raf: 0,
   coins: [],
   width: 0,
   height: 0,
-  dpr: 1
+  dpr: 1,
+  inputBound: false,
 };
 
-function coinCatcherCanvas() {
-  return document.getElementById('coinCatcherCanvas');
+function coinRushUuid() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
-function coinCatcherStopLoop() {
-  if (coinCatcherState.rafId) cancelAnimationFrame(coinCatcherState.rafId);
-  coinCatcherState.rafId = 0;
-}
+function coinRushCanvas() { return document.getElementById('coinCatcherCanvas'); }
 
-function coinCatcherSetupCanvas() {
-  const canvas = coinCatcherCanvas();
+function coinRushSetupCanvas() {
+  const canvas = coinRushCanvas();
   if (!canvas) return null;
   const rect = canvas.getBoundingClientRect();
   const width = Math.max(280, rect.width || canvas.parentElement?.clientWidth || 320);
   const height = Math.max(340, rect.height || canvas.parentElement?.clientHeight || 390);
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  const pxW = Math.round(width * dpr);
-  const pxH = Math.round(height * dpr);
-  if (canvas.width !== pxW || canvas.height !== pxH) {
-    canvas.width = pxW;
-    canvas.height = pxH;
+  const pw = Math.round(width * dpr);
+  const ph = Math.round(height * dpr);
+  if (canvas.width !== pw || canvas.height !== ph) {
+    canvas.width = pw;
+    canvas.height = ph;
   }
-  coinCatcherState.width = width;
-  coinCatcherState.height = height;
-  coinCatcherState.dpr = dpr;
+  coinRush.width = width;
+  coinRush.height = height;
+  coinRush.dpr = dpr;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return ctx;
 }
 
-function coinCatcherClearCanvas() {
-  const ctx = coinCatcherSetupCanvas();
-  if (!ctx) return;
-  ctx.clearRect(0, 0, coinCatcherState.width, coinCatcherState.height);
+function coinRushStop() {
+  if (coinRush.raf) cancelAnimationFrame(coinRush.raf);
+  coinRush.raf = 0;
 }
 
-function renderCoinCatcherHud() {
+function coinRushHud(timeMs = COIN_RUSH_DURATION_MS) {
+  const seconds = Math.max(0, Math.ceil(timeMs / 1000));
   const timeEl = document.getElementById('coinGameTime');
   const scoreEl = document.getElementById('coinGameScore');
   const goldEl = document.getElementById('coinGameGold');
-  const bar = document.getElementById('coinCatcherProgressBar');
-  if (timeEl) timeEl.textContent = String(Math.max(0, Math.ceil(coinCatcherState.timeLeft)));
-  if (scoreEl) scoreEl.textContent = String(Math.max(0, coinCatcherState.score));
-  if (goldEl) goldEl.textContent = `${Math.max(0, Number(coinCatcherState.accountGold) || 0)} 🪙`;
-  if (bar) bar.style.width = `${Math.max(0, Math.min(100, coinCatcherState.timeLeft / COIN_CATCHER_DURATION * 100))}%`;
+  const progress = document.getElementById('coinCatcherProgressBar');
+  if (timeEl) timeEl.textContent = String(seconds);
+  if (scoreEl) scoreEl.textContent = String(Math.max(0, coinRush.score));
+  if (goldEl) goldEl.textContent = `${Math.max(0, Number(coinRush.gold) || 0)} 🪙`;
+  if (progress) progress.style.width = `${Math.max(0, Math.min(100, timeMs / COIN_RUSH_DURATION_MS * 100))}%`;
 }
 
-function renderCoinCatcherReady(message, buttonText='Почати') {
+function coinRushOverlay(message, button='Почати') {
   const ready = document.getElementById('coinCatcherReady');
   const btn = document.getElementById('coinCatcherStartBtn');
   const msg = document.getElementById('coinCatcherMessage');
-  if (ready) ready.hidden = coinCatcherState.running;
+  if (ready) ready.hidden = coinRush.active;
   if (btn) {
-    btn.disabled = coinCatcherState.running || coinCatcherState.finishing;
-    btn.textContent = coinCatcherState.finishing ? 'Зараховую…' : buttonText;
+    btn.disabled = coinRush.active || coinRush.claiming;
+    btn.textContent = coinRush.claiming ? 'Зараховую…' : button;
   }
-  if (msg) msg.innerHTML = message || 'Натисни «Почати». Гра запускається одразу — без очікування сервера.';
-  renderCoinCatcherHud();
+  if (msg) msg.innerHTML = message;
+}
+
+function coinRushPendingLoad() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COIN_RUSH_PENDING_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter(x => x && x.run_id).slice(-8) : [];
+  } catch (_) { return []; }
+}
+
+function coinRushPendingSave(items) {
+  try { localStorage.setItem(COIN_RUSH_PENDING_KEY, JSON.stringify(items.slice(-8))); } catch (_) {}
+}
+
+function coinRushPendingPut(payload) {
+  const items = coinRushPendingLoad().filter(x => x.run_id !== payload.run_id);
+  items.push(payload);
+  coinRushPendingSave(items);
+}
+
+function coinRushPendingRemove(runId) {
+  coinRushPendingSave(coinRushPendingLoad().filter(x => x.run_id !== runId));
+}
+
+async function coinRushFetchJson(url, options={}, timeoutMs=12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {...options, signal: controller.signal});
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || `HTTP_${res.status}`);
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function coinRushClaim(payload, retries=2) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await coinRushFetchJson('/api/minigames/coin-rush/claim-v2', {
+        method: 'POST',
+        headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+        body: JSON.stringify(payload),
+      }, 15000);
+    } catch (err) {
+      lastError = err;
+      if (err?.status && err.status < 500 && err.status !== 429) break;
+      if (attempt < retries) await new Promise(r => setTimeout(r, 700 * (attempt + 1)));
+    }
+  }
+  throw lastError || new Error('claim_failed');
+}
+
+async function coinRushFlushPending() {
+  const items = coinRushPendingLoad();
+  if (!items.length) return;
+  for (const payload of items) {
+    try {
+      const data = await coinRushClaim(payload, 1);
+      coinRushPendingRemove(payload.run_id);
+      if (Number.isFinite(Number(data.gold_balance))) coinRush.gold = Math.max(0, Number(data.gold_balance));
+    } catch (_) {
+      break;
+    }
+  }
+  coinRushHud();
 }
 
 async function initCoinCatcherTab() {
-  coinCatcherAttachInput();
-  if (coinCatcherState.running) {
-    coinCatcherSetupCanvas();
-    renderCoinCatcherHud();
-    return;
+  coinRushBindInput();
+  coinRushSetupCanvas();
+  if (!coinRush.active) {
+    coinRushHud();
+    coinRushOverlay('Натисни «Почати». Монети падають одразу, сервер не потрібен для запуску.');
   }
-  coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-  renderCoinCatcherReady('Натисни «Почати». Монети почнуть падати одразу.');
-  // Баланс підтягуємо у фоні. Помилка цього запиту НЕ блокує гру.
   try {
-    const res = await fetch('/api/profile/summary', {headers: telegramAuthHeaders()});
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      coinCatcherState.accountGold = Math.max(0, Number(data.gold) || 0);
-      renderCoinCatcherHud();
-    }
+    const profile = await coinRushFetchJson('/api/profile/summary', {headers: telegramAuthHeaders()}, 9000);
+    coinRush.gold = Math.max(0, Number(profile.gold) || 0);
+    coinRushHud();
   } catch (_) {}
+  coinRushFlushPending();
 }
 
-function coinCatcherAttachInput() {
-  const canvas = coinCatcherCanvas();
-  if (!canvas || canvas.dataset.coinInputBound === '1') return;
-  canvas.dataset.coinInputBound = '1';
-  canvas.addEventListener('pointerdown', (event) => {
-    if (!coinCatcherState.running) return;
+function coinRushBindInput() {
+  const canvas = coinRushCanvas();
+  if (!canvas || canvas.dataset.coinRushBound === '1') return;
+  canvas.dataset.coinRushBound = '1';
+  canvas.addEventListener('pointerdown', event => {
+    if (!coinRush.active) return;
     event.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    for (let i = coinCatcherState.coins.length - 1; i >= 0; i--) {
-      const coin = coinCatcherState.coins[i];
-      const dx = x - coin.x;
-      const dy = y - coin.y;
-      if (dx * dx + dy * dy <= (coin.r * 1.28) ** 2) {
-        coinCatcherState.coins.splice(i, 1);
-        coinCatcherState.score += coin.value;
-        coinCatcherState.caught += 1;
-        renderCoinCatcherHud();
-        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(coin.rare ? 'medium' : 'light'); } catch (_) {}
-        break;
+    for (let i = coinRush.coins.length - 1; i >= 0; i--) {
+      const c = coinRush.coins[i];
+      const dx = x - (c.x + Math.sin(performance.now()/350 + c.phase) * c.sway);
+      const dy = y - c.y;
+      if (dx*dx + dy*dy <= (c.r * 1.35) ** 2) {
+        coinRush.coins.splice(i, 1);
+        coinRush.score += c.value;
+        coinRush.caught += 1;
+        coinRushHud(Math.max(0, COIN_RUSH_DURATION_MS - (performance.now() - coinRush.startedAt)));
+        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(c.rare ? 'medium' : 'light'); } catch (_) {}
+        return;
       }
     }
   }, {passive:false});
 }
 
-function spawnCoinCatcherCoin() {
-  if (!coinCatcherState.running || !coinCatcherState.width) return;
+function coinRushSpawn() {
+  if (!coinRush.active || !coinRush.width) return;
   const rare = Math.random() < 0.12;
   const r = rare ? 27 : 23;
-  const fallSeconds = 2.7 + Math.random() * 1.4;
-  const speed = (coinCatcherState.height + r * 2) / fallSeconds;
-  coinCatcherState.coins.push({
-    x: r + 8 + Math.random() * Math.max(1, coinCatcherState.width - (r + 8) * 2),
-    y: -r - Math.random() * 35,
+  const travelMs = 2600 + Math.random() * 1500;
+  coinRush.coins.push({
+    x: r + 10 + Math.random() * Math.max(1, coinRush.width - (r + 10) * 2),
+    y: -r - 10,
     r,
-    speed,
+    speed: (coinRush.height + r * 2 + 30) / (travelMs / 1000),
     value: rare ? 3 : 1,
     rare,
     phase: Math.random() * Math.PI * 2,
-    sway: 5 + Math.random() * 9
+    sway: 4 + Math.random() * 8,
   });
 }
 
-function drawCoinCatcherCoin(ctx, coin, now) {
-  const wobble = Math.sin(now / 420 + coin.phase) * coin.sway;
-  const x = coin.x + wobble;
-  const y = coin.y;
+function coinRushDrawCoin(ctx, c, now) {
+  const x = c.x + Math.sin(now / 350 + c.phase) * c.sway;
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(Math.sin(now / 260 + coin.phase) * 0.16);
-
-  const grad = ctx.createRadialGradient(-coin.r * .32, -coin.r * .35, coin.r * .08, 0, 0, coin.r);
-  if (coin.rare) {
-    grad.addColorStop(0, '#fff7ff');
-    grad.addColorStop(.24, '#e7b8ff');
-    grad.addColorStop(.62, '#8d55df');
-    grad.addColorStop(1, '#35205f');
-    ctx.shadowColor = 'rgba(193,128,255,.75)';
+  ctx.translate(x, c.y);
+  ctx.rotate(Math.sin(now / 260 + c.phase) * .14);
+  const g = ctx.createRadialGradient(-c.r*.34, -c.r*.36, c.r*.08, 0, 0, c.r);
+  if (c.rare) {
+    g.addColorStop(0, '#fff8ff'); g.addColorStop(.28, '#e5b7ff'); g.addColorStop(.68, '#8f5be0'); g.addColorStop(1, '#35215f');
+    ctx.shadowColor = 'rgba(195,130,255,.8)';
   } else {
-    grad.addColorStop(0, '#fff5b8');
-    grad.addColorStop(.25, '#f7d85b');
-    grad.addColorStop(.68, '#c78d1d');
-    grad.addColorStop(1, '#714608');
-    ctx.shadowColor = 'rgba(246,204,73,.58)';
+    g.addColorStop(0, '#fff8c7'); g.addColorStop(.28, '#f5d95d'); g.addColorStop(.68, '#c68d20'); g.addColorStop(1, '#724707');
+    ctx.shadowColor = 'rgba(246,204,73,.65)';
   }
-  ctx.shadowBlur = coin.rare ? 18 : 11;
-  ctx.shadowOffsetY = 5;
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
-  ctx.fill();
-
+  ctx.shadowBlur = c.rare ? 18 : 12;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0,0,c.r,0,Math.PI*2); ctx.fill();
   ctx.shadowColor = 'transparent';
-  ctx.lineWidth = 2.2;
-  ctx.strokeStyle = coin.rare ? '#f1d5ff' : '#ffe889';
-  ctx.beginPath();
-  ctx.arc(0, 0, coin.r - 3, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.fillStyle = coin.rare ? '#fff4ff' : '#6d4305';
-  ctx.font = `800 ${Math.round(coin.r * 1.02)}px Georgia, serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(coin.rare ? '✦' : '₴', 0, 1);
+  ctx.lineWidth = 2; ctx.strokeStyle = c.rare ? '#f1dcff' : '#ffeb91';
+  ctx.beginPath(); ctx.arc(0,0,c.r-3,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle = c.rare ? '#fff' : '#684005';
+  ctx.font = `800 ${Math.round(c.r)}px Georgia,serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(c.rare ? '✦' : '●', 0, 1);
   ctx.restore();
 }
 
-function coinCatcherFrame(now) {
-  if (!coinCatcherState.running) return;
-  const ctx = coinCatcherSetupCanvas();
-  if (!ctx) {
-    coinCatcherState.rafId = requestAnimationFrame(coinCatcherFrame);
-    return;
+function coinRushFrame(now) {
+  if (!coinRush.active) return;
+  const ctx = coinRushSetupCanvas();
+  if (!ctx) { coinRush.raf = requestAnimationFrame(coinRushFrame); return; }
+  if (!coinRush.lastFrameAt) coinRush.lastFrameAt = now;
+  const dt = Math.min(.05, Math.max(0, (now - coinRush.lastFrameAt) / 1000));
+  coinRush.lastFrameAt = now;
+  const elapsed = now - coinRush.startedAt;
+  const left = Math.max(0, COIN_RUSH_DURATION_MS - elapsed);
+
+  while (elapsed >= coinRush.nextSpawnAt && coinRush.nextSpawnAt < COIN_RUSH_DURATION_MS) {
+    coinRushSpawn();
+    coinRush.nextSpawnAt += COIN_RUSH_SPAWN_MS;
   }
 
-  if (!coinCatcherState.lastFrameAt) coinCatcherState.lastFrameAt = now;
-  const dt = Math.min(.05, Math.max(0, (now - coinCatcherState.lastFrameAt) / 1000));
-  coinCatcherState.lastFrameAt = now;
-  const elapsed = (now - coinCatcherState.startedAt) / 1000;
-  coinCatcherState.timeLeft = Math.max(0, COIN_CATCHER_DURATION - elapsed);
+  for (const c of coinRush.coins) c.y += c.speed * dt;
+  coinRush.coins = coinRush.coins.filter(c => c.y < coinRush.height + c.r + 25);
+  ctx.clearRect(0,0,coinRush.width,coinRush.height);
+  for (const c of coinRush.coins) coinRushDrawCoin(ctx,c,now);
+  coinRushHud(left);
 
-  coinCatcherState.spawnAccumulator += dt * 1000;
-  while (coinCatcherState.spawnAccumulator >= COIN_CATCHER_SPAWN_MS) {
-    coinCatcherState.spawnAccumulator -= COIN_CATCHER_SPAWN_MS;
-    spawnCoinCatcherCoin();
-  }
-
-  for (const coin of coinCatcherState.coins) coin.y += coin.speed * dt;
-  coinCatcherState.coins = coinCatcherState.coins.filter(c => c.y < coinCatcherState.height + c.r + 20);
-
-  ctx.clearRect(0, 0, coinCatcherState.width, coinCatcherState.height);
-  for (const coin of coinCatcherState.coins) drawCoinCatcherCoin(ctx, coin, now);
-  renderCoinCatcherHud();
-
-  if (coinCatcherState.timeLeft <= 0) {
-    finishCoinCatcherGame();
-    return;
-  }
-  coinCatcherState.rafId = requestAnimationFrame(coinCatcherFrame);
+  if (left <= 0) { finishCoinCatcherGame(); return; }
+  coinRush.raf = requestAnimationFrame(coinRushFrame);
 }
 
 function startCoinCatcherGame() {
-  if (coinCatcherState.running || coinCatcherState.finishing) return;
-  coinCatcherAttachInput();
-  coinCatcherStopLoop();
-  coinCatcherState.running = true;
-  coinCatcherState.finishing = false;
-  coinCatcherState.score = 0;
-  coinCatcherState.caught = 0;
-  coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-  coinCatcherState.coins = [];
-  coinCatcherState.spawnAccumulator = COIN_CATCHER_SPAWN_MS; // перша монета одразу
-  coinCatcherState.startedAt = performance.now();
-  coinCatcherState.lastFrameAt = 0;
-  coinCatcherState.runId = (window.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); }));
-
+  if (coinRush.active || coinRush.claiming) return;
+  coinRushBindInput();
+  coinRushStop();
+  coinRush.active = true;
+  coinRush.claiming = false;
+  coinRush.score = 0;
+  coinRush.caught = 0;
+  coinRush.coins = [];
+  coinRush.runId = coinRushUuid();
+  coinRush.startedAt = performance.now();
+  coinRush.lastFrameAt = 0;
+  coinRush.nextSpawnAt = 0;
   const ready = document.getElementById('coinCatcherReady');
-  const msg = document.getElementById('coinCatcherMessage');
   if (ready) ready.hidden = true;
-  if (msg) msg.innerHTML = 'Лови монети! <strong>Фіолетова = 3 очки.</strong>';
-  coinCatcherSetupCanvas();
-  coinCatcherClearCanvas();
-  renderCoinCatcherHud();
-  coinCatcherState.rafId = requestAnimationFrame(coinCatcherFrame);
+  coinRushOverlay('Лови монети! <strong>Фіолетова = 3 очки.</strong>');
+  coinRushSetupCanvas();
+  coinRushHud(COIN_RUSH_DURATION_MS);
+  coinRush.raf = requestAnimationFrame(coinRushFrame);
 }
 
 async function finishCoinCatcherGame() {
-  if (!coinCatcherState.running || coinCatcherState.finishing) return;
-  coinCatcherState.running = false;
-  coinCatcherState.finishing = true;
-  coinCatcherState.timeLeft = 0;
-  coinCatcherStopLoop();
-  renderCoinCatcherHud();
+  if (!coinRush.active || coinRush.claiming) return;
+  coinRush.active = false;
+  coinRush.claiming = true;
+  coinRushStop();
+  coinRushHud(0);
 
-  const msg = document.getElementById('coinCatcherMessage');
-  if (msg) msg.innerHTML = `Час! Спіймано <strong>${coinCatcherState.caught}</strong>, очок: <strong>${coinCatcherState.score}</strong>. Зараховую золото…`;
-  renderCoinCatcherReady(msg?.innerHTML || '', 'Грати ще раз');
+  const payload = {
+    run_id: coinRush.runId,
+    score: coinRush.score,
+    caught: coinRush.caught,
+    duration_ms: COIN_RUSH_DURATION_MS,
+  };
+  coinRushPendingPut(payload);
+  coinRushOverlay(`Раунд завершено: <strong>${coinRush.score} очок</strong>. Зараховую золото…`, 'Грати ще раз');
 
   try {
-    const res = await fetch('/api/coin-catcher/complete', {
-      method: 'POST',
-      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
-      body: JSON.stringify({
-        run_id: coinCatcherState.runId,
-        score: coinCatcherState.score,
-        caught: coinCatcherState.caught,
-        duration_ms: COIN_CATCHER_DURATION * 1000
-      })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'complete_failed');
-
+    const data = await coinRushClaim(payload, 2);
+    coinRushPendingRemove(payload.run_id);
     const reward = Math.max(0, Number(data.reward_gold) || 0);
-    if (Number.isFinite(Number(data.gold_balance))) coinCatcherState.accountGold = Math.max(0, Number(data.gold_balance));
+    if (Number.isFinite(Number(data.gold_balance))) coinRush.gold = Math.max(0, Number(data.gold_balance));
     if (typeof dungeonProfileCache !== 'undefined') {
-      dungeonProfileCache = dungeonProfileCache
-        ? {...dungeonProfileCache, gold: coinCatcherState.accountGold}
-        : {gold: coinCatcherState.accountGold};
+      dungeonProfileCache = dungeonProfileCache ? {...dungeonProfileCache, gold: coinRush.gold} : {gold: coinRush.gold};
     }
-    coinCatcherState.finishing = false;
-    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-    renderCoinCatcherReady(`Спіймано <strong>${coinCatcherState.caught}</strong> монет · ${coinCatcherState.score} очок.<br>Нагорода: <strong>+${reward} 🪙</strong>.`, 'Грати ще раз');
-  } catch (_) {
-    coinCatcherState.finishing = false;
-    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-    renderCoinCatcherReady(`Гра відпрацювала нормально: <strong>${coinCatcherState.score} очок</strong>.<br>Але сервер не зміг зарахувати золото. Можна грати ще раз.`, 'Грати ще раз');
+    coinRush.claiming = false;
+    coinRushHud();
+    coinRushOverlay(`Спіймано <strong>${coinRush.caught}</strong> монет · ${coinRush.score} очок.<br>Зараховано: <strong>+${reward} 🪙</strong>.`, 'Грати ще раз');
+  } catch (err) {
+    coinRush.claiming = false;
+    coinRushHud();
+    const code = err?.data?.error || err?.message || 'network_error';
+    coinRushOverlay(`Раунд збережено: <strong>${coinRush.score} очок</strong>.<br>Нагорода ще не зарахована (${String(code)}). Бот повторить зарахування автоматично при наступному відкритті гри.`, 'Грати ще раз');
   }
 }
-
 
 </script>
 <style>

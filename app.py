@@ -57,6 +57,7 @@ PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
 PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 DUNGEON_RUNS_REST = f"{SUPABASE_URL}/rest/v1/dungeon_runs"
 DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
+COIN_RUSH_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_coin_catcher_run"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -2193,6 +2194,89 @@ def buy_profile_shop_item():
 
     payload, status = _purchase_profile_shop_item_atomic(int(user.get("id")), item)
     return jsonify(payload), status
+
+
+
+@app.route("/api/minigames/coin-rush/claim-v2", methods=["POST"])
+def claim_coin_rush_reward_v2():
+    """Зарахування нагороди Coin Rush v2 одним атомарним RPC.
+
+    Старт гри повністю локальний. Сервер викликається лише після завершення
+    раунду, а run_id робить повторні запити безпечними від подвійної виплати.
+    """
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    run_id = str(data.get("run_id") or "").strip()
+    try:
+        uuid.UUID(run_id)
+    except Exception:
+        return jsonify({"error": "invalid_run_id"}), 400
+
+    try:
+        score = max(0, min(200, int(data.get("score") or 0)))
+        caught = max(0, min(120, int(data.get("caught") or 0)))
+        duration_ms = max(0, min(60000, int(data.get("duration_ms") or 0)))
+    except Exception:
+        return jsonify({"error": "invalid_result"}), 400
+
+    if duration_ms < 18000:
+        return jsonify({"error": "round_too_short"}), 400
+
+    user_id = int(user.get("id"))
+    try:
+        resp = requests.post(
+            COIN_RUSH_CLAIM_RPC,
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={
+                "p_run_id": run_id,
+                "p_user_id": user_id,
+                "p_score": score,
+                "p_caught": caught,
+                "p_duration_ms": duration_ms,
+            },
+            timeout=20,
+        )
+    except Exception:
+        logging.exception("Coin Rush: помилка з'єднання з Supabase")
+        return jsonify({"error": "reward_service_unavailable"}), 503
+
+    if not resp.ok:
+        logging.error(
+            "Coin Rush RPC failed: status=%s body=%s",
+            resp.status_code,
+            (resp.text or "")[:800],
+        )
+        return jsonify({
+            "error": "reward_rpc_failed",
+            "upstream_status": resp.status_code,
+        }), 502
+
+    try:
+        result = resp.json()
+    except Exception:
+        logging.error("Coin Rush RPC returned invalid JSON: %s", (resp.text or "")[:800])
+        return jsonify({"error": "reward_rpc_invalid_response"}), 502
+
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    if not isinstance(result, dict):
+        result = {"status": "unknown"}
+
+    status = str(result.get("status") or "")
+    if status in ("settled", "already_settled"):
+        return jsonify(result), 200
+    if status == "profile_not_found":
+        return jsonify({"error": "profile_not_found"}), 404
+    if status == "too_early":
+        return jsonify({"error": "round_too_short"}), 400
+    if status == "run_conflict":
+        return jsonify({"error": "run_conflict"}), 409
+
+    logging.error("Coin Rush RPC unexpected result: %r", result)
+    return jsonify({"error": "reward_unknown_result", "status": status}), 502
 
 
 @app.route("/api/dungeon/start", methods=["POST"])
