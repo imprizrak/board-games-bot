@@ -10,34 +10,62 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 
-/* ==================== ЛОВИ МОНЕТИ ==================== */
+/* ==================== ЛОВИ МОНЕТИ · CANVAS ==================== */
 const COIN_CATCHER_DURATION = 20;
+const COIN_CATCHER_SPAWN_MS = 360;
 let coinCatcherState = {
   running: false,
   finishing: false,
-  runId: null,
   score: 0,
   caught: 0,
   timeLeft: COIN_CATCHER_DURATION,
-  statusLoaded: false,
-  loadError: false,
   accountGold: 0,
-  spawnTimer: null,
-  tickTimer: null,
-  startedAt: 0
+  runId: null,
+  startedAt: 0,
+  lastFrameAt: 0,
+  spawnAccumulator: 0,
+  rafId: 0,
+  coins: [],
+  width: 0,
+  height: 0,
+  dpr: 1
 };
 
-function coinCatcherClearTimers() {
-  if (coinCatcherState.spawnTimer) clearInterval(coinCatcherState.spawnTimer);
-  if (coinCatcherState.tickTimer) clearInterval(coinCatcherState.tickTimer);
-  coinCatcherState.spawnTimer = null;
-  coinCatcherState.tickTimer = null;
+function coinCatcherCanvas() {
+  return document.getElementById('coinCatcherCanvas');
 }
 
-function coinCatcherClearArena() {
-  const arena = document.getElementById('coinCatcherArena');
-  if (!arena) return;
-  arena.querySelectorAll('.falling-coin').forEach(el => el.remove());
+function coinCatcherStopLoop() {
+  if (coinCatcherState.rafId) cancelAnimationFrame(coinCatcherState.rafId);
+  coinCatcherState.rafId = 0;
+}
+
+function coinCatcherSetupCanvas() {
+  const canvas = coinCatcherCanvas();
+  if (!canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(280, rect.width || canvas.parentElement?.clientWidth || 320);
+  const height = Math.max(340, rect.height || canvas.parentElement?.clientHeight || 390);
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const pxW = Math.round(width * dpr);
+  const pxH = Math.round(height * dpr);
+  if (canvas.width !== pxW || canvas.height !== pxH) {
+    canvas.width = pxW;
+    canvas.height = pxH;
+  }
+  coinCatcherState.width = width;
+  coinCatcherState.height = height;
+  coinCatcherState.dpr = dpr;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+function coinCatcherClearCanvas() {
+  const ctx = coinCatcherSetupCanvas();
+  if (!ctx) return;
+  ctx.clearRect(0, 0, coinCatcherState.width, coinCatcherState.height);
 }
 
 function renderCoinCatcherHud() {
@@ -51,133 +79,184 @@ function renderCoinCatcherHud() {
   if (bar) bar.style.width = `${Math.max(0, Math.min(100, coinCatcherState.timeLeft / COIN_CATCHER_DURATION * 100))}%`;
 }
 
-function renderCoinCatcherReady(message) {
+function renderCoinCatcherReady(message, buttonText='Почати') {
   const ready = document.getElementById('coinCatcherReady');
   const btn = document.getElementById('coinCatcherStartBtn');
   const msg = document.getElementById('coinCatcherMessage');
   if (ready) ready.hidden = coinCatcherState.running;
   if (btn) {
-    if (!coinCatcherState.statusLoaded) {
-      btn.disabled = coinCatcherState.running || coinCatcherState.finishing || !coinCatcherState.loadError;
-      btn.textContent = coinCatcherState.loadError ? 'Спробувати ще раз' : 'Завантаження…';
-    } else {
-      btn.disabled = coinCatcherState.running || coinCatcherState.finishing;
-      btn.textContent = 'Почати';
-    }
+    btn.disabled = coinCatcherState.running || coinCatcherState.finishing;
+    btn.textContent = coinCatcherState.finishing ? 'Зараховую…' : buttonText;
   }
-  if (msg) {
-    msg.innerHTML = message || (!coinCatcherState.statusLoaded
-      ? 'Завантажую мінігру…'
-      : 'Грай скільки хочеш — ліміту спроб немає. Максимум <strong>5 🪙</strong> за одну гру.');
-  }
+  if (msg) msg.innerHTML = message || 'Натисни «Почати». Гра запускається одразу — без очікування сервера.';
   renderCoinCatcherHud();
 }
 
 async function initCoinCatcherTab() {
+  coinCatcherAttachInput();
   if (coinCatcherState.running) {
+    coinCatcherSetupCanvas();
     renderCoinCatcherHud();
     return;
   }
-  coinCatcherState.statusLoaded = false;
-  coinCatcherState.loadError = false;
-  renderCoinCatcherReady();
+  coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
+  renderCoinCatcherReady('Натисни «Почати». Монети почнуть падати одразу.');
+  // Баланс підтягуємо у фоні. Помилка цього запиту НЕ блокує гру.
   try {
-    const res = await fetch('/api/coin-catcher/status', {headers: telegramAuthHeaders()});
+    const res = await fetch('/api/profile/summary', {headers: telegramAuthHeaders()});
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'status_failed');
-    coinCatcherState.accountGold = Math.max(0, Number(data.gold) || 0);
-    coinCatcherState.statusLoaded = true;
-    coinCatcherState.loadError = false;
-    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-    renderCoinCatcherReady();
-  } catch (_) {
-    coinCatcherState.statusLoaded = false;
-    coinCatcherState.loadError = true;
-    renderCoinCatcherReady('Не вдалося завантажити мінігру. Натисни «Спробувати ще раз».');
-  }
+    if (res.ok) {
+      coinCatcherState.accountGold = Math.max(0, Number(data.gold) || 0);
+      renderCoinCatcherHud();
+    }
+  } catch (_) {}
+}
+
+function coinCatcherAttachInput() {
+  const canvas = coinCatcherCanvas();
+  if (!canvas || canvas.dataset.coinInputBound === '1') return;
+  canvas.dataset.coinInputBound = '1';
+  canvas.addEventListener('pointerdown', (event) => {
+    if (!coinCatcherState.running) return;
+    event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    for (let i = coinCatcherState.coins.length - 1; i >= 0; i--) {
+      const coin = coinCatcherState.coins[i];
+      const dx = x - coin.x;
+      const dy = y - coin.y;
+      if (dx * dx + dy * dy <= (coin.r * 1.28) ** 2) {
+        coinCatcherState.coins.splice(i, 1);
+        coinCatcherState.score += coin.value;
+        coinCatcherState.caught += 1;
+        renderCoinCatcherHud();
+        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(coin.rare ? 'medium' : 'light'); } catch (_) {}
+        break;
+      }
+    }
+  }, {passive:false});
 }
 
 function spawnCoinCatcherCoin() {
-  if (!coinCatcherState.running) return;
-  const arena = document.getElementById('coinCatcherArena');
-  if (!arena) return;
+  if (!coinCatcherState.running || !coinCatcherState.width) return;
   const rare = Math.random() < 0.12;
-  const coin = document.createElement('button');
-  coin.type = 'button';
-  coin.className = `falling-coin${rare ? ' rare' : ''}`;
-  coin.textContent = rare ? '✦' : '🪙';
-  coin.dataset.value = rare ? '3' : '1';
-  coin.setAttribute('aria-label', rare ? 'Рідкісна монета, 3 очки' : 'Монета, 1 очко');
-  const maxLeft = Math.max(8, arena.clientWidth - (rare ? 66 : 60));
-  coin.style.left = `${Math.floor(6 + Math.random() * Math.max(1, maxLeft - 12))}px`;
-  const fallTime = `${(2.65 + Math.random() * 1.55).toFixed(2)}s`;
-  coin.style.setProperty('--fall-time', fallTime);
-  // The app has a global prefers-reduced-motion rule. On iOS/Telegram it can
-  // shrink every CSS animation to ~0ms, making spawned coins disappear instantly.
-  // This gameplay animation must retain its real duration.
-  coin.style.setProperty('animation-duration', fallTime, 'important');
-  coin.addEventListener('click', () => {
-    if (!coinCatcherState.running || coin.classList.contains('caught')) return;
-    const value = Math.max(1, Number(coin.dataset.value) || 1);
-    coinCatcherState.score += value;
-    coinCatcherState.caught += 1;
-    coin.classList.add('caught');
-    try { tg.HapticFeedback?.impactOccurred?.(rare ? 'medium' : 'light'); } catch (_) {}
-    renderCoinCatcherHud();
-    setTimeout(() => coin.remove(), 170);
-  }, {once:true});
-  coin.addEventListener('animationend', () => coin.remove(), {once:true});
-  arena.appendChild(coin);
+  const r = rare ? 27 : 23;
+  const fallSeconds = 2.7 + Math.random() * 1.4;
+  const speed = (coinCatcherState.height + r * 2) / fallSeconds;
+  coinCatcherState.coins.push({
+    x: r + 8 + Math.random() * Math.max(1, coinCatcherState.width - (r + 8) * 2),
+    y: -r - Math.random() * 35,
+    r,
+    speed,
+    value: rare ? 3 : 1,
+    rare,
+    phase: Math.random() * Math.PI * 2,
+    sway: 5 + Math.random() * 9
+  });
 }
 
-async function startCoinCatcherGame() {
-  if (coinCatcherState.running || coinCatcherState.finishing) return;
-  if (!coinCatcherState.statusLoaded) {
-    await initCoinCatcherTab();
+function drawCoinCatcherCoin(ctx, coin, now) {
+  const wobble = Math.sin(now / 420 + coin.phase) * coin.sway;
+  const x = coin.x + wobble;
+  const y = coin.y;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(now / 260 + coin.phase) * 0.16);
+
+  const grad = ctx.createRadialGradient(-coin.r * .32, -coin.r * .35, coin.r * .08, 0, 0, coin.r);
+  if (coin.rare) {
+    grad.addColorStop(0, '#fff7ff');
+    grad.addColorStop(.24, '#e7b8ff');
+    grad.addColorStop(.62, '#8d55df');
+    grad.addColorStop(1, '#35205f');
+    ctx.shadowColor = 'rgba(193,128,255,.75)';
+  } else {
+    grad.addColorStop(0, '#fff5b8');
+    grad.addColorStop(.25, '#f7d85b');
+    grad.addColorStop(.68, '#c78d1d');
+    grad.addColorStop(1, '#714608');
+    ctx.shadowColor = 'rgba(246,204,73,.58)';
+  }
+  ctx.shadowBlur = coin.rare ? 18 : 11;
+  ctx.shadowOffsetY = 5;
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = coin.rare ? '#f1d5ff' : '#ffe889';
+  ctx.beginPath();
+  ctx.arc(0, 0, coin.r - 3, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = coin.rare ? '#fff4ff' : '#6d4305';
+  ctx.font = `800 ${Math.round(coin.r * 1.02)}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(coin.rare ? '✦' : '₴', 0, 1);
+  ctx.restore();
+}
+
+function coinCatcherFrame(now) {
+  if (!coinCatcherState.running) return;
+  const ctx = coinCatcherSetupCanvas();
+  if (!ctx) {
+    coinCatcherState.rafId = requestAnimationFrame(coinCatcherFrame);
     return;
   }
-  const btn = document.getElementById('coinCatcherStartBtn');
-  if (btn) btn.disabled = true;
-  const msg = document.getElementById('coinCatcherMessage');
-  if (msg) msg.textContent = 'Готую поле…';
-  try {
-    const res = await fetch('/api/coin-catcher/start', {
-      method: 'POST',
-      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
-      body: JSON.stringify({})
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'start_failed');
-    if (!data.run_id) throw new Error('run_id_missing');
 
-    coinCatcherClearTimers();
-    coinCatcherClearArena();
-    coinCatcherState.running = true;
-    coinCatcherState.finishing = false;
-    coinCatcherState.runId = data.run_id;
-    coinCatcherState.score = 0;
-    coinCatcherState.caught = 0;
-    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-    coinCatcherState.startedAt = performance.now();
-    const ready = document.getElementById('coinCatcherReady');
-    if (ready) ready.hidden = true;
-    if (msg) msg.innerHTML = 'Лови все, що встигаєш! <strong>Фіолетова = 3 очки.</strong>';
-    renderCoinCatcherHud();
+  if (!coinCatcherState.lastFrameAt) coinCatcherState.lastFrameAt = now;
+  const dt = Math.min(.05, Math.max(0, (now - coinCatcherState.lastFrameAt) / 1000));
+  coinCatcherState.lastFrameAt = now;
+  const elapsed = (now - coinCatcherState.startedAt) / 1000;
+  coinCatcherState.timeLeft = Math.max(0, COIN_CATCHER_DURATION - elapsed);
 
+  coinCatcherState.spawnAccumulator += dt * 1000;
+  while (coinCatcherState.spawnAccumulator >= COIN_CATCHER_SPAWN_MS) {
+    coinCatcherState.spawnAccumulator -= COIN_CATCHER_SPAWN_MS;
     spawnCoinCatcherCoin();
-    coinCatcherState.spawnTimer = setInterval(spawnCoinCatcherCoin, 430);
-    coinCatcherState.tickTimer = setInterval(() => {
-      const elapsed = (performance.now() - coinCatcherState.startedAt) / 1000;
-      coinCatcherState.timeLeft = Math.max(0, COIN_CATCHER_DURATION - elapsed);
-      renderCoinCatcherHud();
-      if (coinCatcherState.timeLeft <= 0) finishCoinCatcherGame();
-    }, 100);
-  } catch (_) {
-    coinCatcherState.running = false;
-    coinCatcherState.finishing = false;
-    if (btn) btn.disabled = false;
-    if (msg) msg.textContent = 'Не вдалося почати гру. Спробуй ще раз.';
   }
+
+  for (const coin of coinCatcherState.coins) coin.y += coin.speed * dt;
+  coinCatcherState.coins = coinCatcherState.coins.filter(c => c.y < coinCatcherState.height + c.r + 20);
+
+  ctx.clearRect(0, 0, coinCatcherState.width, coinCatcherState.height);
+  for (const coin of coinCatcherState.coins) drawCoinCatcherCoin(ctx, coin, now);
+  renderCoinCatcherHud();
+
+  if (coinCatcherState.timeLeft <= 0) {
+    finishCoinCatcherGame();
+    return;
+  }
+  coinCatcherState.rafId = requestAnimationFrame(coinCatcherFrame);
+}
+
+function startCoinCatcherGame() {
+  if (coinCatcherState.running || coinCatcherState.finishing) return;
+  coinCatcherAttachInput();
+  coinCatcherStopLoop();
+  coinCatcherState.running = true;
+  coinCatcherState.finishing = false;
+  coinCatcherState.score = 0;
+  coinCatcherState.caught = 0;
+  coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
+  coinCatcherState.coins = [];
+  coinCatcherState.spawnAccumulator = COIN_CATCHER_SPAWN_MS; // перша монета одразу
+  coinCatcherState.startedAt = performance.now();
+  coinCatcherState.lastFrameAt = 0;
+  coinCatcherState.runId = (window.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); }));
+
+  const ready = document.getElementById('coinCatcherReady');
+  const msg = document.getElementById('coinCatcherMessage');
+  if (ready) ready.hidden = true;
+  if (msg) msg.innerHTML = 'Лови монети! <strong>Фіолетова = 3 очки.</strong>';
+  coinCatcherSetupCanvas();
+  coinCatcherClearCanvas();
+  renderCoinCatcherHud();
+  coinCatcherState.rafId = requestAnimationFrame(coinCatcherFrame);
 }
 
 async function finishCoinCatcherGame() {
@@ -185,11 +264,12 @@ async function finishCoinCatcherGame() {
   coinCatcherState.running = false;
   coinCatcherState.finishing = true;
   coinCatcherState.timeLeft = 0;
-  coinCatcherClearTimers();
-  coinCatcherClearArena();
+  coinCatcherStopLoop();
   renderCoinCatcherHud();
+
   const msg = document.getElementById('coinCatcherMessage');
-  if (msg) msg.innerHTML = `Час! Спіймано <strong>${coinCatcherState.caught}</strong>, очок: <strong>${coinCatcherState.score}</strong>. Зараховую нагороду…`;
+  if (msg) msg.innerHTML = `Час! Спіймано <strong>${coinCatcherState.caught}</strong>, очок: <strong>${coinCatcherState.score}</strong>. Зараховую золото…`;
+  renderCoinCatcherReady(msg?.innerHTML || '', 'Грати ще раз');
 
   try {
     const res = await fetch('/api/coin-catcher/complete', {
@@ -198,32 +278,27 @@ async function finishCoinCatcherGame() {
       body: JSON.stringify({
         run_id: coinCatcherState.runId,
         score: coinCatcherState.score,
-        caught: coinCatcherState.caught
+        caught: coinCatcherState.caught,
+        duration_ms: COIN_CATCHER_DURATION * 1000
       })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'complete_failed');
 
-    if (data.status === 'too_early') {
-      // Запобіжник сервера: дуже рідко таймер браузера може випередити сервер.
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      coinCatcherState.running = true;
-      coinCatcherState.finishing = false;
-      return finishCoinCatcherGame();
-    }
     const reward = Math.max(0, Number(data.reward_gold) || 0);
-    coinCatcherState.accountGold = Math.max(0, Number(data.gold_balance) || coinCatcherState.accountGold || 0);
+    if (Number.isFinite(Number(data.gold_balance))) coinCatcherState.accountGold = Math.max(0, Number(data.gold_balance));
+    if (typeof dungeonProfileCache !== 'undefined') {
+      dungeonProfileCache = dungeonProfileCache
+        ? {...dungeonProfileCache, gold: coinCatcherState.accountGold}
+        : {gold: coinCatcherState.accountGold};
+    }
     coinCatcherState.finishing = false;
-    coinCatcherState.runId = null;
     coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-    dungeonProfileCache = dungeonProfileCache
-      ? {...dungeonProfileCache, gold: coinCatcherState.accountGold}
-      : {gold: coinCatcherState.accountGold};
-    renderCoinCatcherReady(`Спіймано <strong>${coinCatcherState.caught}</strong> монет · ${coinCatcherState.score} очок.<br>Нагорода: <strong>+${reward} 🪙</strong>. Можеш грати ще раз одразу.`);
+    renderCoinCatcherReady(`Спіймано <strong>${coinCatcherState.caught}</strong> монет · ${coinCatcherState.score} очок.<br>Нагорода: <strong>+${reward} 🪙</strong>.`, 'Грати ще раз');
   } catch (_) {
     coinCatcherState.finishing = false;
     coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
-    renderCoinCatcherReady('Гру завершено, але не вдалося зарахувати результат. Спробуй відкрити вкладку ще раз.');
+    renderCoinCatcherReady(`Гра відпрацювала нормально: <strong>${coinCatcherState.score} очок</strong>.<br>Але сервер не зміг зарахувати золото. Можна грати ще раз.`, 'Грати ще раз');
   }
 }
 
@@ -5205,51 +5280,16 @@ async function finishCoinCatcherGame() {
     box-shadow: 0 7px 20px rgba(0,0,0,.26);
   }
   .coin-catcher-start-btn:disabled { opacity:.42; }
-  .falling-coin {
+  .coin-catcher-canvas {
     position: absolute;
+    inset: 0;
     z-index: 2;
-    top: -62px;
-    width: 54px;
-    height: 54px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fff3a8 0 7%, #f4ca42 30%, #b37711 70%, #6a4205 100%);
-    box-shadow: 0 0 0 3px rgba(255,221,101,.15), 0 8px 15px rgba(0,0,0,.28);
-    color: #5b3600;
-    font-size: 29px;
-    line-height: 54px;
-    text-align: center;
-    cursor: pointer;
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-    animation: coinDrop var(--fall-time, 3.4s) linear forwards;
-    will-change: transform;
-  }
-  .falling-coin.rare {
-    width: 60px;
-    height: 60px;
-    line-height: 60px;
-    font-size: 31px;
-    background: radial-gradient(circle at 35% 28%, #fff 0 7%, #ffe58a 24%, #d697ff 52%, #6b42bb 80%, #301a67 100%);
-    box-shadow: 0 0 0 3px rgba(214,151,255,.18), 0 0 20px rgba(214,151,255,.30), 0 8px 15px rgba(0,0,0,.28);
-  }
-  .falling-coin.caught {
-    animation: coinCaught .16s ease-out forwards !important;
-    animation-duration: .16s !important;
-    pointer-events: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .falling-coin:not(.caught) {
-      animation-duration: var(--fall-time, 3.4s) !important;
-    }
-  }
-  @keyframes coinDrop {
-    from { transform: translateY(0) rotate(0deg); }
-    to { transform: translateY(calc(min(58vh, 470px) + 85px)) rotate(420deg); }
-  }
-  @keyframes coinCaught {
-    to { transform: scale(1.55); opacity: 0; }
   }
   .coin-catcher-bottom {
     padding: 12px 14px 14px;
@@ -5290,8 +5330,6 @@ async function finishCoinCatcherGame() {
     .coin-catcher-wrap { padding-left:11px; padding-right:11px; }
     .coin-catcher-arena { min-height: 360px; }
     .coin-catcher-stat strong { font-size:16px; }
-    .falling-coin { width:50px; height:50px; line-height:50px; font-size:27px; }
-    .falling-coin.rare { width:56px; height:56px; line-height:56px; }
   }
 
 </style>
@@ -5651,6 +5689,7 @@ async function finishCoinCatcherGame() {
 
     <div class="coin-catcher-card">
       <div class="coin-catcher-arena" id="coinCatcherArena">
+        <canvas class="coin-catcher-canvas" id="coinCatcherCanvas" aria-label="Ігрове поле Лови монети"></canvas>
         <div class="coin-catcher-ready" id="coinCatcherReady">
           <div class="coin-catcher-ready-icon">🪙</div>
           <h2>Полювання на монети</h2>
@@ -5659,7 +5698,7 @@ async function finishCoinCatcherGame() {
         </div>
       </div>
       <div class="coin-catcher-bottom">
-        <div class="coin-catcher-message" id="coinCatcherMessage">Завантажую мінігру…</div>
+        <div class="coin-catcher-message" id="coinCatcherMessage">Натисни «Почати». Монети почнуть падати одразу.</div>
         <div class="coin-catcher-progress" aria-hidden="true"><div id="coinCatcherProgressBar"></div></div>
       </div>
     </div>
