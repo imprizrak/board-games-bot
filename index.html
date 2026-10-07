@@ -19,7 +19,6 @@ let coinCatcherState = {
   score: 0,
   caught: 0,
   timeLeft: COIN_CATCHER_DURATION,
-  attemptsLeft: 0,
   statusLoaded: false,
   loadError: false,
   accountGold: 0,
@@ -62,16 +61,14 @@ function renderCoinCatcherReady(message) {
       btn.disabled = coinCatcherState.running || coinCatcherState.finishing || !coinCatcherState.loadError;
       btn.textContent = coinCatcherState.loadError ? 'Спробувати ще раз' : 'Завантаження…';
     } else {
-      btn.disabled = coinCatcherState.running || coinCatcherState.finishing || coinCatcherState.attemptsLeft <= 0;
-      btn.textContent = coinCatcherState.attemptsLeft > 0 ? 'Почати' : 'Спроби на сьогодні закінчились';
+      btn.disabled = coinCatcherState.running || coinCatcherState.finishing;
+      btn.textContent = 'Почати';
     }
   }
   if (msg) {
     msg.innerHTML = message || (!coinCatcherState.statusLoaded
-      ? 'Завантажую денний ліміт…'
-      : coinCatcherState.attemptsLeft > 0
-        ? `Сьогодні залишилось <strong>${coinCatcherState.attemptsLeft}</strong> із 3 нагороджуваних спроб.`
-        : `На сьогодні всі <strong>3 спроби</strong> використані. Завтра можна грати знову.`);
+      ? 'Завантажую мінігру…'
+      : 'Грай скільки хочеш — ліміту спроб немає. Максимум <strong>5 🪙</strong> за одну гру.');
   }
   renderCoinCatcherHud();
 }
@@ -88,7 +85,6 @@ async function initCoinCatcherTab() {
     const res = await fetch('/api/coin-catcher/status', {headers: telegramAuthHeaders()});
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'status_failed');
-    coinCatcherState.attemptsLeft = Math.max(0, Number(data.attempts_left) || 0);
     coinCatcherState.accountGold = Math.max(0, Number(data.gold) || 0);
     coinCatcherState.statusLoaded = true;
     coinCatcherState.loadError = false;
@@ -135,7 +131,6 @@ async function startCoinCatcherGame() {
     await initCoinCatcherTab();
     return;
   }
-  if (coinCatcherState.attemptsLeft <= 0) return;
   const btn = document.getElementById('coinCatcherStartBtn');
   if (btn) btn.disabled = true;
   const msg = document.getElementById('coinCatcherMessage');
@@ -148,11 +143,6 @@ async function startCoinCatcherGame() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'start_failed');
-    if (data.status === 'daily_limit') {
-      coinCatcherState.attemptsLeft = 0;
-      renderCoinCatcherReady();
-      return;
-    }
     if (!data.run_id) throw new Error('run_id_missing');
 
     coinCatcherClearTimers();
@@ -216,22 +206,15 @@ async function finishCoinCatcherGame() {
       coinCatcherState.finishing = false;
       return finishCoinCatcherGame();
     }
-    if (data.status === 'daily_limit') {
-      coinCatcherState.attemptsLeft = 0;
-      renderCoinCatcherReady('Денний ліміт уже використано. Ця партія не дала золота.');
-      return;
-    }
-
     const reward = Math.max(0, Number(data.reward_gold) || 0);
     coinCatcherState.accountGold = Math.max(0, Number(data.gold_balance) || coinCatcherState.accountGold || 0);
-    coinCatcherState.attemptsLeft = Math.max(0, Number(data.attempts_left) || 0);
     coinCatcherState.finishing = false;
     coinCatcherState.runId = null;
     coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
     dungeonProfileCache = dungeonProfileCache
       ? {...dungeonProfileCache, gold: coinCatcherState.accountGold}
       : {gold: coinCatcherState.accountGold};
-    renderCoinCatcherReady(`Спіймано <strong>${coinCatcherState.caught}</strong> монет · ${coinCatcherState.score} очок.<br>Нагорода: <strong>+${reward} 🪙</strong>. Залишилось спроб: <strong>${coinCatcherState.attemptsLeft}</strong>.`);
+    renderCoinCatcherReady(`Спіймано <strong>${coinCatcherState.caught}</strong> монет · ${coinCatcherState.score} очок.<br>Нагорода: <strong>+${reward} 🪙</strong>. Можеш грати ще раз одразу.`);
   } catch (_) {
     coinCatcherState.finishing = false;
     coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
@@ -5577,7 +5560,7 @@ async function finishCoinCatcherGame() {
         <div class="mini-game-tag">Реакція · швидкість</div>
         <h2 class="mini-game-title">Лови монети</h2>
         <p class="mini-game-desc">Монети падають зверху — встигай натискати на них за 20 секунд. Рідкісні монети дають більше очок.</p>
-        <div class="mini-game-meta"><span>20 секунд</span><span>3 спроби/день</span><span>до 5 🪙</span></div>
+        <div class="mini-game-meta"><span>20 секунд</span><span>без ліміту</span><span>до 5 🪙</span></div>
         <button type="button" class="mini-game-launch" onclick="openMiniGame('view-coins')">Грати</button>
       </article>
     </div>
@@ -5665,11 +5648,11 @@ async function finishCoinCatcherGame() {
         </div>
       </div>
       <div class="coin-catcher-bottom">
-        <div class="coin-catcher-message" id="coinCatcherMessage">Завантажую денний ліміт…</div>
+        <div class="coin-catcher-message" id="coinCatcherMessage">Завантажую мінігру…</div>
         <div class="coin-catcher-progress" aria-hidden="true"><div id="coinCatcherProgressBar"></div></div>
       </div>
     </div>
-    <div class="coin-catcher-footnote">3 нагороджувані спроби на день · максимум 5 🪙 за одну гру · золото зараховується у профіль після завершення 20 секунд.</div>
+    <div class="coin-catcher-footnote">Без ліміту спроб · максимум 5 🪙 за одну гру · золото зараховується у профіль після завершення 20 секунд.</div>
   </div>
 </div>
 
