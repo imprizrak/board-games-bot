@@ -217,7 +217,6 @@ async function finishCoinCatcherGame() {
   }
 }
 
-document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('click', initCoinCatcherTab);
 
 </script>
 <style>
@@ -4458,7 +4457,7 @@ document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('cl
   }
   .dungeon-log-list li + li { margin-top: 4px; }
 
-  /* Сім кнопок у нижній навігації без перекриттів. */
+  /* Кнопки нижньої навігації без перекриттів. */
   .bottom-nav button {
     min-width: 0;
     flex: 1 1 0;
@@ -4481,6 +4480,148 @@ document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('cl
     .bottom-nav button { padding-left: 1px !important; padding-right: 1px !important; }
   }
 
+
+
+  /* ==================== ІГРИ: HUB ==================== */
+  .games-hub-wrap {
+    padding: 14px 14px 104px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .games-hub-intro {
+    margin: 0 0 14px;
+    padding: 14px 15px;
+    border: 1px solid rgba(212,175,55,.22);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgba(20,35,56,.96), rgba(9,18,32,.96));
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .games-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .mini-game-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border: 1px solid rgba(91,126,170,.36);
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(18,35,58,.98), rgba(7,15,28,.98));
+    box-shadow: 0 12px 28px rgba(0,0,0,.20);
+  }
+  .mini-game-card::after {
+    content: '';
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    right: -72px;
+    top: -75px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,175,55,.18), transparent 68%);
+    pointer-events: none;
+  }
+  .mini-game-card.coin-game::after {
+    background: radial-gradient(circle, rgba(151,94,255,.22), transparent 68%);
+  }
+  .mini-game-icon {
+    width: 62px;
+    height: 62px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    border: 1px solid rgba(212,175,55,.28);
+    background: rgba(212,175,55,.08);
+    font-size: 34px;
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+  .mini-game-card.coin-game .mini-game-icon {
+    border-color: rgba(168,116,255,.34);
+    background: rgba(129,75,223,.12);
+  }
+  .mini-game-tag {
+    display: inline-flex;
+    width: max-content;
+    max-width: 100%;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.055);
+    color: #c5d0df;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .mini-game-title {
+    margin: 0;
+    color: var(--text);
+    font-family: 'Cinzel', serif;
+    font-size: 21px;
+    line-height: 1.15;
+  }
+  .mini-game-desc {
+    margin: 9px 0 14px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.42;
+    flex: 1;
+  }
+  .mini-game-meta {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .mini-game-meta span {
+    padding: 5px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.09);
+    background: rgba(255,255,255,.035);
+    color: #b8c6d8;
+    font-size: 11px;
+  }
+  .mini-game-launch {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid rgba(212,175,55,.48);
+    border-radius: 13px;
+    background: linear-gradient(180deg, #d7b64a, #a98627);
+    color: #111827;
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .mini-game-card.coin-game .mini-game-launch {
+    border-color: rgba(172,126,255,.55);
+    background: linear-gradient(180deg, #a878ff, #7246c6);
+    color: #fff;
+  }
+  .mini-game-launch:active { transform: translateY(1px) scale(.995); }
+  .mini-game-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 10px 14px 0;
+    padding: 8px 11px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,.035);
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  @media (max-width: 560px) {
+    .games-hub-grid { grid-template-columns: 1fr; }
+    .mini-game-card { min-height: 0; }
+  }
 
   /* ==================== GOLD / SHOP ==================== */
   .mmorpg-title-row {
@@ -5393,9 +5534,39 @@ document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('cl
 
 
 
+<!-- ==================== ВКЛАДКА: ІГРИ ==================== -->
+<div class="view" id="view-games">
+  <header>Ігри</header>
+  <div class="games-hub-wrap">
+    <div class="games-hub-intro">Обирай мінігру. Золото з ігор зараховується у твій загальний баланс профілю та може використовуватися в магазині.</div>
+
+    <div class="games-hub-grid">
+      <article class="mini-game-card dungeon-game">
+        <div class="mini-game-icon">🏰</div>
+        <div class="mini-game-tag">Пригода · ризик</div>
+        <h2 class="mini-game-title">Данж</h2>
+        <p class="mini-game-desc">Пройди 10 кімнат, обирай дії, бийся з ворогами, шукай скарби та дістанься фінального боса.</p>
+        <div class="mini-game-meta"><span>10 кімнат</span><span>50/50 фінал</span><span>🪙 нагорода</span></div>
+        <button type="button" class="mini-game-launch" onclick="openMiniGame('view-dungeon')">Грати</button>
+      </article>
+
+      <article class="mini-game-card coin-game">
+        <div class="mini-game-icon">🪙</div>
+        <div class="mini-game-tag">Реакція · швидкість</div>
+        <h2 class="mini-game-title">Лови монети</h2>
+        <p class="mini-game-desc">Монети падають зверху — встигай натискати на них за 20 секунд. Рідкісні монети дають більше очок.</p>
+        <div class="mini-game-meta"><span>20 секунд</span><span>3 спроби/день</span><span>до 5 🪙</span></div>
+        <button type="button" class="mini-game-launch" onclick="openMiniGame('view-coins')">Грати</button>
+      </article>
+    </div>
+  </div>
+</div>
+
+
 <!-- ==================== ВКЛАДКА: ПІДЗЕМЕЛЛЯ ==================== -->
 <div class="view" id="view-dungeon">
   <header>Підземелля клубу</header>
+  <button type="button" class="mini-game-back" onclick="showMainView('view-games')">← До ігор</button>
   <div class="dungeon-wrap">
     <div class="dungeon-hero">
       <div class="dungeon-avatar" id="dungeonAvatar">🎲</div>
@@ -5454,6 +5625,7 @@ document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('cl
 <!-- ==================== ВКЛАДКА: ЛОВИ МОНЕТИ ==================== -->
 <div class="view" id="view-coins">
   <header>Лови монети</header>
+  <button type="button" class="mini-game-back" onclick="showMainView('view-games')">← До ігор</button>
   <div class="coin-catcher-wrap">
     <div class="coin-catcher-top">
       <div class="coin-catcher-stat"><strong id="coinGameTime">20</strong><span>⏱ секунд</span></div>
@@ -5532,14 +5704,9 @@ document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('cl
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
     <span>Події</span>
   </button>
-  <button class="nav-btn" data-view="view-dungeon">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V8l7-4 7 4v12"/><path d="M8 20v-5h8v5M9 9h.01M15 9h.01"/><path d="M3.5 20h17"/></svg></span>
-    <span>Данж</span>
-  </button>
-
-  <button class="nav-btn" data-view="view-coins">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><path d="M9.5 9.5h4.1a1.9 1.9 0 0 1 0 3.8H10.4a1.9 1.9 0 0 0 0 3.8h4.1M12 7.5v9"/></svg></span>
-    <span>Монети</span>
+  <button class="nav-btn" data-view="view-games">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 8.5h9a4.5 4.5 0 0 1 4.2 6.1l-1.1 2.9a2 2 0 0 1-3.2.8l-2.1-1.8H9.7l-2.1 1.8a2 2 0 0 1-3.2-.8l-1.1-2.9a4.5 4.5 0 0 1 4.2-6.1Z"/><path d="M8 11v4M6 13h4M16.5 11.5h.01M18.5 14h.01"/></svg></span>
+    <span>Ігри</span>
   </button>
   <button class="nav-btn" data-view="view-community">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
@@ -7968,14 +8135,22 @@ function showMainView(viewId) {
   if (!document.getElementById(viewId)) viewId = 'view-home';
   if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+  const navView = (viewId === 'view-dungeon' || viewId === 'view-coins') ? 'view-games' : viewId;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === navView));
   if (viewId === 'view-home') loadHomeHub();
   if (viewId === 'view-community') loadCommunity();
   if (viewId === 'view-library') loadGames();
   if (viewId === 'view-profile') loadMyProfile();
   if (viewId === 'view-events') loadEvents();
   if (viewId === 'view-dungeon') initDungeonTab();
+  if (viewId === 'view-coins') initCoinCatcherTab();
   window.scrollTo({top:0, behavior:'auto'});
+}
+
+function openMiniGame(viewId) {
+  if (viewId !== 'view-dungeon' && viewId !== 'view-coins') return;
+  if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  showMainView(viewId);
 }
 
 function openToolsHub() {
@@ -10522,7 +10697,6 @@ document.getElementById('dungeonActions')?.addEventListener('click', (event) => 
   if (!btn || btn.disabled) return;
   handleDungeonAction(btn.dataset.dungeonAction);
 });
-document.querySelector('.nav-btn[data-view="view-dungeon"]')?.addEventListener('click', initDungeonTab);
 renderDungeon();
 
 </script>
