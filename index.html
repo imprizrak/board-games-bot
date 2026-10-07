@@ -4397,6 +4397,22 @@
     font-weight: 850;
     white-space: nowrap;
   }
+  .profile-shop-reset {
+    width: 100%;
+    min-height: 40px;
+    margin: 10px 0 12px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: rgba(255,255,255,.035);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .profile-shop-reset:active { transform: scale(.99); }
+  .profile-shop-reset:disabled { opacity: .5; }
+
   .profile-shop-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8914,6 +8930,40 @@ async function resetXpCosmetics() {
   }
 }
 
+async function resetProfileAppearance() {
+  const btn = document.getElementById('profileShopResetBtn');
+  const oldText = btn?.textContent || '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Скидаю…';
+  }
+  try {
+    const res = await fetch('/api/profile/cosmetics', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({frame:'', theme:''})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      tg.showAlert(data.error || 'Не вдалося скинути оформлення.');
+      return;
+    }
+    applyGlobalProfileTheme('');
+    dungeonProfileCache = null;
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    await Promise.allSettled([loadMyProfile(), loadHomeHub(true)]);
+    if (document.getElementById('profileShopModal')?.classList.contains('open')) await loadProfileShopModal();
+    tg.showAlert('Оформлення повернуто до стандартного.');
+  } catch (e) {
+    tg.showAlert('Не вдалося скинути оформлення.');
+  } finally {
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = oldText || '↺ Скинути оформлення до стандартного';
+    }
+  }
+}
+
 function xpRewardsHtml(data) {
   const rewards = Array.isArray(data.xp_rewards) ? data.xp_rewards : [];
   if (!rewards.length) return '';
@@ -9111,6 +9161,7 @@ function profileShopHtml(data) {
         <div class="profile-shop-balance">🪙 ${gold}</div>
       </div>
       <div class="profile-shop-subtitle">Купуй оформлення та преміальні подарункові купони за золото з Данжу. Куплені лоти залишаються у твоїй колекції назавжди.</div>
+      <button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button>
       <div class="profile-shop-grid">
         ${cosmetics.length ? `<div class="profile-shop-section-title">✨ Оформлення</div>${cosmetics.map(renderItem).join('')}` : ''}
         ${coupons.length ? `<div class="profile-shop-section-title">🎟 Подарункові купони · найдорожчі лоти</div>${coupons.map(renderItem).join('')}` : ''}
