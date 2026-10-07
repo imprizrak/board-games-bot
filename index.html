@@ -7,7 +7,219 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js">
+
+/* ==================== ЛОВИ МОНЕТИ ==================== */
+const COIN_CATCHER_DURATION = 20;
+let coinCatcherState = {
+  running: false,
+  finishing: false,
+  runId: null,
+  score: 0,
+  caught: 0,
+  timeLeft: COIN_CATCHER_DURATION,
+  attemptsLeft: 0,
+  accountGold: 0,
+  spawnTimer: null,
+  tickTimer: null,
+  startedAt: 0
+};
+
+function coinCatcherClearTimers() {
+  if (coinCatcherState.spawnTimer) clearInterval(coinCatcherState.spawnTimer);
+  if (coinCatcherState.tickTimer) clearInterval(coinCatcherState.tickTimer);
+  coinCatcherState.spawnTimer = null;
+  coinCatcherState.tickTimer = null;
+}
+
+function coinCatcherClearArena() {
+  const arena = document.getElementById('coinCatcherArena');
+  if (!arena) return;
+  arena.querySelectorAll('.falling-coin').forEach(el => el.remove());
+}
+
+function renderCoinCatcherHud() {
+  const timeEl = document.getElementById('coinGameTime');
+  const scoreEl = document.getElementById('coinGameScore');
+  const goldEl = document.getElementById('coinGameGold');
+  const bar = document.getElementById('coinCatcherProgressBar');
+  if (timeEl) timeEl.textContent = String(Math.max(0, Math.ceil(coinCatcherState.timeLeft)));
+  if (scoreEl) scoreEl.textContent = String(Math.max(0, coinCatcherState.score));
+  if (goldEl) goldEl.textContent = `${Math.max(0, Number(coinCatcherState.accountGold) || 0)} 🪙`;
+  if (bar) bar.style.width = `${Math.max(0, Math.min(100, coinCatcherState.timeLeft / COIN_CATCHER_DURATION * 100))}%`;
+}
+
+function renderCoinCatcherReady(message) {
+  const ready = document.getElementById('coinCatcherReady');
+  const btn = document.getElementById('coinCatcherStartBtn');
+  const msg = document.getElementById('coinCatcherMessage');
+  if (ready) ready.hidden = coinCatcherState.running;
+  if (btn) {
+    btn.disabled = coinCatcherState.running || coinCatcherState.finishing || coinCatcherState.attemptsLeft <= 0;
+    btn.textContent = coinCatcherState.attemptsLeft > 0 ? 'Почати' : 'Спроби на сьогодні закінчились';
+  }
+  if (msg) {
+    msg.innerHTML = message || (coinCatcherState.attemptsLeft > 0
+      ? `Сьогодні залишилось <strong>${coinCatcherState.attemptsLeft}</strong> із 3 нагороджуваних спроб.`
+      : `На сьогодні всі <strong>3 спроби</strong> використані. Завтра можна грати знову.`);
+  }
+  renderCoinCatcherHud();
+}
+
+async function initCoinCatcherTab() {
+  if (coinCatcherState.running) {
+    renderCoinCatcherHud();
+    return;
+  }
+  try {
+    const res = await fetch('/api/coin-catcher/status', {headers: telegramAuthHeaders()});
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'status_failed');
+    coinCatcherState.attemptsLeft = Math.max(0, Number(data.attempts_left) || 0);
+    coinCatcherState.accountGold = Math.max(0, Number(data.gold) || 0);
+    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
+    renderCoinCatcherReady();
+  } catch (_) {
+    renderCoinCatcherReady('Не вдалося завантажити мінігру. Перевір з’єднання й відкрий вкладку ще раз.');
+  }
+}
+
+function spawnCoinCatcherCoin() {
+  if (!coinCatcherState.running) return;
+  const arena = document.getElementById('coinCatcherArena');
+  if (!arena) return;
+  const rare = Math.random() < 0.12;
+  const coin = document.createElement('button');
+  coin.type = 'button';
+  coin.className = `falling-coin${rare ? ' rare' : ''}`;
+  coin.textContent = rare ? '✦' : '🪙';
+  coin.dataset.value = rare ? '3' : '1';
+  coin.setAttribute('aria-label', rare ? 'Рідкісна монета, 3 очки' : 'Монета, 1 очко');
+  const maxLeft = Math.max(8, arena.clientWidth - (rare ? 66 : 60));
+  coin.style.left = `${Math.floor(6 + Math.random() * Math.max(1, maxLeft - 12))}px`;
+  coin.style.setProperty('--fall-time', `${(2.65 + Math.random() * 1.55).toFixed(2)}s`);
+  coin.addEventListener('click', () => {
+    if (!coinCatcherState.running || coin.classList.contains('caught')) return;
+    const value = Math.max(1, Number(coin.dataset.value) || 1);
+    coinCatcherState.score += value;
+    coinCatcherState.caught += 1;
+    coin.classList.add('caught');
+    try { tg.HapticFeedback?.impactOccurred?.(rare ? 'medium' : 'light'); } catch (_) {}
+    renderCoinCatcherHud();
+    setTimeout(() => coin.remove(), 170);
+  }, {once:true});
+  coin.addEventListener('animationend', () => coin.remove(), {once:true});
+  arena.appendChild(coin);
+}
+
+async function startCoinCatcherGame() {
+  if (coinCatcherState.running || coinCatcherState.finishing || coinCatcherState.attemptsLeft <= 0) return;
+  const btn = document.getElementById('coinCatcherStartBtn');
+  if (btn) btn.disabled = true;
+  const msg = document.getElementById('coinCatcherMessage');
+  if (msg) msg.textContent = 'Готую поле…';
+  try {
+    const res = await fetch('/api/coin-catcher/start', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'start_failed');
+    if (data.status === 'daily_limit') {
+      coinCatcherState.attemptsLeft = 0;
+      renderCoinCatcherReady();
+      return;
+    }
+    if (!data.run_id) throw new Error('run_id_missing');
+
+    coinCatcherClearTimers();
+    coinCatcherClearArena();
+    coinCatcherState.running = true;
+    coinCatcherState.finishing = false;
+    coinCatcherState.runId = data.run_id;
+    coinCatcherState.score = 0;
+    coinCatcherState.caught = 0;
+    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
+    coinCatcherState.startedAt = performance.now();
+    const ready = document.getElementById('coinCatcherReady');
+    if (ready) ready.hidden = true;
+    if (msg) msg.innerHTML = 'Лови все, що встигаєш! <strong>Фіолетова = 3 очки.</strong>';
+    renderCoinCatcherHud();
+
+    spawnCoinCatcherCoin();
+    coinCatcherState.spawnTimer = setInterval(spawnCoinCatcherCoin, 430);
+    coinCatcherState.tickTimer = setInterval(() => {
+      const elapsed = (performance.now() - coinCatcherState.startedAt) / 1000;
+      coinCatcherState.timeLeft = Math.max(0, COIN_CATCHER_DURATION - elapsed);
+      renderCoinCatcherHud();
+      if (coinCatcherState.timeLeft <= 0) finishCoinCatcherGame();
+    }, 100);
+  } catch (_) {
+    coinCatcherState.running = false;
+    coinCatcherState.finishing = false;
+    if (btn) btn.disabled = false;
+    if (msg) msg.textContent = 'Не вдалося почати гру. Спробуй ще раз.';
+  }
+}
+
+async function finishCoinCatcherGame() {
+  if (!coinCatcherState.running || coinCatcherState.finishing) return;
+  coinCatcherState.running = false;
+  coinCatcherState.finishing = true;
+  coinCatcherState.timeLeft = 0;
+  coinCatcherClearTimers();
+  coinCatcherClearArena();
+  renderCoinCatcherHud();
+  const msg = document.getElementById('coinCatcherMessage');
+  if (msg) msg.innerHTML = `Час! Спіймано <strong>${coinCatcherState.caught}</strong>, очок: <strong>${coinCatcherState.score}</strong>. Зараховую нагороду…`;
+
+  try {
+    const res = await fetch('/api/coin-catcher/complete', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({
+        run_id: coinCatcherState.runId,
+        score: coinCatcherState.score,
+        caught: coinCatcherState.caught
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'complete_failed');
+
+    if (data.status === 'too_early') {
+      // Запобіжник сервера: дуже рідко таймер браузера може випередити сервер.
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      coinCatcherState.running = true;
+      coinCatcherState.finishing = false;
+      return finishCoinCatcherGame();
+    }
+    if (data.status === 'daily_limit') {
+      coinCatcherState.attemptsLeft = 0;
+      renderCoinCatcherReady('Денний ліміт уже використано. Ця партія не дала золота.');
+      return;
+    }
+
+    const reward = Math.max(0, Number(data.reward_gold) || 0);
+    coinCatcherState.accountGold = Math.max(0, Number(data.gold_balance) || coinCatcherState.accountGold || 0);
+    coinCatcherState.attemptsLeft = Math.max(0, Number(data.attempts_left) || 0);
+    coinCatcherState.finishing = false;
+    coinCatcherState.runId = null;
+    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
+    dungeonProfileCache = dungeonProfileCache
+      ? {...dungeonProfileCache, gold: coinCatcherState.accountGold}
+      : {gold: coinCatcherState.accountGold};
+    renderCoinCatcherReady(`Спіймано <strong>${coinCatcherState.caught}</strong> монет · ${coinCatcherState.score} очок.<br>Нагорода: <strong>+${reward} 🪙</strong>. Залишилось спроб: <strong>${coinCatcherState.attemptsLeft}</strong>.`);
+  } catch (_) {
+    coinCatcherState.finishing = false;
+    coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
+    renderCoinCatcherReady('Гру завершено, але не вдалося зарахувати результат. Спробуй відкрити вкладку ще раз.');
+  }
+}
+
+document.querySelector('.nav-btn[data-view="view-coins"]')?.addEventListener('click', initCoinCatcherTab);
+
+</script>
 <style>
   :root {
     --bg: #08111f;
@@ -4727,6 +4939,204 @@
     .mmorpg-wallet { padding: 3px 7px; font-size: 9px; }
   }
 
+
+
+  /* ==================== ЛОВИ МОНЕТИ: МІНІГРА ==================== */
+  .coin-catcher-wrap {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 4px var(--page-pad, 14px) calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .coin-catcher-top {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .coin-catcher-stat {
+    min-width: 0;
+    padding: 10px 8px;
+    border: 1px solid rgba(227,191,85,.24);
+    border-radius: 13px;
+    background: linear-gradient(145deg, #12243a, #0a1725);
+    text-align: center;
+  }
+  .coin-catcher-stat strong {
+    display: block;
+    color: #fff4c8;
+    font-size: 18px;
+    line-height: 1.05;
+  }
+  .coin-catcher-stat span {
+    display: block;
+    margin-top: 4px;
+    color: #91a4bd;
+    font-size: 9px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .coin-catcher-wallet {
+    cursor: pointer;
+    user-select: none;
+  }
+  .coin-catcher-card {
+    overflow: hidden;
+    border: 1px solid rgba(227,191,85,.28);
+    border-radius: 20px;
+    background: linear-gradient(180deg, #10233a, #07111d);
+    box-shadow: 0 10px 30px rgba(0,0,0,.30);
+  }
+  .coin-catcher-arena {
+    position: relative;
+    height: min(58vh, 470px);
+    min-height: 390px;
+    overflow: hidden;
+    touch-action: manipulation;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(212,175,55,.18), transparent 28%),
+      radial-gradient(circle at 80% 28%, rgba(70,116,190,.18), transparent 30%),
+      linear-gradient(180deg, #142b47 0%, #0b1b2d 55%, #06101b 100%);
+  }
+  .coin-catcher-arena::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .28;
+    background-image:
+      radial-gradient(circle at 12% 20%, #fff 0 1px, transparent 1.4px),
+      radial-gradient(circle at 68% 12%, #fff 0 1px, transparent 1.4px),
+      radial-gradient(circle at 86% 42%, #fff 0 1px, transparent 1.4px),
+      radial-gradient(circle at 34% 65%, #fff 0 1px, transparent 1.4px),
+      radial-gradient(circle at 72% 78%, #fff 0 1px, transparent 1.4px);
+  }
+  .coin-catcher-ready {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 26px 20px;
+    text-align: center;
+    background: rgba(4,11,20,.42);
+    backdrop-filter: blur(2px);
+  }
+  .coin-catcher-ready[hidden] { display:none; }
+  .coin-catcher-ready-icon { font-size: 58px; line-height: 1; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+  .coin-catcher-ready h2 {
+    margin: 13px 0 7px;
+    color: #fff8e8;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 23px;
+  }
+  .coin-catcher-ready p {
+    max-width: 470px;
+    margin: 0;
+    color: #b4c5da;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .coin-catcher-start-btn {
+    margin-top: 18px;
+    min-width: 190px;
+    min-height: 48px;
+    padding: 11px 18px;
+    border: 1px solid #e2c464;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #e2c158, #b88b23);
+    color: #132033;
+    font: inherit;
+    font-weight: 850;
+    box-shadow: 0 7px 20px rgba(0,0,0,.26);
+  }
+  .coin-catcher-start-btn:disabled { opacity:.42; }
+  .falling-coin {
+    position: absolute;
+    z-index: 2;
+    top: -62px;
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff3a8 0 7%, #f4ca42 30%, #b37711 70%, #6a4205 100%);
+    box-shadow: 0 0 0 3px rgba(255,221,101,.15), 0 8px 15px rgba(0,0,0,.28);
+    color: #5b3600;
+    font-size: 29px;
+    line-height: 54px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    animation: coinDrop var(--fall-time, 3.4s) linear forwards;
+    will-change: transform;
+  }
+  .falling-coin.rare {
+    width: 60px;
+    height: 60px;
+    line-height: 60px;
+    font-size: 31px;
+    background: radial-gradient(circle at 35% 28%, #fff 0 7%, #ffe58a 24%, #d697ff 52%, #6b42bb 80%, #301a67 100%);
+    box-shadow: 0 0 0 3px rgba(214,151,255,.18), 0 0 20px rgba(214,151,255,.30), 0 8px 15px rgba(0,0,0,.28);
+  }
+  .falling-coin.caught {
+    animation: coinCaught .16s ease-out forwards !important;
+    pointer-events: none;
+  }
+  @keyframes coinDrop {
+    from { transform: translateY(0) rotate(0deg); }
+    to { transform: translateY(calc(min(58vh, 470px) + 85px)) rotate(420deg); }
+  }
+  @keyframes coinCaught {
+    to { transform: scale(1.55); opacity: 0; }
+  }
+  .coin-catcher-bottom {
+    padding: 12px 14px 14px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    background: rgba(4,10,18,.52);
+  }
+  .coin-catcher-message {
+    min-height: 40px;
+    color: #bfd0e6;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: center;
+  }
+  .coin-catcher-message strong { color:#f0d57f; }
+  .coin-catcher-progress {
+    height: 7px;
+    margin-top: 9px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+  }
+  .coin-catcher-progress > div {
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #d3a92e, #f2dc83);
+    transform-origin: left center;
+    transition: width .1s linear;
+  }
+  .coin-catcher-footnote {
+    margin-top: 10px;
+    color: #71849c;
+    font-size: 10px;
+    line-height: 1.4;
+    text-align: center;
+  }
+  @media (max-width:390px) {
+    .coin-catcher-wrap { padding-left:11px; padding-right:11px; }
+    .coin-catcher-arena { min-height: 360px; }
+    .coin-catcher-stat strong { font-size:16px; }
+    .falling-coin { width:50px; height:50px; line-height:50px; font-size:27px; }
+    .falling-coin.rare { width:56px; height:56px; line-height:56px; }
+  }
+
 </style>
 </head>
 <body>
@@ -5039,6 +5449,36 @@
   </div>
 </div>
 
+
+
+<!-- ==================== ВКЛАДКА: ЛОВИ МОНЕТИ ==================== -->
+<div class="view" id="view-coins">
+  <header>Лови монети</header>
+  <div class="coin-catcher-wrap">
+    <div class="coin-catcher-top">
+      <div class="coin-catcher-stat"><strong id="coinGameTime">20</strong><span>⏱ секунд</span></div>
+      <div class="coin-catcher-stat"><strong id="coinGameScore">0</strong><span>✨ очки</span></div>
+      <div class="coin-catcher-stat coin-catcher-wallet" role="button" tabindex="0" onclick="openProfileShop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileShop();}"><strong id="coinGameGold">0 🪙</strong><span>гаманець</span></div>
+    </div>
+
+    <div class="coin-catcher-card">
+      <div class="coin-catcher-arena" id="coinCatcherArena">
+        <div class="coin-catcher-ready" id="coinCatcherReady">
+          <div class="coin-catcher-ready-icon">🪙</div>
+          <h2>Полювання на монети</h2>
+          <p>Монети падають зверху — тисни на них, поки вони не зникли. Фіолетова монета рідкісна й дає 3 очки. За одну гру можна отримати до 5 золота.</p>
+          <button type="button" class="coin-catcher-start-btn" id="coinCatcherStartBtn" onclick="startCoinCatcherGame()">Почати</button>
+        </div>
+      </div>
+      <div class="coin-catcher-bottom">
+        <div class="coin-catcher-message" id="coinCatcherMessage">Завантажую денний ліміт…</div>
+        <div class="coin-catcher-progress" aria-hidden="true"><div id="coinCatcherProgressBar"></div></div>
+      </div>
+    </div>
+    <div class="coin-catcher-footnote">3 нагороджувані спроби на день · максимум 5 🪙 за одну гру · золото зараховується у профіль після завершення 20 секунд.</div>
+  </div>
+</div>
+
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
 <div class="view" id="view-community">
   <header>Спільнота</header>
@@ -5095,6 +5535,11 @@
   <button class="nav-btn" data-view="view-dungeon">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V8l7-4 7 4v12"/><path d="M8 20v-5h8v5M9 9h.01M15 9h.01"/><path d="M3.5 20h17"/></svg></span>
     <span>Данж</span>
+  </button>
+
+  <button class="nav-btn" data-view="view-coins">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7.5"/><path d="M9.5 9.5h4.1a1.9 1.9 0 0 1 0 3.8H10.4a1.9 1.9 0 0 0 0 3.8h4.1M12 7.5v9"/></svg></span>
+    <span>Монети</span>
   </button>
   <button class="nav-btn" data-view="view-community">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
