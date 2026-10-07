@@ -333,6 +333,207 @@ async function finishCoinCatcherGame() {
   }
 }
 
+
+/* ==================== СКАРБНИЦЯ · MEMORY PAIRS ==================== */
+const TREASURE_DURATION_MS = 40000;
+const TREASURE_ICONS = ['🎲','🐉','⚔️','🧪','👑','🛡️','🗝️','💎'];
+const treasureGame = {
+  active: false,
+  claiming: false,
+  deck: [],
+  open: [],
+  matched: new Set(),
+  pairs: 0,
+  moves: 0,
+  streak: 0,
+  bestStreak: 0,
+  startedAt: 0,
+  timer: 0,
+  runId: '',
+  gold: 0,
+  locked: false,
+};
+
+function treasureShuffle(items) {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function treasureHud(leftMs = TREASURE_DURATION_MS) {
+  const sec = Math.max(0, Math.ceil(leftMs / 1000));
+  const time = document.getElementById('treasureTime');
+  const pairs = document.getElementById('treasurePairs');
+  const moves = document.getElementById('treasureMoves');
+  const streak = document.getElementById('treasureStreak');
+  const gold = document.getElementById('treasureGold');
+  const bar = document.getElementById('treasureProgressBar');
+  if (time) time.textContent = String(sec);
+  if (pairs) pairs.textContent = `${treasureGame.pairs}/8`;
+  if (moves) moves.textContent = String(treasureGame.moves);
+  if (streak) streak.textContent = String(treasureGame.streak);
+  if (gold) gold.textContent = `${Math.max(0, Number(treasureGame.gold) || 0)} 🪙`;
+  if (bar) bar.style.width = `${Math.max(0, Math.min(100, leftMs / TREASURE_DURATION_MS * 100))}%`;
+}
+
+function treasureMessage(html) {
+  const el = document.getElementById('treasureMessage');
+  if (el) el.innerHTML = html;
+}
+
+function treasureRenderBoard() {
+  const board = document.getElementById('treasureBoard');
+  if (!board) return;
+  board.innerHTML = treasureGame.deck.map((icon, i) => {
+    const isOpen = treasureGame.open.includes(i);
+    const isMatched = treasureGame.matched.has(i);
+    const classes = ['treasure-card'];
+    if (isOpen) classes.push('open');
+    if (isMatched) classes.push('matched');
+    return `<button type="button" class="${classes.join(' ')}" data-treasure-index="${i}" ${isMatched ? 'disabled' : ''} aria-label="Карта ${i+1}">
+      <span class="treasure-card-back">✦</span>
+      <span class="treasure-card-front">${icon}</span>
+    </button>`;
+  }).join('');
+}
+
+function treasureSetStartVisible(visible) {
+  const panel = document.getElementById('treasureStartPanel');
+  if (panel) panel.hidden = !visible;
+}
+
+async function initTreasureGameTab() {
+  treasureRenderBoard();
+  treasureHud();
+  if (!treasureGame.active) {
+    treasureSetStartVisible(true);
+    treasureMessage('Знайди всі 8 пар до завершення часу. Серія правильних пар росте без помилок.');
+  }
+  try {
+    const profile = await coinRushFetchJson('/api/profile/summary', {headers: telegramAuthHeaders()}, 9000);
+    treasureGame.gold = Math.max(0, Number(profile.gold) || 0);
+    treasureHud(treasureGame.active ? Math.max(0, TREASURE_DURATION_MS - (performance.now() - treasureGame.startedAt)) : TREASURE_DURATION_MS);
+  } catch (_) {}
+}
+
+function startTreasureGame() {
+  if (treasureGame.active || treasureGame.claiming) return;
+  if (treasureGame.timer) clearInterval(treasureGame.timer);
+  treasureGame.deck = treasureShuffle([...TREASURE_ICONS, ...TREASURE_ICONS]);
+  treasureGame.open = [];
+  treasureGame.matched = new Set();
+  treasureGame.pairs = 0;
+  treasureGame.moves = 0;
+  treasureGame.streak = 0;
+  treasureGame.bestStreak = 0;
+  treasureGame.locked = false;
+  treasureGame.active = true;
+  treasureGame.claiming = false;
+  treasureGame.runId = coinRushUuid();
+  treasureGame.startedAt = performance.now();
+  treasureSetStartVisible(false);
+  treasureRenderBoard();
+  treasureHud(TREASURE_DURATION_MS);
+  treasureMessage('Відкривай по дві карти. Однакові залишаться відкритими.');
+  treasureGame.timer = setInterval(() => {
+    if (!treasureGame.active) return;
+    const left = Math.max(0, TREASURE_DURATION_MS - (performance.now() - treasureGame.startedAt));
+    treasureHud(left);
+    if (left <= 0) finishTreasureGame(false);
+  }, 200);
+}
+
+async function treasureCardClick(index) {
+  if (!treasureGame.active || treasureGame.locked || treasureGame.claiming) return;
+  if (treasureGame.matched.has(index) || treasureGame.open.includes(index)) return;
+  treasureGame.open.push(index);
+  treasureRenderBoard();
+  try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch (_) {}
+  if (treasureGame.open.length < 2) return;
+
+  treasureGame.moves += 1;
+  treasureGame.locked = true;
+  const [a, b] = treasureGame.open;
+  const matched = treasureGame.deck[a] === treasureGame.deck[b];
+  if (matched) {
+    await new Promise(r => setTimeout(r, 280));
+    treasureGame.matched.add(a);
+    treasureGame.matched.add(b);
+    treasureGame.pairs += 1;
+    treasureGame.streak += 1;
+    treasureGame.bestStreak = Math.max(treasureGame.bestStreak, treasureGame.streak);
+    treasureGame.open = [];
+    treasureGame.locked = false;
+    treasureRenderBoard();
+    treasureHud(Math.max(0, TREASURE_DURATION_MS - (performance.now() - treasureGame.startedAt)));
+    treasureMessage(`Пара знайдена ✨ Серія: <strong>${treasureGame.streak}</strong>.`);
+    try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('success'); } catch (_) {}
+    if (treasureGame.pairs >= 8) finishTreasureGame(true);
+  } else {
+    treasureGame.streak = 0;
+    treasureHud(Math.max(0, TREASURE_DURATION_MS - (performance.now() - treasureGame.startedAt)));
+    await new Promise(r => setTimeout(r, 650));
+    treasureGame.open = [];
+    treasureGame.locked = false;
+    treasureRenderBoard();
+    treasureMessage('Не збіглося. Шукай далі.');
+  }
+}
+
+async function finishTreasureGame(completed) {
+  if (!treasureGame.active || treasureGame.claiming) return;
+  treasureGame.active = false;
+  treasureGame.claiming = true;
+  treasureGame.locked = true;
+  if (treasureGame.timer) clearInterval(treasureGame.timer);
+  treasureGame.timer = 0;
+
+  const durationMs = Math.max(5000, Math.min(TREASURE_DURATION_MS, Math.round(performance.now() - treasureGame.startedAt)));
+  treasureHud(Math.max(0, TREASURE_DURATION_MS - durationMs));
+  treasureMessage(`Раунд завершено: <strong>${treasureGame.pairs}/8 пар</strong>. Зараховую нагороду…`);
+
+  try {
+    const data = await coinRushFetchJson('/api/minigames/treasure-memory/claim', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({
+        run_id: treasureGame.runId,
+        pairs: treasureGame.pairs,
+        moves: treasureGame.moves,
+        duration_ms: durationMs,
+        completed: !!completed,
+      }),
+    }, 15000);
+    const reward = Math.max(0, Number(data.reward_gold) || 0);
+    if (Number.isFinite(Number(data.gold_balance))) treasureGame.gold = Math.max(0, Number(data.gold_balance));
+    if (typeof dungeonProfileCache !== 'undefined') {
+      dungeonProfileCache = dungeonProfileCache ? {...dungeonProfileCache, gold: treasureGame.gold} : {gold: treasureGame.gold};
+    }
+    treasureGame.claiming = false;
+    treasureHud(0);
+    treasureSetStartVisible(true);
+    const startBtn = document.getElementById('treasureStartBtn');
+    if (startBtn) startBtn.textContent = 'Грати ще раз';
+    treasureMessage(`Знайдено <strong>${treasureGame.pairs}/8</strong> пар за ${treasureGame.moves} ходів.<br>Нагорода: <strong>+${reward} 🪙</strong>.`);
+  } catch (err) {
+    treasureGame.claiming = false;
+    treasureSetStartVisible(true);
+    const startBtn = document.getElementById('treasureStartBtn');
+    if (startBtn) startBtn.textContent = 'Грати ще раз';
+    const code = err?.data?.error || err?.message || 'network_error';
+    treasureMessage(`Результат: <strong>${treasureGame.pairs}/8 пар</strong>.<br>Сервер не зарахував нагороду: <strong>${String(code)}</strong>.`);
+  }
+}
+
+document.addEventListener('click', event => {
+  const card = event.target.closest?.('[data-treasure-index]');
+  if (!card) return;
+  treasureCardClick(Number(card.dataset.treasureIndex));
+});
+
 </script>
 <style>
   :root {
@@ -4738,6 +4939,103 @@ async function finishCoinCatcherGame() {
     .mini-game-card { min-height: 0; }
   }
 
+
+  /* ==================== СКАРБНИЦЯ ==================== */
+  .mini-game-card.treasure-game::after {
+    background: radial-gradient(circle, rgba(53,211,164,.22), transparent 68%);
+  }
+  .mini-game-card.treasure-game .mini-game-icon {
+    border-color: rgba(76,220,175,.34);
+    background: rgba(42,166,129,.12);
+  }
+  .mini-game-card.treasure-game .mini-game-launch {
+    border-color: rgba(86,223,181,.5);
+    background: linear-gradient(180deg, #56d7ad, #2c9a79);
+    color: #071712;
+  }
+  .treasure-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 10px 14px 104px;
+  }
+  .treasure-top {
+    display: grid;
+    grid-template-columns: repeat(5,minmax(0,1fr));
+    gap: 8px;
+    margin: 10px 0 12px;
+  }
+  .treasure-stat {
+    padding: 9px 5px;
+    text-align: center;
+    border: 1px solid rgba(73,203,162,.25);
+    border-radius: 14px;
+    background: rgba(8,23,31,.78);
+  }
+  .treasure-stat strong { display:block; font-size:18px; color:#eafcf5; }
+  .treasure-stat span { display:block; margin-top:3px; font-size:9px; color:#9bb8ad; text-transform:uppercase; letter-spacing:.07em; }
+  .treasure-board {
+    display:grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap:10px;
+    padding:14px;
+    border:1px solid rgba(73,203,162,.27);
+    border-radius:22px;
+    background: linear-gradient(145deg, rgba(12,34,39,.96), rgba(6,18,29,.98));
+    min-height: 360px;
+  }
+  .treasure-card {
+    position:relative;
+    min-height:78px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:16px;
+    background:linear-gradient(145deg,#16283b,#0b1728);
+    color:#fff;
+    font:inherit;
+    overflow:hidden;
+    transform-style:preserve-3d;
+    transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+  }
+  .treasure-card:active { transform:scale(.97); }
+  .treasure-card-back,.treasure-card-front {
+    position:absolute; inset:0; display:grid; place-items:center;
+  }
+  .treasure-card-back { font-size:25px; color:#d7b64a; }
+  .treasure-card-front { font-size:36px; opacity:0; transform:scale(.7); transition:opacity .14s ease,transform .14s ease; }
+  .treasure-card.open,.treasure-card.matched {
+    border-color:rgba(85,226,181,.56);
+    background:linear-gradient(145deg,rgba(31,91,76,.95),rgba(11,42,45,.98));
+    box-shadow:0 0 18px rgba(57,211,164,.14);
+  }
+  .treasure-card.open .treasure-card-back,.treasure-card.matched .treasure-card-back { opacity:0; }
+  .treasure-card.open .treasure-card-front,.treasure-card.matched .treasure-card-front { opacity:1; transform:scale(1); }
+  .treasure-card.matched { filter:saturate(.8); }
+  .treasure-panel {
+    margin-top:12px;
+    padding:15px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    background:rgba(5,15,26,.82);
+    text-align:center;
+  }
+  .treasure-start-panel[hidden] { display:none !important; }
+  .treasure-start-panel h2 { margin:0 0 6px; font-family:'Cinzel',serif; font-size:20px; }
+  .treasure-start-panel p { margin:0 0 12px; color:var(--muted); font-size:13px; }
+  .treasure-start-btn {
+    min-width:180px; min-height:44px; border:1px solid rgba(85,226,181,.55); border-radius:13px;
+    background:linear-gradient(180deg,#57d8ae,#2b9676); color:#071712; font:inherit; font-weight:900;
+  }
+  .treasure-message { color:#c4d5d0; font-size:14px; line-height:1.4; min-height:40px; }
+  .treasure-progress { height:7px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.08); margin-top:10px; }
+  .treasure-progress > div { height:100%; width:100%; background:linear-gradient(90deg,#2c9a79,#73e8c1); transition:width .2s linear; }
+  .treasure-footnote { margin-top:12px; text-align:center; color:#748b9e; font-size:12px; line-height:1.45; }
+  @media (max-width:430px) {
+    .treasure-top { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    .treasure-stat:nth-child(4), .treasure-stat:nth-child(5) { grid-column: span 1; }
+    .treasure-board { gap:7px; padding:10px; min-height:330px; }
+    .treasure-card { min-height:70px; border-radius:13px; }
+    .treasure-card-front { font-size:31px; }
+  }
+
   /* ==================== GOLD / SHOP ==================== */
   .mmorpg-title-row {
     display: flex;
@@ -5642,6 +5940,15 @@ async function finishCoinCatcherGame() {
         <div class="mini-game-meta"><span>20 секунд</span><span>без ліміту</span><span>до 5 🪙</span></div>
         <button type="button" class="mini-game-launch" onclick="openMiniGame('view-coins')">Грати</button>
       </article>
+
+      <article class="mini-game-card treasure-game">
+        <div class="mini-game-icon">🃏</div>
+        <div class="mini-game-tag">Пам’ять · швидкість</div>
+        <h2 class="mini-game-title">Скарбниця</h2>
+        <p class="mini-game-desc">Відкривай карти по дві, запам’ятовуй символи та знайди всі 8 пар до завершення часу.</p>
+        <div class="mini-game-meta"><span>16 карт</span><span>40 секунд</span><span>до 5 🪙</span></div>
+        <button type="button" class="mini-game-launch" onclick="openMiniGame('view-treasure')">Грати</button>
+      </article>
     </div>
   </div>
 </div>
@@ -5733,6 +6040,35 @@ async function finishCoinCatcherGame() {
       </div>
     </div>
     <div class="coin-catcher-footnote">Без ліміту спроб · максимум 5 🪙 за одну гру · золото зараховується у профіль після завершення 20 секунд.</div>
+  </div>
+</div>
+
+
+<!-- ==================== ВКЛАДКА: СКАРБНИЦЯ ==================== -->
+<div class="view" id="view-treasure">
+  <header>Скарбниця</header>
+  <button type="button" class="mini-game-back" onclick="showMainView('view-games')">← До ігор</button>
+  <div class="treasure-wrap">
+    <div class="treasure-top">
+      <div class="treasure-stat"><strong id="treasureTime">40</strong><span>⏱ секунд</span></div>
+      <div class="treasure-stat"><strong id="treasurePairs">0/8</strong><span>пари</span></div>
+      <div class="treasure-stat"><strong id="treasureMoves">0</strong><span>ходи</span></div>
+      <div class="treasure-stat"><strong id="treasureStreak">0</strong><span>серія</span></div>
+      <div class="treasure-stat" role="button" tabindex="0" onclick="openProfileShop()"><strong id="treasureGold">0 🪙</strong><span>гаманець</span></div>
+    </div>
+
+    <div class="treasure-board" id="treasureBoard" aria-label="Поле гри Скарбниця"></div>
+
+    <div class="treasure-panel">
+      <div class="treasure-start-panel" id="treasureStartPanel">
+        <h2>🃏 Скарбниця</h2>
+        <p>Знайди 8 однакових пар. Помилка скидає серію, але не забирає золото.</p>
+        <button type="button" class="treasure-start-btn" id="treasureStartBtn" onclick="startTreasureGame()">Почати</button>
+      </div>
+      <div class="treasure-message" id="treasureMessage">Знайди всі пари до завершення часу.</div>
+      <div class="treasure-progress" aria-hidden="true"><div id="treasureProgressBar"></div></div>
+    </div>
+    <div class="treasure-footnote">0–2 пари = 0 🪙 · 3–4 = 1 🪙 · 5–6 = 2 🪙 · 7 = 3 🪙 · усі 8 = 4 🪙, а за повне проходження до 30 секунд — 5 🪙.</div>
   </div>
 </div>
 
@@ -8220,7 +8556,7 @@ function showMainView(viewId) {
   if (!document.getElementById(viewId)) viewId = 'view-home';
   if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
-  const navView = (viewId === 'view-dungeon' || viewId === 'view-coins') ? 'view-games' : viewId;
+  const navView = (viewId === 'view-dungeon' || viewId === 'view-coins' || viewId === 'view-treasure') ? 'view-games' : viewId;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === navView));
   if (viewId === 'view-home') loadHomeHub();
   if (viewId === 'view-community') loadCommunity();
@@ -8229,11 +8565,12 @@ function showMainView(viewId) {
   if (viewId === 'view-events') loadEvents();
   if (viewId === 'view-dungeon') initDungeonTab();
   if (viewId === 'view-coins') initCoinCatcherTab();
+  if (viewId === 'view-treasure') initTreasureGameTab();
   window.scrollTo({top:0, behavior:'auto'});
 }
 
 function openMiniGame(viewId) {
-  if (viewId !== 'view-dungeon' && viewId !== 'view-coins') return;
+  if (viewId !== 'view-dungeon' && viewId !== 'view-coins' && viewId !== 'view-treasure') return;
   if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
   showMainView(viewId);
 }

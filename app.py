@@ -58,6 +58,7 @@ PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 DUNGEON_RUNS_REST = f"{SUPABASE_URL}/rest/v1/dungeon_runs"
 DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
 COIN_RUSH_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_coin_catcher_run"
+TREASURE_MEMORY_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_treasure_memory_run"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -2276,6 +2277,77 @@ def claim_coin_rush_reward_v2():
         return jsonify({"error": "run_conflict"}), 409
 
     logging.error("Coin Rush RPC unexpected result: %r", result)
+    return jsonify({"error": "reward_unknown_result", "status": status}), 502
+
+
+@app.route("/api/minigames/treasure-memory/claim", methods=["POST"])
+def claim_treasure_memory_reward():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    run_id = str(data.get("run_id") or "").strip()
+    try:
+        uuid.UUID(run_id)
+    except Exception:
+        return jsonify({"error": "invalid_run_id"}), 400
+
+    try:
+        pairs = max(0, min(8, int(data.get("pairs") or 0)))
+        moves = max(0, min(200, int(data.get("moves") or 0)))
+        duration_ms = max(0, min(60000, int(data.get("duration_ms") or 0)))
+        completed = bool(data.get("completed"))
+    except Exception:
+        return jsonify({"error": "invalid_result"}), 400
+
+    if duration_ms < 5000:
+        return jsonify({"error": "round_too_short"}), 400
+
+    try:
+        resp = requests.post(
+            TREASURE_MEMORY_CLAIM_RPC,
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={
+                "p_run_id": run_id,
+                "p_user_id": int(user.get("id")),
+                "p_pairs": pairs,
+                "p_moves": moves,
+                "p_duration_ms": duration_ms,
+                "p_completed": completed,
+            },
+            timeout=20,
+        )
+    except Exception:
+        logging.exception("Treasure Memory: помилка з'єднання з Supabase")
+        return jsonify({"error": "reward_service_unavailable"}), 503
+
+    if not resp.ok:
+        logging.error("Treasure Memory RPC failed: status=%s body=%s", resp.status_code, (resp.text or "")[:800])
+        return jsonify({"error": "reward_rpc_failed", "upstream_status": resp.status_code}), 502
+
+    try:
+        result = resp.json()
+    except Exception:
+        logging.error("Treasure Memory RPC returned invalid JSON: %s", (resp.text or "")[:800])
+        return jsonify({"error": "reward_rpc_invalid_response"}), 502
+
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    if not isinstance(result, dict):
+        result = {"status": "unknown"}
+
+    status = str(result.get("status") or "")
+    if status in ("settled", "already_settled"):
+        return jsonify(result), 200
+    if status == "profile_not_found":
+        return jsonify({"error": "profile_not_found"}), 404
+    if status == "too_early":
+        return jsonify({"error": "round_too_short"}), 400
+    if status == "run_conflict":
+        return jsonify({"error": "run_conflict"}), 409
+
+    logging.error("Treasure Memory RPC unexpected result: %r", result)
     return jsonify({"error": "reward_unknown_result", "status": status}), 502
 
 
