@@ -110,7 +110,12 @@ function spawnCoinCatcherCoin() {
   coin.setAttribute('aria-label', rare ? 'Рідкісна монета, 3 очки' : 'Монета, 1 очко');
   const maxLeft = Math.max(8, arena.clientWidth - (rare ? 66 : 60));
   coin.style.left = `${Math.floor(6 + Math.random() * Math.max(1, maxLeft - 12))}px`;
-  coin.style.setProperty('--fall-time', `${(2.65 + Math.random() * 1.55).toFixed(2)}s`);
+  const fallTime = `${(2.65 + Math.random() * 1.55).toFixed(2)}s`;
+  coin.style.setProperty('--fall-time', fallTime);
+  // The app has a global prefers-reduced-motion rule. On iOS/Telegram it can
+  // shrink every CSS animation to ~0ms, making spawned coins disappear instantly.
+  // This gameplay animation must retain its real duration.
+  coin.style.setProperty('animation-duration', fallTime, 'important');
   coin.addEventListener('click', () => {
     if (!coinCatcherState.running || coin.classList.contains('caught')) return;
     const value = Math.max(1, Number(coin.dataset.value) || 1);
@@ -5231,7 +5236,13 @@ async function finishCoinCatcherGame() {
   }
   .falling-coin.caught {
     animation: coinCaught .16s ease-out forwards !important;
+    animation-duration: .16s !important;
     pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .falling-coin:not(.caught) {
+      animation-duration: var(--fall-time, 3.4s) !important;
+    }
   }
   @keyframes coinDrop {
     from { transform: translateY(0) rotate(0deg); }
