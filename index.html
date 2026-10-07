@@ -20,6 +20,8 @@ let coinCatcherState = {
   caught: 0,
   timeLeft: COIN_CATCHER_DURATION,
   attemptsLeft: 0,
+  statusLoaded: false,
+  loadError: false,
   accountGold: 0,
   spawnTimer: null,
   tickTimer: null,
@@ -56,13 +58,20 @@ function renderCoinCatcherReady(message) {
   const msg = document.getElementById('coinCatcherMessage');
   if (ready) ready.hidden = coinCatcherState.running;
   if (btn) {
-    btn.disabled = coinCatcherState.running || coinCatcherState.finishing || coinCatcherState.attemptsLeft <= 0;
-    btn.textContent = coinCatcherState.attemptsLeft > 0 ? 'Почати' : 'Спроби на сьогодні закінчились';
+    if (!coinCatcherState.statusLoaded) {
+      btn.disabled = coinCatcherState.running || coinCatcherState.finishing || !coinCatcherState.loadError;
+      btn.textContent = coinCatcherState.loadError ? 'Спробувати ще раз' : 'Завантаження…';
+    } else {
+      btn.disabled = coinCatcherState.running || coinCatcherState.finishing || coinCatcherState.attemptsLeft <= 0;
+      btn.textContent = coinCatcherState.attemptsLeft > 0 ? 'Почати' : 'Спроби на сьогодні закінчились';
+    }
   }
   if (msg) {
-    msg.innerHTML = message || (coinCatcherState.attemptsLeft > 0
-      ? `Сьогодні залишилось <strong>${coinCatcherState.attemptsLeft}</strong> із 3 нагороджуваних спроб.`
-      : `На сьогодні всі <strong>3 спроби</strong> використані. Завтра можна грати знову.`);
+    msg.innerHTML = message || (!coinCatcherState.statusLoaded
+      ? 'Завантажую денний ліміт…'
+      : coinCatcherState.attemptsLeft > 0
+        ? `Сьогодні залишилось <strong>${coinCatcherState.attemptsLeft}</strong> із 3 нагороджуваних спроб.`
+        : `На сьогодні всі <strong>3 спроби</strong> використані. Завтра можна грати знову.`);
   }
   renderCoinCatcherHud();
 }
@@ -72,16 +81,23 @@ async function initCoinCatcherTab() {
     renderCoinCatcherHud();
     return;
   }
+  coinCatcherState.statusLoaded = false;
+  coinCatcherState.loadError = false;
+  renderCoinCatcherReady();
   try {
     const res = await fetch('/api/coin-catcher/status', {headers: telegramAuthHeaders()});
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'status_failed');
     coinCatcherState.attemptsLeft = Math.max(0, Number(data.attempts_left) || 0);
     coinCatcherState.accountGold = Math.max(0, Number(data.gold) || 0);
+    coinCatcherState.statusLoaded = true;
+    coinCatcherState.loadError = false;
     coinCatcherState.timeLeft = COIN_CATCHER_DURATION;
     renderCoinCatcherReady();
   } catch (_) {
-    renderCoinCatcherReady('Не вдалося завантажити мінігру. Перевір з’єднання й відкрий вкладку ще раз.');
+    coinCatcherState.statusLoaded = false;
+    coinCatcherState.loadError = true;
+    renderCoinCatcherReady('Не вдалося завантажити мінігру. Натисни «Спробувати ще раз».');
   }
 }
 
@@ -114,7 +130,12 @@ function spawnCoinCatcherCoin() {
 }
 
 async function startCoinCatcherGame() {
-  if (coinCatcherState.running || coinCatcherState.finishing || coinCatcherState.attemptsLeft <= 0) return;
+  if (coinCatcherState.running || coinCatcherState.finishing) return;
+  if (!coinCatcherState.statusLoaded) {
+    await initCoinCatcherTab();
+    return;
+  }
+  if (coinCatcherState.attemptsLeft <= 0) return;
   const btn = document.getElementById('coinCatcherStartBtn');
   if (btn) btn.disabled = true;
   const msg = document.getElementById('coinCatcherMessage');
