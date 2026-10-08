@@ -2607,6 +2607,8 @@ document.addEventListener('click', event => {
     box-shadow: 0 3px 12px rgba(0,0,0,.18);
   }
   .profile-avatar {
+    position: relative;
+    isolation: isolate;
     width: 76px;
     height: 76px;
     flex: 0 0 76px;
@@ -2773,6 +2775,8 @@ document.addEventListener('click', event => {
   }
 
   .home-avatar, .club-member-avatar {
+    position: relative;
+    isolation: isolate;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
@@ -5471,6 +5475,108 @@ document.addEventListener('click', event => {
   }
   @keyframes shopLightningPulse { from{filter:brightness(.92);box-shadow:0 0 0 2px rgba(156,220,255,.14),0 0 9px #4ba8ff,0 0 20px rgba(137,94,255,.32)} to{filter:brightness(1.17);box-shadow:0 0 0 2px rgba(255,255,255,.35),0 0 22px #65d9ff,0 0 42px rgba(137,94,255,.72)} }
   @keyframes shopVoidPulse { 0%,100%{transform:scale(1);filter:saturate(1)} 50%{transform:scale(1.025);filter:saturate(1.35) brightness(1.08)} }
+
+
+  /* Декоративні рамки аватарок магазину */
+  .profile-hero[class*="frame-shop-"] .profile-avatar::before,
+  .profile-hero[class*="frame-shop-"] .profile-avatar::after,
+  .home-avatar[class*="frame-shop-"]::before,
+  .home-avatar[class*="frame-shop-"]::after,
+  .club-member-avatar[class*="frame-shop-"]::before,
+  .club-member-avatar[class*="frame-shop-"]::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .profile-hero[class*="frame-shop-"] .profile-avatar::after,
+  .home-avatar[class*="frame-shop-"]::after,
+  .club-member-avatar[class*="frame-shop-"]::after {
+    inset: 7px;
+    z-index: 1;
+    opacity: .95;
+  }
+
+  .profile-hero.frame-shop-bronze .profile-avatar::before,
+  .home-avatar.frame-shop-bronze::before,
+  .club-member-avatar.frame-shop-bronze::before {
+    background: conic-gradient(from 90deg, rgba(255,222,166,.95), rgba(148,84,36,.92), rgba(233,179,110,.96), rgba(122,72,39,.9), rgba(255,222,166,.95));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  }
+  .profile-hero.frame-shop-bronze .profile-avatar::after,
+  .home-avatar.frame-shop-bronze::after,
+  .club-member-avatar.frame-shop-bronze::after {
+    background: radial-gradient(circle at 20% 20%, #f5d6a4 0 1.5px, transparent 2.2px), radial-gradient(circle at 80% 20%, #f5d6a4 0 1.5px, transparent 2.2px), radial-gradient(circle at 20% 80%, #f5d6a4 0 1.5px, transparent 2.2px), radial-gradient(circle at 80% 80%, #f5d6a4 0 1.5px, transparent 2.2px);
+  }
+
+  .profile-hero.frame-shop-frost .profile-avatar::before,
+  .home-avatar.frame-shop-frost::before,
+  .club-member-avatar.frame-shop-frost::before {
+    background: conic-gradient(from 10deg, rgba(235,250,255,.98), rgba(126,210,255,.98), rgba(229,248,255,.98), rgba(111,182,255,.94), rgba(235,250,255,.98));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  }
+  .profile-hero.frame-shop-frost .profile-avatar::after,
+  .home-avatar.frame-shop-frost::after,
+  .club-member-avatar.frame-shop-frost::after {
+    background: linear-gradient(135deg, transparent 0 28%, rgba(255,255,255,.55) 28% 31%, transparent 31% 48%, rgba(191,237,255,.48) 48% 51%, transparent 51% 68%, rgba(255,255,255,.44) 68% 71%, transparent 71%);
+    opacity: .85;
+  }
+
+  .profile-hero.frame-shop-arcane .profile-avatar::before,
+  .home-avatar.frame-shop-arcane::before,
+  .club-member-avatar.frame-shop-arcane::before {
+    background: conic-gradient(from 180deg, rgba(236,205,96,.95), rgba(118,76,219,.98), rgba(230,187,82,.95), rgba(104,58,186,.98), rgba(236,205,96,.95));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  }
+  .profile-hero.frame-shop-arcane .profile-avatar::after,
+  .home-avatar.frame-shop-arcane::after,
+  .club-member-avatar.frame-shop-arcane::after {
+    background: radial-gradient(circle at 50% 12%, rgba(242,215,124,.92) 0 1.5px, transparent 2px), radial-gradient(circle at 88% 50%, rgba(242,215,124,.92) 0 1.5px, transparent 2px), radial-gradient(circle at 50% 88%, rgba(242,215,124,.92) 0 1.5px, transparent 2px), radial-gradient(circle at 12% 50%, rgba(242,215,124,.92) 0 1.5px, transparent 2px);
+  }
+
+  .profile-hero.frame-shop-dragonfire .profile-avatar::before,
+  .home-avatar.frame-shop-dragonfire::before,
+  .club-member-avatar.frame-shop-dragonfire::before {
+    background: conic-gradient(from 210deg, rgba(255,224,134,.98), rgba(255,123,59,.97), rgba(150,20,0,.94), rgba(255,166,72,.98), rgba(255,224,134,.98));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  }
+  .profile-hero.frame-shop-dragonfire .profile-avatar::after,
+  .home-avatar.frame-shop-dragonfire::after,
+  .club-member-avatar.frame-shop-dragonfire::after {
+    background: radial-gradient(circle at 24% 28%, rgba(255,229,146,.78) 0 2px, transparent 2.4px), radial-gradient(circle at 78% 62%, rgba(255,170,82,.7) 0 2px, transparent 2.4px), radial-gradient(circle at 46% 84%, rgba(255,111,61,.62) 0 2px, transparent 2.4px);
+  }
+
+  .profile-hero.frame-shop-lightning .profile-avatar::before,
+  .home-avatar.frame-shop-lightning::before,
+  .club-member-avatar.frame-shop-lightning::before {
+    background: conic-gradient(from 0deg, rgba(209,247,255,.98), rgba(101,208,255,.98), rgba(168,122,255,.96), rgba(209,247,255,.98));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  }
+  .profile-hero.frame-shop-lightning .profile-avatar::after,
+  .home-avatar.frame-shop-lightning::after,
+  .club-member-avatar.frame-shop-lightning::after {
+    background: linear-gradient(125deg, transparent 0 34%, rgba(255,255,255,.7) 34% 38%, transparent 38% 52%, rgba(149,234,255,.72) 52% 56%, transparent 56% 70%, rgba(197,163,255,.68) 70% 74%, transparent 74%);
+  }
+
+  .profile-hero.frame-shop-void .profile-avatar::before,
+  .home-avatar.frame-shop-void::before,
+  .club-member-avatar.frame-shop-void::before {
+    background: conic-gradient(from 180deg, rgba(231,188,255,.96), rgba(95,40,175,.98), rgba(31,16,64,.98), rgba(173,113,255,.96), rgba(231,188,255,.96));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  }
+  .profile-hero.frame-shop-void .profile-avatar::after,
+  .home-avatar.frame-shop-void::after,
+  .club-member-avatar.frame-shop-void::after {
+    background: radial-gradient(circle at 50% 50%, rgba(186,116,255,.18) 0 38%, transparent 52%), radial-gradient(circle at 28% 28%, rgba(255,255,255,.18) 0 1.5px, transparent 2px), radial-gradient(circle at 72% 72%, rgba(255,255,255,.14) 0 1.5px, transparent 2px);
+  }
 
   body.profile-bg-tavern .mmorpg-player-card, body.profile-bg-tavern .profile-hero { background:radial-gradient(circle at 18% 18%,rgba(247,179,87,.23),transparent 31%),linear-gradient(145deg,#442719,#120d0a) !important; }
   body.profile-bg-dungeon .mmorpg-player-card, body.profile-bg-dungeon .profile-hero { background:radial-gradient(circle at 83% 18%,rgba(221,109,56,.16),transparent 24%),repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 25px),linear-gradient(145deg,#292c30,#0c0e11) !important; }

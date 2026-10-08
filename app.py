@@ -1522,82 +1522,59 @@ def _xp_reward_catalog(level):
 
 
 
+
 def _profile_shop_catalog():
-    """Косметика, яку можна придбати за золото з мінігри."""
+    """Косметика, яку можна придбати за золото з мініігор."""
     return [
-        {
-            "id": "shop_frame_bronze",
-            "type": "frame",
-            "icon": "🟤",
-            "name": "Бронзова рамка",
-            "value": "shop_frame_bronze",
-            "price": 120,
-            "description": "Тепла бронзова рамка у стилі пригодницької гільдії.",
-        },
-        {
-            "id": "shop_frame_frost",
-            "type": "frame",
-            "icon": "❄️",
-            "name": "Крижана рамка",
-            "value": "shop_frame_frost",
-            "price": 220,
-            "description": "Холодне блакитне сяйво навколо аватарки.",
-        },
-        {
-            "id": "shop_frame_arcane",
-            "type": "frame",
-            "icon": "🔮",
-            "name": "Арканна рамка",
-            "value": "shop_frame_arcane",
-            "price": 380,
-            "description": "Фіолетово-золота рамка для справжнього героя.",
-        },
-        {
-            "id": "shop_frame_dragonfire",
-            "type": "frame",
-            "icon": "🐉",
-            "name": "Вогонь дракона",
-            "value": "shop_frame_dragonfire",
-            "price": 560,
-            "description": "Вогняна рамка з теплим червоно-золотим сяйвом.",
-        },
-        {
-            "id": "shop_theme_forest",
-            "type": "theme",
-            "icon": "🌿",
-            "name": "Смарагдовий ліс",
-            "value": "shop_theme_forest",
-            "price": 300,
-            "description": "Темно-зелена тема профілю з м'якими золотими акцентами.",
-        },
-        {
-            "id": "shop_theme_crimson",
-            "type": "theme",
-            "icon": "🔥",
-            "name": "Багряний рейд",
-            "value": "shop_theme_crimson",
-            "price": 450,
-            "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу.",
-        },
-        {
-            "id": "shop_theme_royal",
-            "type": "theme",
-            "icon": "👑",
-            "name": "Королівська ніч",
-            "value": "shop_theme_royal",
-            "price": 700,
-            "description": "Преміальна фіолетово-золота тема профілю.",
-        },
-        {
-            "id": "shop_theme_starlight",
-            "type": "theme",
-            "icon": "✨",
-            "name": "Зоряне сяйво",
-            "value": "shop_theme_starlight",
-            "price": 950,
-            "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
-        },
+        {"id": "shop_frame_bronze", "type": "frame", "icon": "🛡️", "name": "Бронзовий медальйон", "value": "shop_frame_bronze", "price": 120, "rarity": "rare", "description": "Обʼємна бронзова рамка з декоративними заклепками."},
+        {"id": "shop_frame_frost", "type": "frame", "icon": "❄️", "name": "Крижана корона", "value": "shop_frame_frost", "price": 220, "rarity": "rare", "description": "Крижана рамка з холодним сяйвом і кристалами."},
+        {"id": "shop_frame_arcane", "type": "frame", "icon": "🔮", "name": "Арканний вінець", "value": "shop_frame_arcane", "price": 380, "rarity": "epic", "description": "Фіолетово-золота рамка з магічними вузлами."},
+        {"id": "shop_frame_dragonfire", "type": "frame", "icon": "🐉", "name": "Драконяче полумʼя", "value": "shop_frame_dragonfire", "price": 560, "rarity": "epic", "description": "Вогняна рамка з жаром, іскрами й ефектом кузні."},
+        {"id": "shop_frame_lightning", "type": "frame", "icon": "⚡", "name": "Грім небес", "value": "shop_frame_lightning", "price": 760, "rarity": "legendary", "description": "Легендарна рамка з розрядами блискавок та пульсом енергії."},
+        {"id": "shop_frame_void", "type": "frame", "icon": "🌀", "name": "Безодня", "value": "shop_frame_void", "price": 980, "rarity": "legendary", "description": "Темно-фіолетова рамка з відчуттям порталу у порожнечу."},
+        {"id": "shop_theme_forest", "type": "theme", "icon": "🌿", "name": "Смарагдовий ліс", "value": "shop_theme_forest", "price": 300, "rarity": "rare", "description": "Темно-зелена тема профілю з мʼякими золотими акцентами."},
+        {"id": "shop_theme_crimson", "type": "theme", "icon": "🔥", "name": "Багряний рейд", "value": "shop_theme_crimson", "price": 450, "rarity": "epic", "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу."},
+        {"id": "shop_theme_royal", "type": "theme", "icon": "👑", "name": "Королівська ніч", "value": "shop_theme_royal", "price": 700, "rarity": "epic", "description": "Преміальна фіолетово-золота тема профілю."},
+        {"id": "shop_theme_starlight", "type": "theme", "icon": "✨", "name": "Зоряне сяйво", "value": "shop_theme_starlight", "price": 950, "rarity": "legendary", "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом."},
+        {"id": "shop_background_tavern", "type": "background", "icon": "🍻", "name": "Таверна пригод", "value": "shop_background_tavern", "price": 260, "rarity": "rare", "description": "Теплий таверновий фон для картки профілю."},
+        {"id": "shop_background_dungeon", "type": "background", "icon": "🪨", "name": "Камʼяний данж", "value": "shop_background_dungeon", "price": 340, "rarity": "rare", "description": "Похмурий фон у стилі темних коридорів підземелля."},
+        {"id": "shop_background_cosmos", "type": "background", "icon": "🌌", "name": "Космічна зала", "value": "shop_background_cosmos", "price": 520, "rarity": "epic", "description": "Зоряний фон для тих, хто любить футуристичний стиль."},
+        {"id": "shop_background_dragonlair", "type": "background", "icon": "🔥", "name": "Лігво дракона", "value": "shop_background_dragonlair", "price": 760, "rarity": "legendary", "description": "Полумʼяний фон із настроєм скарбниці дракона."},
+        {"id": "shop_companion_owl", "type": "companion", "icon": "🦉", "name": "Мудра сова", "value": "shop_companion_owl", "price": 240, "rarity": "rare", "description": "Маленький супутник біля аватарки, що додає шарму профілю."},
+        {"id": "shop_companion_mimic", "type": "companion", "icon": "🧰", "name": "Мімік", "value": "shop_companion_mimic", "price": 420, "rarity": "epic", "description": "Кумедний скринеподібний супутник для любителів фентезі."},
+        {"id": "shop_companion_ghost", "type": "companion", "icon": "👻", "name": "Привид", "value": "shop_companion_ghost", "price": 540, "rarity": "epic", "description": "Легкий примарний друг, який літає біля аватарки."},
+        {"id": "shop_companion_dragon", "type": "companion", "icon": "🐉", "name": "Міні-дракон", "value": "shop_companion_dragon", "price": 880, "rarity": "legendary", "description": "Легендарний дракон-компаньйон для найвідданіших гравців."},
+        {"id": "shop_coin_skin_crystal", "type": "coin_skin", "icon": "💎", "name": "Crystal Coin Rush", "value": "shop_coin_skin_crystal", "price": 210, "rarity": "rare", "description": "Крижаний вигляд монет у грі Coin Rush."},
+        {"id": "shop_coin_skin_rune", "type": "coin_skin", "icon": "🔷", "name": "Rune Coin Rush", "value": "shop_coin_skin_rune", "price": 360, "rarity": "epic", "description": "Рунічний стиль монет із магічним акцентом."},
+        {"id": "shop_coin_skin_styloteka", "type": "coin_skin", "icon": "👑", "name": "Styloteka Coin Rush", "value": "shop_coin_skin_styloteka", "price": 620, "rarity": "legendary", "description": "Преміальний фірмовий стиль для монет Coin Rush."},
+        {"id": "shop_treasure_skin_neon", "type": "treasure_skin", "icon": "🟣", "name": "Neon Treasure", "value": "shop_treasure_skin_neon", "price": 230, "rarity": "rare", "description": "Неонове оформлення карт для гри Скарбниця."},
+        {"id": "shop_treasure_skin_pirate", "type": "treasure_skin", "icon": "🏴‍☠️", "name": "Pirate Treasure", "value": "shop_treasure_skin_pirate", "price": 390, "rarity": "epic", "description": "Піратське оформлення колоди та поля Скарбниці."},
+        {"id": "shop_treasure_skin_dragon", "type": "treasure_skin", "icon": "🐲", "name": "Dragon Treasure", "value": "shop_treasure_skin_dragon", "price": 650, "rarity": "legendary", "description": "Драконяча тема для епічних партій у Скарбницю."},
+        {"id": "shop_dungeon_skin_crypt", "type": "dungeon_skin", "icon": "⚰️", "name": "Crypt Dungeon", "value": "shop_dungeon_skin_crypt", "price": 250, "rarity": "rare", "description": "Темний криптовий стиль для Данжу."},
+        {"id": "shop_dungeon_skin_arcane", "type": "dungeon_skin", "icon": "🪄", "name": "Arcane Dungeon", "value": "shop_dungeon_skin_arcane", "price": 410, "rarity": "epic", "description": "Арканне оформлення Данжу з фіолетовими акцентами."},
+        {"id": "shop_dungeon_skin_inferno", "type": "dungeon_skin", "icon": "🌋", "name": "Inferno Dungeon", "value": "shop_dungeon_skin_inferno", "price": 690, "rarity": "legendary", "description": "Палаючий стиль Данжу для найсміливіших гравців."},
+        {"id": "shop_coupon_gift_small", "type": "coupon", "icon": "🎟️", "name": "Стікерпак Styloteka", "value": "shop_coupon_gift_small", "price": 1200, "rarity": "epic", "description": "Купон на стікерпак Styloteka — найдешевший із подарункових лотів."},
+        {"id": "shop_coupon_gift_large", "type": "coupon", "icon": "☕", "name": "Чашка-мерч Styloteka", "value": "shop_coupon_gift_large", "price": 1800, "rarity": "legendary", "description": "Подарунковий купон на брендовану чашку Styloteka."},
+        {"id": "shop_coupon_gift_royal", "type": "coupon", "icon": "🎁", "name": "Виграш настолки", "value": "shop_coupon_gift_royal", "price": 2600, "rarity": "legendary", "description": "Найдорожчий лот магазину — купон на виграш настільної гри."},
     ]
+
+
+def _normalize_shop_loadout(profile=None):
+    profile = profile or {}
+    raw = profile.get("shop_loadout") or {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    cleaned = {}
+    for key in ("background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"):
+        value = str(raw.get(key) or "").strip()
+        if value:
+            cleaned[key] = value
+    return cleaned
 
 
 def _owned_shop_items(profile=None):
@@ -1613,6 +1590,7 @@ def _owned_shop_items(profile=None):
     return {str(x) for x in raw if x}
 
 
+
 def _profile_shop_state(profile, cosmetics=None):
     profile = profile or {}
     cosmetics = cosmetics or {}
@@ -1620,14 +1598,21 @@ def _profile_shop_state(profile, cosmetics=None):
     selected_by_type = {
         "frame": str(cosmetics.get("frame_id") or ""),
         "theme": str(cosmetics.get("theme_id") or ""),
+        "background": str(cosmetics.get("background_id") or ""),
+        "companion": str(cosmetics.get("companion_id") or ""),
+        "coin_skin": str(cosmetics.get("coin_skin_id") or ""),
+        "treasure_skin": str(cosmetics.get("treasure_skin_id") or ""),
+        "dungeon_skin": str(cosmetics.get("dungeon_skin_id") or ""),
+        "coupon": "",
     }
     result = []
     for item in _profile_shop_catalog():
         row = dict(item)
         row["owned"] = row["id"] in owned
-        row["active"] = selected_by_type.get(row["type"]) == row["id"]
+        row["active"] = bool(selected_by_type.get(row["type"]) == row["id"])
         result.append(row)
     return result
+
 
 
 def _resolve_profile_cosmetics(level, profile=None):
@@ -1636,21 +1621,22 @@ def _resolve_profile_cosmetics(level, profile=None):
     unlocked = {r["id"]: r for r in rewards if r.get("unlocked")}
 
     owned_shop = _owned_shop_items(profile)
-    shop_available = {
-        item["id"]: item
-        for item in _profile_shop_catalog()
-        if item["id"] in owned_shop
-    }
+    shop_available = {item["id"]: item for item in _profile_shop_catalog() if item["id"] in owned_shop}
     available = {**unlocked, **shop_available}
+    shop_loadout = _normalize_shop_loadout(profile)
 
     selected = {
         "title": profile.get("selected_title_reward") or "",
         "frame": profile.get("selected_frame_reward") or "",
         "badge": profile.get("selected_badge_reward") or "",
         "theme": profile.get("selected_theme_reward") or "",
+        "background": shop_loadout.get("background") or "",
+        "companion": shop_loadout.get("companion") or "",
+        "coin_skin": shop_loadout.get("coin_skin") or "",
+        "treasure_skin": shop_loadout.get("treasure_skin") or "",
+        "dungeon_skin": shop_loadout.get("dungeon_skin") or "",
     }
 
-    # XP-нагороди доступні після рівня, магазинні — після покупки.
     for kind in tuple(selected):
         rid = selected[kind]
         reward = available.get(rid)
@@ -1665,6 +1651,11 @@ def _resolve_profile_cosmetics(level, profile=None):
         "frame_id": selected["frame"],
         "badge_id": selected["badge"],
         "theme_id": selected["theme"],
+        "background_id": selected["background"],
+        "companion_id": selected["companion"],
+        "coin_skin_id": selected["coin_skin"],
+        "treasure_skin_id": selected["treasure_skin"],
+        "dungeon_skin_id": selected["dungeon_skin"],
         "title_label": title_reward.get("value") if title_reward else "",
         "badge_label": badge_reward.get("value") if badge_reward else "",
     }
@@ -1712,7 +1703,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items",
+                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,shop_loadout,xp,gold,owned_shop_items",
                 "limit": 1,
             },
             timeout=20,
@@ -1848,7 +1839,7 @@ def get_profile_summary():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,shop_loadout",
                 "limit": 1,
             },
             timeout=10,
@@ -2003,7 +1994,7 @@ def set_profile_cosmetics():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,shop_loadout",
                 "limit": 1,
             },
             timeout=20,
@@ -2033,6 +2024,13 @@ def set_profile_cosmetics():
         "badge": "selected_badge_reward",
         "theme": "selected_theme_reward",
     }
+    shop_loadout_keys = {
+        "background": "background",
+        "companion": "companion",
+        "coin_skin": "coin_skin",
+        "treasure_skin": "treasure_skin",
+        "dungeon_skin": "dungeon_skin",
+    }
 
     patch = {}
     for kind, field in field_map.items():
@@ -2046,6 +2044,21 @@ def set_profile_cosmetics():
         if not reward or reward.get("type") != kind:
             return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
         patch[field] = reward_id
+
+    if any(kind in data for kind in shop_loadout_keys):
+        loadout = _normalize_shop_loadout(profile)
+        for kind, loadout_key in shop_loadout_keys.items():
+            if kind not in data:
+                continue
+            reward_id = str(data.get(kind) or "").strip()
+            if not reward_id:
+                loadout.pop(loadout_key, None)
+                continue
+            reward = available.get(reward_id)
+            if not reward or reward.get("type") != kind:
+                return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
+            loadout[loadout_key] = reward_id
+        patch["shop_loadout"] = loadout
 
     if not patch:
         return jsonify({"status": "ok"})
@@ -2070,6 +2083,7 @@ def set_profile_cosmetics():
 
 
 
+
 def _purchase_profile_shop_item_atomic(user_id, item):
     """Атомарно списує золото і додає косметику до профілю без окремого RPC.
 
@@ -2080,23 +2094,12 @@ def _purchase_profile_shop_item_atomic(user_id, item):
     item_id = str(item.get("id") or "")
     item_type = str(item.get("type") or "")
     price = max(0, int(item.get("price") or 0))
-    selected_field = {
-        "frame": "selected_frame_reward",
-        "theme": "selected_theme_reward",
-    }.get(item_type)
+    selected_field = {"frame": "selected_frame_reward", "theme": "selected_theme_reward"}.get(item_type)
+    loadout_key = {"background": "background", "companion": "companion", "coin_skin": "coin_skin", "treasure_skin": "treasure_skin", "dungeon_skin": "dungeon_skin"}.get(item_type)
 
     for _ in range(2):
         try:
-            current = requests.get(
-                PROFILES_REST,
-                headers=HEADERS,
-                params={
-                    "telegram_user_id": f"eq.{user_id}",
-                    "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
-                    "limit": 1,
-                },
-                timeout=20,
-            )
+            current = requests.get(PROFILES_REST, headers=HEADERS, params={"telegram_user_id": f"eq.{user_id}", "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward,shop_loadout", "limit": 1}, timeout=20)
         except Exception:
             logging.exception("Не вдалося прочитати профіль перед покупкою")
             return {"error": "shop_profile_lookup_failed"}, 503
@@ -2114,47 +2117,22 @@ def _purchase_profile_shop_item_atomic(user_id, item):
         owned = _owned_shop_items(profile)
 
         if item_id in owned:
-            return {
-                "status": "already_owned",
-                "item_id": item_id,
-                "gold_balance": gold,
-            }, 200
+            return {"status": "already_owned", "item_id": item_id, "gold_balance": gold}, 200
 
         if gold < price:
-            return {
-                "status": "not_enough_gold",
-                "item_id": item_id,
-                "price": price,
-                "gold_balance": gold,
-                "missing_gold": price - gold,
-            }, 409
+            return {"status": "not_enough_gold", "item_id": item_id, "price": price, "gold_balance": gold, "missing_gold": price - gold}, 409
 
-        patch = {
-            "gold": gold - price,
-            "owned_shop_items": sorted(owned | {item_id}),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        # Після покупки одразу застосовуємо рамку/тему — користувач відразу бачить результат.
+        patch = {"gold": gold - price, "owned_shop_items": sorted(owned | {item_id}), "updated_at": datetime.now(timezone.utc).isoformat()}
         if selected_field:
             patch[selected_field] = item_id
+        if loadout_key:
+            loadout = _normalize_shop_loadout(profile)
+            loadout[loadout_key] = item_id
+            patch["shop_loadout"] = loadout
 
-        params = {
-            "telegram_user_id": f"eq.{user_id}",
-            "gold": "is.null" if raw_gold is None else f"eq.{gold}",
-            "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
-        }
+        params = {"telegram_user_id": f"eq.{user_id}", "gold": "is.null" if raw_gold is None else f"eq.{gold}", "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward,shop_loadout"}
         try:
-            updated = requests.patch(
-                PROFILES_REST,
-                headers={
-                    **HEADERS,
-                    "Content-Type": "application/json",
-                    "Prefer": "return=representation",
-                },
-                params=params,
-                json=patch,
-                timeout=20,
-            )
+            updated = requests.patch(PROFILES_REST, headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"}, params=params, json=patch, timeout=20)
         except Exception:
             logging.exception("Не вдалося списати золото за покупку")
             return {"error": "shop_purchase_failed"}, 503
@@ -2165,15 +2143,7 @@ def _purchase_profile_shop_item_atomic(user_id, item):
 
         changed = updated.json()
         if changed:
-            return {
-                "status": "purchased",
-                "item_id": item_id,
-                "item_type": item_type,
-                "price": price,
-                "gold_balance": max(0, gold - price),
-                "equipped": bool(selected_field),
-            }, 200
-        # Баланс змінився між GET і PATCH — ще раз перечитуємо профіль.
+            return {"status": "purchased", "item_id": item_id, "item_type": item_type, "price": price, "gold_balance": max(0, gold - price), "equipped": bool(selected_field or loadout_key)}, 200
 
     return {"error": "shop_purchase_conflict"}, 409
 
