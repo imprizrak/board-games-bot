@@ -1526,12 +1526,12 @@ def _xp_reward_catalog(level):
 def _profile_shop_catalog():
     """Косметика, яку можна придбати за золото з мініігор."""
     return [
-        {"id": "shop_frame_bronze", "type": "frame", "icon": "🛡️", "name": "Бронзовий медальйон", "value": "shop_frame_bronze", "price": 120, "rarity": "rare", "description": "Обʼємна бронзова рамка з декоративними заклепками."},
-        {"id": "shop_frame_frost", "type": "frame", "icon": "❄️", "name": "Крижана корона", "value": "shop_frame_frost", "price": 220, "rarity": "rare", "description": "Крижана рамка з холодним сяйвом і кристалами."},
-        {"id": "shop_frame_arcane", "type": "frame", "icon": "🔮", "name": "Арканний вінець", "value": "shop_frame_arcane", "price": 380, "rarity": "epic", "description": "Фіолетово-золота рамка з магічними вузлами."},
-        {"id": "shop_frame_dragonfire", "type": "frame", "icon": "🐉", "name": "Драконяче полумʼя", "value": "shop_frame_dragonfire", "price": 560, "rarity": "epic", "description": "Вогняна рамка з жаром, іскрами й ефектом кузні."},
-        {"id": "shop_frame_lightning", "type": "frame", "icon": "⚡", "name": "Грім небес", "value": "shop_frame_lightning", "price": 760, "rarity": "legendary", "description": "Легендарна рамка з розрядами блискавок та пульсом енергії."},
-        {"id": "shop_frame_void", "type": "frame", "icon": "🌀", "name": "Безодня", "value": "shop_frame_void", "price": 980, "rarity": "legendary", "description": "Темно-фіолетова рамка з відчуттям порталу у порожнечу."},
+        {"id": "shop_frame_bronze", "type": "frame", "icon": "⭐", "name": "Зоряний слід", "value": "shop_frame_bronze", "price": 120, "rarity": "rare", "description": "Світла декоративна рамка з орбітою і золотими зірками."},
+        {"id": "shop_frame_frost", "type": "frame", "icon": "💫", "name": "Неоновий сад", "value": "shop_frame_frost", "price": 220, "rarity": "rare", "description": "Синьо-фіолетова рамка з мʼяким неоном і декоративними гілочками."},
+        {"id": "shop_frame_arcane", "type": "frame", "icon": "🐱", "name": "Котячі вушка", "value": "shop_frame_arcane", "price": 380, "rarity": "epic", "description": "Мила рамка з вушками та ніжним рожево-фіолетовим сяйвом."},
+        {"id": "shop_frame_dragonfire", "type": "frame", "icon": "🔥", "name": "Багряне полумʼя", "value": "shop_frame_dragonfire", "price": 560, "rarity": "epic", "description": "Яскрава рамка з червоними язиками полумʼя навколо аватарки."},
+        {"id": "shop_frame_lightning", "type": "frame", "icon": "🪽", "name": "Крила світанку", "value": "shop_frame_lightning", "price": 760, "rarity": "legendary", "description": "Легка світла рамка з крильцями та сяйвом по боках."},
+        {"id": "shop_frame_void", "type": "frame", "icon": "👾", "name": "Піксельний глітч", "value": "shop_frame_void", "price": 980, "rarity": "legendary", "description": "Піксельна рамка з ефектом цифрового глітчу навколо аватарки."},
         {"id": "shop_theme_forest", "type": "theme", "icon": "🌿", "name": "Смарагдовий ліс", "value": "shop_theme_forest", "price": 300, "rarity": "rare", "description": "Темно-зелена тема профілю з мʼякими золотими акцентами."},
         {"id": "shop_theme_crimson", "type": "theme", "icon": "🔥", "name": "Багряний рейд", "value": "shop_theme_crimson", "price": 450, "rarity": "epic", "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу."},
         {"id": "shop_theme_royal", "type": "theme", "icon": "👑", "name": "Королівська ніч", "value": "shop_theme_royal", "price": 700, "rarity": "epic", "description": "Преміальна фіолетово-золота тема профілю."},
