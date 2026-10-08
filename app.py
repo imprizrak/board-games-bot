@@ -2533,6 +2533,431 @@ def check_admin():
     return jsonify({"is_admin": is_admin})
 
 
+
+@app.route("/api/profile/visit", methods=["POST"])
+def record_profile_visit():
+    """Фіксує відкриття Mini App для авторизованого Telegram-користувача."""
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    username = (user.get("username") or "").lstrip("@").lower()
+    display_name = " ".join(
+        x for x in [user.get("first_name"), user.get("last_name")] if x
+    ).strip() or username or "Гравець"
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        current = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{user_id}",
+                "select": "telegram_user_id,visit_count,photo_url,is_blocked",
+                "limit": 1,
+            },
+            timeout=15,
+        )
+        current.raise_for_status()
+        rows = current.json() or []
+        existing = rows[0] if rows else None
+
+        visit_count = int((existing or {}).get("visit_count") or 0) + 1
+        payload = {
+            "telegram_user_id": user_id,
+            "username": username,
+            "display_name": display_name,
+            "last_seen_at": now_iso,
+            "visit_count": visit_count,
+            "updated_at": now_iso,
+        }
+        if not existing:
+            payload["photo_url"] = _profile_avatar_url(user_id)
+
+        saved = requests.post(
+            PROFILES_REST,
+            headers={
+                **HEADERS,
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=representation",
+            },
+            params={"on_conflict": "telegram_user_id"},
+            json=payload,
+            timeout=20,
+        )
+        saved.raise_for_status()
+        return jsonify({
+            "ok": True,
+            "telegram_user_id": user_id,
+            "last_seen_at": now_iso,
+            "visit_count": visit_count,
+            "is_blocked": bool((existing or {}).get("is_blocked")),
+        })
+    except Exception as exc:
+        logging.exception("Не вдалося зафіксувати відвідування Mini App")
+        return jsonify({"error": "visit_save_failed", "detail": str(exc)[:180]}), 500
+
+
+def _supabase_fetch_all(url, select="*", order=None, extra_params=None, page_size=1000):
+    """Зчитує всі рядки PostgREST сторінками, щоб адмінка не обрізала список."""
+    result = []
+    offset = 0
+    extra_params = dict(extra_params or {})
+    while True:
+        params = {**extra_params, "select": select, "limit": page_size, "offset": offset}
+        if order:
+            params["order"] = order
+        resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
+        resp.raise_for_status()
+        page = resp.json() or []
+        if not isinstance(page, list):
+            raise ValueError("supabase_page_not_list")
+        result.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
+    return result
+
+
+def _parse_iso_datetime(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _admin_profile_by_id(user_id):
+    resp = requests.get(
+        PROFILES_REST,
+        headers=HEADERS,
+        params={"telegram_user_id": f"eq.{int(user_id)}", "select": "*", "limit": 1},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    rows = resp.json() or []
+    return rows[0] if rows else None
+
+
+def _admin_count_runs(url, user_id):
+    try:
+        rows = _supabase_fetch_all(
+            url,
+            select="id",
+            extra_params={"telegram_user_id": f"eq.{int(user_id)}"},
+            page_size=1000,
+        )
+        return len(rows)
+    except Exception:
+        logging.exception("Не вдалося порахувати запуски мінігри для %s", user_id)
+        return 0
+
+
+def _admin_action_log(admin_id, target_id, action_type, amount=None, item_id=None, reason=None, metadata=None):
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/admin_user_actions",
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            json={
+                "admin_telegram_user_id": int(admin_id),
+                "target_telegram_user_id": int(target_id),
+                "action_type": str(action_type or ""),
+                "amount": int(amount) if amount is not None else None,
+                "item_id": item_id,
+                "reason": reason,
+                "metadata": metadata or {},
+            },
+            timeout=20,
+        ).raise_for_status()
+    except Exception:
+        logging.exception("Не вдалося записати адмін-дію")
+
+
+@app.route("/api/admin/users", methods=["GET"])
+def admin_users_dashboard():
+    """Повний список користувачів Mini App. Доступ лише адміну Telegram-групи."""
+    denied = _admin_required_response()
+    if denied:
+        return denied
+
+    try:
+        profiles = _supabase_fetch_all(
+            PROFILES_REST,
+            select=(
+                "telegram_user_id,username,display_name,photo_url,xp,gold,"
+                "owned_shop_items,created_at,updated_at,last_seen_at,visit_count,is_blocked"
+            ),
+            order="last_seen_at.desc.nullslast,created_at.desc",
+        )
+
+        run_counts = {}
+        for run_url in (
+            DUNGEON_RUNS_REST,
+            f"{SUPABASE_URL}/rest/v1/coin_catcher_runs",
+            f"{SUPABASE_URL}/rest/v1/treasure_memory_runs",
+        ):
+            try:
+                for row in _supabase_fetch_all(run_url, select="telegram_user_id"):
+                    uid = row.get("telegram_user_id")
+                    if uid is not None:
+                        uid = int(uid)
+                        run_counts[uid] = int(run_counts.get(uid, 0)) + 1
+            except Exception:
+                logging.exception("Не вдалося порахувати частину запусків мініігор")
+
+        tz = ZoneInfo(EVENT_TIMEZONE)
+        now_local = datetime.now(tz)
+        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_utc = today_start_local.astimezone(timezone.utc)
+        seven_days_ago_utc = (now_local - timedelta(days=7)).astimezone(timezone.utc)
+
+        users = []
+        active_today = 0
+        active_7d = 0
+        new_today = 0
+
+        for row in profiles:
+            try:
+                uid = int(row.get("telegram_user_id"))
+            except Exception:
+                continue
+
+            xp = int(row.get("xp") or 0)
+            gold = int(row.get("gold") or 0)
+            owned = row.get("owned_shop_items") or []
+            if isinstance(owned, str):
+                try:
+                    owned = json.loads(owned)
+                except Exception:
+                    owned = []
+            if not isinstance(owned, list):
+                owned = []
+
+            last_seen_raw = row.get("last_seen_at") or row.get("updated_at") or row.get("created_at")
+            last_seen = _parse_iso_datetime(last_seen_raw)
+            created = _parse_iso_datetime(row.get("created_at"))
+            if last_seen and last_seen >= today_start_utc:
+                active_today += 1
+            if last_seen and last_seen >= seven_days_ago_utc:
+                active_7d += 1
+            if created and created >= today_start_utc:
+                new_today += 1
+
+            users.append({
+                "telegram_user_id": uid,
+                "username": row.get("username") or "",
+                "display_name": row.get("display_name") or row.get("username") or "Гравець",
+                "photo_url": str(row.get("photo_url") or "").strip() or _profile_avatar_url(uid),
+                "xp": xp,
+                "level": max(1, xp // 250 + 1),
+                "gold": gold,
+                "shop_items_count": len(owned),
+                "visit_count": max(1, int(row.get("visit_count") or 0)),
+                "game_runs": int(run_counts.get(uid, 0)),
+                "created_at": row.get("created_at"),
+                "last_seen_at": last_seen_raw,
+                "is_blocked": bool(row.get("is_blocked")),
+            })
+
+        users.sort(
+            key=lambda x: _parse_iso_datetime(x.get("last_seen_at")) or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+
+        response = jsonify({
+            "stats": {
+                "total_users": len(users),
+                "active_today": active_today,
+                "active_7d": active_7d,
+                "new_today": new_today,
+            },
+            "users": users,
+        })
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    except Exception as exc:
+        logging.exception("Не вдалося завантажити список користувачів для адмінки")
+        return jsonify({"error": "admin_users_load_failed", "detail": str(exc)[:220]}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["GET"])
+def admin_user_detail(user_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
+
+    try:
+        profile = _admin_profile_by_id(user_id)
+        if not profile:
+            return jsonify({"error": "profile_not_found"}), 404
+
+        xp = int(profile.get("xp") or 0)
+        owned_ids = profile.get("owned_shop_items") or []
+        if isinstance(owned_ids, str):
+            try:
+                owned_ids = json.loads(owned_ids)
+            except Exception:
+                owned_ids = []
+        if not isinstance(owned_ids, list):
+            owned_ids = []
+
+        catalog = _profile_shop_catalog()
+        by_id = {str(item.get("id")): item for item in catalog}
+        owned_items = []
+        for item_id in owned_ids:
+            item = by_id.get(str(item_id))
+            if item:
+                owned_items.append({
+                    "id": item.get("id"),
+                    "name": item.get("name") or item.get("id"),
+                    "icon": item.get("icon") or "🎁",
+                    "type": item.get("type") or "item",
+                })
+            else:
+                owned_items.append({"id": str(item_id), "name": str(item_id), "icon": "🎁", "type": "item"})
+
+        profile_out = {
+            "telegram_user_id": int(profile.get("telegram_user_id")),
+            "username": profile.get("username") or "",
+            "display_name": profile.get("display_name") or profile.get("username") or "Гравець",
+            "photo_url": str(profile.get("photo_url") or "").strip() or _profile_avatar_url(user_id),
+            "xp": xp,
+            "level": max(1, xp // 250 + 1),
+            "gold": int(profile.get("gold") or 0),
+            "visit_count": max(1, int(profile.get("visit_count") or 0)),
+            "created_at": profile.get("created_at"),
+            "last_seen_at": profile.get("last_seen_at") or profile.get("updated_at") or profile.get("created_at"),
+            "is_blocked": bool(profile.get("is_blocked")),
+            "blocked_at": profile.get("blocked_at"),
+            "blocked_reason": profile.get("blocked_reason") or "",
+            "owned_shop_items": owned_items,
+        }
+
+        action_resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/admin_user_actions",
+            headers=HEADERS,
+            params={
+                "target_telegram_user_id": f"eq.{int(user_id)}",
+                "select": "id,admin_telegram_user_id,action_type,amount,item_id,reason,metadata,created_at",
+                "order": "created_at.desc",
+                "limit": 30,
+            },
+            timeout=20,
+        )
+        if action_resp.ok:
+            admin_actions = action_resp.json() or []
+        else:
+            admin_actions = []
+
+        return jsonify({
+            "user": profile_out,
+            "game_runs": {
+                "dungeon": _admin_count_runs(DUNGEON_RUNS_REST, user_id),
+                "coin_rush": _admin_count_runs(f"{SUPABASE_URL}/rest/v1/coin_catcher_runs", user_id),
+                "treasure": _admin_count_runs(f"{SUPABASE_URL}/rest/v1/treasure_memory_runs", user_id),
+            },
+            "gift_catalog": [
+                {"id": x.get("id"), "name": x.get("name") or x.get("id"), "icon": x.get("icon") or "🎁", "type": x.get("type") or "item"}
+                for x in catalog
+            ],
+            "admin_actions": admin_actions,
+        })
+    except Exception as exc:
+        logging.exception("Не вдалося завантажити картку користувача")
+        return jsonify({"error": "admin_user_detail_failed", "detail": str(exc)[:220]}), 500
+
+
+@app.route("/api/admin/users/<int:user_id>/action", methods=["POST"])
+def admin_user_action(user_id):
+    admin = _request_telegram_user()
+    if not admin or not _telegram_user_is_group_admin(admin.get("id")):
+        return jsonify({"error": "group_admin_required"}), 403
+
+    body = request.get_json(silent=True) or {}
+    action = str(body.get("action") or "").strip()
+    if action not in {"add_gold", "add_xp", "gift_item", "toggle_block"}:
+        return jsonify({"error": "unsupported_admin_action"}), 400
+
+    try:
+        profile = _admin_profile_by_id(user_id)
+        if not profile:
+            return jsonify({"error": "profile_not_found"}), 404
+
+        patch = {"updated_at": datetime.now(timezone.utc).isoformat()}
+        log_amount = None
+        log_item_id = None
+        log_reason = None
+
+        if action in {"add_gold", "add_xp"}:
+            try:
+                amount = int(body.get("amount"))
+            except Exception:
+                return jsonify({"error": "invalid_amount"}), 400
+            if amount < 1 or amount > 100000:
+                return jsonify({"error": "invalid_amount"}), 400
+            field = "gold" if action == "add_gold" else "xp"
+            patch[field] = max(0, int(profile.get(field) or 0) + amount)
+            log_amount = amount
+
+        elif action == "gift_item":
+            item_id = str(body.get("item_id") or "").strip()
+            catalog = {str(x.get("id")): x for x in _profile_shop_catalog()}
+            if not item_id or item_id not in catalog:
+                return jsonify({"error": "shop_item_not_found"}), 404
+            owned = profile.get("owned_shop_items") or []
+            if isinstance(owned, str):
+                try:
+                    owned = json.loads(owned)
+                except Exception:
+                    owned = []
+            if not isinstance(owned, list):
+                owned = []
+            owned = [str(x) for x in owned if x]
+            if item_id not in owned:
+                owned.append(item_id)
+            patch["owned_shop_items"] = owned
+            log_item_id = item_id
+
+        elif action == "toggle_block":
+            currently_blocked = bool(profile.get("is_blocked"))
+            new_blocked = not currently_blocked
+            patch["is_blocked"] = new_blocked
+            patch["blocked_at"] = datetime.now(timezone.utc).isoformat() if new_blocked else None
+            reason = str(body.get("reason") or "").strip()[:500]
+            patch["blocked_reason"] = reason if new_blocked else None
+            log_reason = reason if new_blocked else "розблоковано"
+
+        resp = requests.patch(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            params={"telegram_user_id": f"eq.{int(user_id)}"},
+            json=patch,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        rows = resp.json() or []
+        if not rows:
+            return jsonify({"error": "profile_update_failed"}), 500
+
+        _admin_action_log(
+            admin.get("id"), user_id, action,
+            amount=log_amount,
+            item_id=log_item_id,
+            reason=log_reason,
+        )
+        return jsonify({"ok": True, "user": rows[0]})
+    except Exception as exc:
+        logging.exception("Не вдалося виконати адмін-дію")
+        return jsonify({"error": "admin_action_failed", "detail": str(exc)[:220]}), 500
+
 def _is_admin_username(username):
     uname = (username or "").lstrip("@").lower()
     if not uname:
