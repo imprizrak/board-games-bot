@@ -57,8 +57,6 @@ PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
 PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 DUNGEON_RUNS_REST = f"{SUPABASE_URL}/rest/v1/dungeon_runs"
 DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
-COIN_RUSH_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_coin_catcher_run"
-TREASURE_MEMORY_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_treasure_memory_run"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -1525,49 +1523,80 @@ def _xp_reward_catalog(level):
 
 
 def _profile_shop_catalog():
-    """Каталог магазину профілю та мініігор."""
+    """Косметика, яку можна придбати за золото з мінігри."""
     return [
-        # Рамки
-        {"id":"shop_frame_bronze","type":"frame","icon":"🟤","name":"Бронзова рамка","value":"shop_frame_bronze","price":120,"rarity":"common","description":"Тепла бронзова рамка у стилі пригодницької гільдії."},
-        {"id":"shop_frame_frost","type":"frame","icon":"❄️","name":"Крижана рамка","value":"shop_frame_frost","price":220,"rarity":"rare","description":"Холодне блакитне сяйво навколо аватарки."},
-        {"id":"shop_frame_arcane","type":"frame","icon":"🔮","name":"Арканна рамка","value":"shop_frame_arcane","price":380,"rarity":"epic","description":"Фіолетово-золота рамка для справжнього героя."},
-        {"id":"shop_frame_dragonfire","type":"frame","icon":"🐉","name":"Вогонь дракона","value":"shop_frame_dragonfire","price":560,"rarity":"epic","description":"Вогняна рамка з червоно-золотим сяйвом."},
-        {"id":"shop_frame_lightning","type":"frame","icon":"⚡","name":"Грозова аура","value":"shop_frame_lightning","price":850,"rarity":"legendary","description":"Анімована рамка з імпульсами блискавки."},
-        {"id":"shop_frame_void","type":"frame","icon":"🕳️","name":"Пульс Порожнечі","value":"shop_frame_void","price":1100,"rarity":"legendary","description":"Темна анімована рамка з фіолетовим пульсом."},
-
-        # Теми
-        {"id":"shop_theme_forest","type":"theme","icon":"🌿","name":"Смарагдовий ліс","value":"shop_theme_forest","price":300,"rarity":"rare","description":"Темно-зелена тема з м'якими золотими акцентами."},
-        {"id":"shop_theme_crimson","type":"theme","icon":"🔥","name":"Багряний рейд","value":"shop_theme_crimson","price":450,"rarity":"rare","description":"Темна червоно-графітова тема у стилі рейду."},
-        {"id":"shop_theme_royal","type":"theme","icon":"👑","name":"Королівська ніч","value":"shop_theme_royal","price":700,"rarity":"epic","description":"Преміальна фіолетово-золота тема профілю."},
-        {"id":"shop_theme_starlight","type":"theme","icon":"✨","name":"Зоряне сяйво","value":"shop_theme_starlight","price":950,"rarity":"legendary","description":"Синьо-фіолетова тема із зоряним акцентом."},
-
-        # Фони профілю
-        {"id":"shop_background_tavern","type":"background","icon":"🍺","name":"Таверна","value":"shop_background_tavern","price":500,"rarity":"rare","description":"Теплий фон профілю у стилі фентезійної таверни."},
-        {"id":"shop_background_dungeon","type":"background","icon":"🏰","name":"Підземелля","value":"shop_background_dungeon","price":720,"rarity":"epic","description":"Кам'яні арки, смолоскипи та атмосфера Данжу."},
-        {"id":"shop_background_cosmos","type":"background","icon":"🌌","name":"Космос","value":"shop_background_cosmos","price":900,"rarity":"epic","description":"Глибокий космічний фон із зоряним пилом."},
-        {"id":"shop_background_dragonlair","type":"background","icon":"🐲","name":"Лігво дракона","value":"shop_background_dragonlair","price":1200,"rarity":"legendary","description":"Легендарний фон зі скарбами та жаром драконячого лігва."},
-
-        # Компаньйони
-        {"id":"shop_companion_owl","type":"companion","icon":"🦉","name":"Сова-магістр","value":"shop_companion_owl","price":1200,"rarity":"epic","description":"Маленька мудра сова сидить біля аватарки."},
-        {"id":"shop_companion_mimic","type":"companion","icon":"🧰","name":"Мімік","value":"shop_companion_mimic","price":1450,"rarity":"epic","description":"Підозріло жива скринька супроводжує твій профіль."},
-        {"id":"shop_companion_ghost","type":"companion","icon":"👻","name":"Привид","value":"shop_companion_ghost","price":1650,"rarity":"legendary","description":"Напівпрозорий привид літає поруч із профілем."},
-        {"id":"shop_companion_dragon","type":"companion","icon":"🐉","name":"Малий дракон","value":"shop_companion_dragon","price":2200,"rarity":"legendary","description":"Найрідкісніший компаньйон — маленький дракон."},
-
-        # Скіни мініігор
-        {"id":"shop_coin_skin_crystal","type":"coin_skin","icon":"💎","name":"Кристали","value":"shop_coin_skin_crystal","price":650,"rarity":"rare","description":"У «Лови монети» звичайні монети стають кристалами."},
-        {"id":"shop_coin_skin_rune","type":"coin_skin","icon":"🔷","name":"Рунні жетони","value":"shop_coin_skin_rune","price":900,"rarity":"epic","description":"Магічні рунні жетони замість стандартних монет."},
-        {"id":"shop_coin_skin_styloteka","type":"coin_skin","icon":"🎲","name":"Жетони Styloteka","value":"shop_coin_skin_styloteka","price":1200,"rarity":"legendary","description":"Фірмові клубні жетони для Coin Rush."},
-        {"id":"shop_treasure_skin_neon","type":"treasure_skin","icon":"🟣","name":"Неонові карти","value":"shop_treasure_skin_neon","price":700,"rarity":"rare","description":"Неоновий стиль карт для «Скарбниці»."},
-        {"id":"shop_treasure_skin_pirate","type":"treasure_skin","icon":"🏴‍☠️","name":"Піратські карти","value":"shop_treasure_skin_pirate","price":950,"rarity":"epic","description":"Карти у стилі старої піратської карти скарбів."},
-        {"id":"shop_treasure_skin_dragon","type":"treasure_skin","icon":"🐲","name":"Драконячі карти","value":"shop_treasure_skin_dragon","price":1300,"rarity":"legendary","description":"Легендарний червоно-золотий скін карт."},
-        {"id":"shop_dungeon_skin_crypt","type":"dungeon_skin","icon":"💀","name":"Стара крипта","value":"shop_dungeon_skin_crypt","price":800,"rarity":"rare","description":"Темніше оформлення Данжу з каменем та черепами."},
-        {"id":"shop_dungeon_skin_arcane","type":"dungeon_skin","icon":"🔮","name":"Арканний Данж","value":"shop_dungeon_skin_arcane","price":1100,"rarity":"epic","description":"Фіолетове магічне оформлення кімнат Данжу."},
-        {"id":"shop_dungeon_skin_inferno","type":"dungeon_skin","icon":"🌋","name":"Інферно","value":"shop_dungeon_skin_inferno","price":1500,"rarity":"legendary","description":"Лава, жар і легендарний стиль Данжу."},
-
-        # Реальні подарункові купони
-        {"id":"shop_coupon_gift","type":"coupon","icon":"✨","name":"Стікерпак Styloteka","value":"shop_coupon_gift","price":1500,"rarity":"epic","description":"Одноразовий купон на фірмовий стікерпак клубу."},
-        {"id":"shop_coupon_gift_large","type":"coupon","icon":"☕","name":"Чашка мерчу Styloteka","value":"shop_coupon_gift_large","price":2500,"rarity":"legendary","description":"Одноразовий купон на чашку мерчу клубу."},
-        {"id":"shop_coupon_gift_royal","type":"coupon","icon":"🎲","name":"Настільна гра","value":"shop_coupon_gift_royal","price":4000,"rarity":"legendary","description":"Головний приз магазину — купон на настільну гру."},
+        {
+            "id": "shop_frame_bronze",
+            "type": "frame",
+            "icon": "🟤",
+            "name": "Бронзова рамка",
+            "value": "shop_frame_bronze",
+            "price": 120,
+            "description": "Тепла бронзова рамка у стилі пригодницької гільдії.",
+        },
+        {
+            "id": "shop_frame_frost",
+            "type": "frame",
+            "icon": "❄️",
+            "name": "Крижана рамка",
+            "value": "shop_frame_frost",
+            "price": 220,
+            "description": "Холодне блакитне сяйво навколо аватарки.",
+        },
+        {
+            "id": "shop_frame_arcane",
+            "type": "frame",
+            "icon": "🔮",
+            "name": "Арканна рамка",
+            "value": "shop_frame_arcane",
+            "price": 380,
+            "description": "Фіолетово-золота рамка для справжнього героя.",
+        },
+        {
+            "id": "shop_frame_dragonfire",
+            "type": "frame",
+            "icon": "🐉",
+            "name": "Вогонь дракона",
+            "value": "shop_frame_dragonfire",
+            "price": 560,
+            "description": "Вогняна рамка з теплим червоно-золотим сяйвом.",
+        },
+        {
+            "id": "shop_theme_forest",
+            "type": "theme",
+            "icon": "🌿",
+            "name": "Смарагдовий ліс",
+            "value": "shop_theme_forest",
+            "price": 300,
+            "description": "Темно-зелена тема профілю з м'якими золотими акцентами.",
+        },
+        {
+            "id": "shop_theme_crimson",
+            "type": "theme",
+            "icon": "🔥",
+            "name": "Багряний рейд",
+            "value": "shop_theme_crimson",
+            "price": 450,
+            "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу.",
+        },
+        {
+            "id": "shop_theme_royal",
+            "type": "theme",
+            "icon": "👑",
+            "name": "Королівська ніч",
+            "value": "shop_theme_royal",
+            "price": 700,
+            "description": "Преміальна фіолетово-золота тема профілю.",
+        },
+        {
+            "id": "shop_theme_starlight",
+            "type": "theme",
+            "icon": "✨",
+            "name": "Зоряне сяйво",
+            "value": "shop_theme_starlight",
+            "price": 950,
+            "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
+        },
     ]
 
 
@@ -1584,30 +1613,13 @@ def _owned_shop_items(profile=None):
     return {str(x) for x in raw if x}
 
 
-def _shop_loadout(profile=None):
-    profile = profile or {}
-    raw = profile.get("shop_loadout") or {}
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except Exception:
-            raw = {}
-    return raw if isinstance(raw, dict) else {}
-
-
 def _profile_shop_state(profile, cosmetics=None):
     profile = profile or {}
     cosmetics = cosmetics or {}
     owned = _owned_shop_items(profile)
-    loadout = _shop_loadout(profile)
     selected_by_type = {
         "frame": str(cosmetics.get("frame_id") or ""),
         "theme": str(cosmetics.get("theme_id") or ""),
-        "background": str(loadout.get("background") or ""),
-        "companion": str(loadout.get("companion") or ""),
-        "coin_skin": str(loadout.get("coin_skin") or ""),
-        "treasure_skin": str(loadout.get("treasure_skin") or ""),
-        "dungeon_skin": str(loadout.get("dungeon_skin") or ""),
     }
     result = []
     for item in _profile_shop_catalog():
@@ -1648,13 +1660,6 @@ def _resolve_profile_cosmetics(level, profile=None):
     title_reward = available.get(selected["title"])
     badge_reward = available.get(selected["badge"])
 
-    loadout = _shop_loadout(profile)
-    for kind in ("background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"):
-        rid = str(loadout.get(kind) or "")
-        item = shop_available.get(rid)
-        if not item or item.get("type") != kind:
-            loadout[kind] = ""
-
     cosmetics = {
         "title_id": selected["title"],
         "frame_id": selected["frame"],
@@ -1662,11 +1667,6 @@ def _resolve_profile_cosmetics(level, profile=None):
         "theme_id": selected["theme"],
         "title_label": title_reward.get("value") if title_reward else "",
         "badge_label": badge_reward.get("value") if badge_reward else "",
-        "background_id": str(loadout.get("background") or ""),
-        "companion_id": str(loadout.get("companion") or ""),
-        "coin_skin_id": str(loadout.get("coin_skin") or ""),
-        "treasure_skin_id": str(loadout.get("treasure_skin") or ""),
-        "dungeon_skin_id": str(loadout.get("dungeon_skin") or ""),
     }
 
     for reward in rewards:
@@ -1712,7 +1712,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items,shop_loadout",
+                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items",
                 "limit": 1,
             },
             timeout=20,
@@ -1848,7 +1848,7 @@ def get_profile_summary():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,shop_loadout,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
                 "limit": 1,
             },
             timeout=10,
@@ -2003,7 +2003,7 @@ def set_profile_cosmetics():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,xp,owned_shop_items,shop_loadout,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
                 "limit": 1,
             },
             timeout=20,
@@ -2033,7 +2033,6 @@ def set_profile_cosmetics():
         "badge": "selected_badge_reward",
         "theme": "selected_theme_reward",
     }
-    loadout_types = {"background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"}
 
     patch = {}
     for kind, field in field_map.items():
@@ -2047,23 +2046,6 @@ def set_profile_cosmetics():
         if not reward or reward.get("type") != kind:
             return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
         patch[field] = reward_id
-
-    loadout = _shop_loadout(profile)
-    loadout_changed = False
-    for kind in loadout_types:
-        if kind not in data:
-            continue
-        reward_id = str(data.get(kind) or "").strip()
-        if reward_id:
-            reward = available.get(reward_id)
-            if not reward or reward.get("type") != kind:
-                return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
-            loadout[kind] = reward_id
-        else:
-            loadout.pop(kind, None)
-        loadout_changed = True
-    if loadout_changed:
-        patch["shop_loadout"] = loadout
 
     if not patch:
         return jsonify({"status": "ok"})
@@ -2110,7 +2092,7 @@ def _purchase_profile_shop_item_atomic(user_id, item):
                 headers=HEADERS,
                 params={
                     "telegram_user_id": f"eq.{user_id}",
-                    "select": "telegram_user_id,gold,owned_shop_items,shop_loadout,selected_frame_reward,selected_theme_reward",
+                    "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
                     "limit": 1,
                 },
                 timeout=20,
@@ -2152,18 +2134,14 @@ def _purchase_profile_shop_item_atomic(user_id, item):
             "owned_shop_items": sorted(owned | {item_id}),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        # Після покупки одразу застосовуємо косметику — користувач відразу бачить результат.
+        # Після покупки одразу застосовуємо рамку/тему — користувач відразу бачить результат.
         if selected_field:
             patch[selected_field] = item_id
-        elif item_type in {"background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"}:
-            loadout = _shop_loadout(profile)
-            loadout[item_type] = item_id
-            patch["shop_loadout"] = loadout
 
         params = {
             "telegram_user_id": f"eq.{user_id}",
             "gold": "is.null" if raw_gold is None else f"eq.{gold}",
-            "select": "gold,owned_shop_items,shop_loadout,selected_frame_reward,selected_theme_reward",
+            "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
         }
         try:
             updated = requests.patch(
@@ -2193,7 +2171,7 @@ def _purchase_profile_shop_item_atomic(user_id, item):
                 "item_type": item_type,
                 "price": price,
                 "gold_balance": max(0, gold - price),
-                "equipped": bool(selected_field or item_type in {"background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"}),
+                "equipped": bool(selected_field),
             }, 200
         # Баланс змінився між GET і PATCH — ще раз перечитуємо профіль.
 
@@ -2215,160 +2193,6 @@ def buy_profile_shop_item():
 
     payload, status = _purchase_profile_shop_item_atomic(int(user.get("id")), item)
     return jsonify(payload), status
-
-
-
-@app.route("/api/minigames/coin-rush/claim-v2", methods=["POST"])
-def claim_coin_rush_reward_v2():
-    """Зарахування нагороди Coin Rush v2 одним атомарним RPC.
-
-    Старт гри повністю локальний. Сервер викликається лише після завершення
-    раунду, а run_id робить повторні запити безпечними від подвійної виплати.
-    """
-    user = _request_telegram_user()
-    if not user:
-        return jsonify({"error": "telegram_auth_required"}), 401
-
-    data = request.get_json(silent=True) or {}
-    run_id = str(data.get("run_id") or "").strip()
-    try:
-        uuid.UUID(run_id)
-    except Exception:
-        return jsonify({"error": "invalid_run_id"}), 400
-
-    try:
-        score = max(0, min(200, int(data.get("score") or 0)))
-        caught = max(0, min(120, int(data.get("caught") or 0)))
-        duration_ms = max(0, min(60000, int(data.get("duration_ms") or 0)))
-    except Exception:
-        return jsonify({"error": "invalid_result"}), 400
-
-    if duration_ms < 18000:
-        return jsonify({"error": "round_too_short"}), 400
-
-    user_id = int(user.get("id"))
-    try:
-        resp = requests.post(
-            COIN_RUSH_CLAIM_RPC,
-            headers={**HEADERS, "Content-Type": "application/json"},
-            json={
-                "p_run_id": run_id,
-                "p_user_id": user_id,
-                "p_score": score,
-                "p_caught": caught,
-                "p_duration_ms": duration_ms,
-            },
-            timeout=20,
-        )
-    except Exception:
-        logging.exception("Coin Rush: помилка з'єднання з Supabase")
-        return jsonify({"error": "reward_service_unavailable"}), 503
-
-    if not resp.ok:
-        logging.error(
-            "Coin Rush RPC failed: status=%s body=%s",
-            resp.status_code,
-            (resp.text or "")[:800],
-        )
-        return jsonify({
-            "error": "reward_rpc_failed",
-            "upstream_status": resp.status_code,
-        }), 502
-
-    try:
-        result = resp.json()
-    except Exception:
-        logging.error("Coin Rush RPC returned invalid JSON: %s", (resp.text or "")[:800])
-        return jsonify({"error": "reward_rpc_invalid_response"}), 502
-
-    if isinstance(result, list):
-        result = result[0] if result else {}
-    if not isinstance(result, dict):
-        result = {"status": "unknown"}
-
-    status = str(result.get("status") or "")
-    if status in ("settled", "already_settled"):
-        return jsonify(result), 200
-    if status == "profile_not_found":
-        return jsonify({"error": "profile_not_found"}), 404
-    if status == "too_early":
-        return jsonify({"error": "round_too_short"}), 400
-    if status == "run_conflict":
-        return jsonify({"error": "run_conflict"}), 409
-
-    logging.error("Coin Rush RPC unexpected result: %r", result)
-    return jsonify({"error": "reward_unknown_result", "status": status}), 502
-
-
-@app.route("/api/minigames/treasure-memory/claim", methods=["POST"])
-def claim_treasure_memory_reward():
-    user = _request_telegram_user()
-    if not user:
-        return jsonify({"error": "telegram_auth_required"}), 401
-
-    data = request.get_json(silent=True) or {}
-    run_id = str(data.get("run_id") or "").strip()
-    try:
-        uuid.UUID(run_id)
-    except Exception:
-        return jsonify({"error": "invalid_run_id"}), 400
-
-    try:
-        pairs = max(0, min(8, int(data.get("pairs") or 0)))
-        moves = max(0, min(200, int(data.get("moves") or 0)))
-        duration_ms = max(0, min(60000, int(data.get("duration_ms") or 0)))
-        completed = bool(data.get("completed"))
-    except Exception:
-        return jsonify({"error": "invalid_result"}), 400
-
-    if duration_ms < 5000:
-        return jsonify({"error": "round_too_short"}), 400
-
-    try:
-        resp = requests.post(
-            TREASURE_MEMORY_CLAIM_RPC,
-            headers={**HEADERS, "Content-Type": "application/json"},
-            json={
-                "p_run_id": run_id,
-                "p_user_id": int(user.get("id")),
-                "p_pairs": pairs,
-                "p_moves": moves,
-                "p_duration_ms": duration_ms,
-                "p_completed": completed,
-            },
-            timeout=20,
-        )
-    except Exception:
-        logging.exception("Treasure Memory: помилка з'єднання з Supabase")
-        return jsonify({"error": "reward_service_unavailable"}), 503
-
-    if not resp.ok:
-        logging.error("Treasure Memory RPC failed: status=%s body=%s", resp.status_code, (resp.text or "")[:800])
-        return jsonify({"error": "reward_rpc_failed", "upstream_status": resp.status_code}), 502
-
-    try:
-        result = resp.json()
-    except Exception:
-        logging.error("Treasure Memory RPC returned invalid JSON: %s", (resp.text or "")[:800])
-        return jsonify({"error": "reward_rpc_invalid_response"}), 502
-
-    if isinstance(result, list):
-        result = result[0] if result else {}
-    if not isinstance(result, dict):
-        result = {"status": "unknown"}
-
-    status = str(result.get("status") or "")
-    if status in ("settled", "already_settled"):
-        return jsonify(result), 200
-    if status == "profile_not_found":
-        return jsonify({"error": "profile_not_found"}), 404
-    if status == "too_early":
-        return jsonify({"error": "round_too_short"}), 400
-    if status == "run_conflict":
-        return jsonify({"error": "run_conflict"}), 409
-
-    logging.error("Treasure Memory RPC unexpected result: %r", result)
-    return jsonify({"error": "reward_unknown_result", "status": status}), 502
 
 
 @app.route("/api/dungeon/start", methods=["POST"])
@@ -2668,7 +2492,7 @@ def get_public_profiles():
             PROFILES_REST,
             headers=HEADERS,
             params={
-                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,owned_shop_items,shop_loadout,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,updated_at",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,updated_at",
                 "order": "xp.desc,updated_at.desc",
                 "limit": 100,
             },

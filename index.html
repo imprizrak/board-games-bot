@@ -6140,6 +6140,11 @@ document.addEventListener('click', event => {
   </div>
 </div>
 
+
+<style>
+.admin-users-entry{margin:0 0 14px}.admin-users-open-btn{width:100%;border:1px solid rgba(212,175,55,.35);background:linear-gradient(135deg,rgba(212,175,55,.13),rgba(102,76,180,.12));color:var(--text,#f3f4f6);border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;font:inherit;font-weight:800;cursor:pointer}.admin-users-open-arrow{font-size:20px;opacity:.8}.admin-users-wrap{padding:16px 14px 110px;max-width:900px;margin:0 auto}.admin-users-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:12px 0 14px}.admin-users-title-row h2{margin:0 0 4px;font-size:22px}.admin-users-title-row p{margin:0;color:var(--text-muted,#94a3b8);font-size:13px}.admin-users-refresh{width:42px;height:42px;border-radius:13px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:inherit;font-size:21px;cursor:pointer}.admin-users-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:14px}.admin-user-stat{padding:12px 8px;border-radius:14px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.07);text-align:center}.admin-user-stat strong{display:block;font-size:21px;line-height:1.1}.admin-user-stat span{display:block;font-size:10px;color:var(--text-muted,#94a3b8);margin-top:5px}.admin-users-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:9px;margin-bottom:12px}.admin-users-search,.admin-users-sort{min-width:0;border:1px solid rgba(255,255,255,.1);background:rgba(10,18,32,.75);color:inherit;border-radius:13px;padding:11px 12px;font:inherit}.admin-users-list{display:grid;gap:10px}.admin-user-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:16px;background:rgba(255,255,255,.052);border:1px solid rgba(255,255,255,.075)}.admin-user-avatar{width:52px;height:52px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-weight:900}.admin-user-avatar img{width:100%;height:100%;object-fit:cover}.admin-user-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-user-handle{font-size:12px;color:var(--text-muted,#94a3b8);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-user-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.admin-user-chip{font-size:10px;padding:4px 6px;border-radius:999px;background:rgba(255,255,255,.065);color:#cbd5e1}.admin-user-activity{text-align:right;font-size:11px;color:var(--text-muted,#94a3b8);white-space:nowrap}.admin-user-activity strong{display:block;color:#e5e7eb;font-size:12px;margin-bottom:4px}.admin-users-empty{padding:28px;text-align:center;color:var(--text-muted,#94a3b8)}@media(max-width:560px){.admin-users-stats{grid-template-columns:repeat(2,1fr)}.admin-users-toolbar{grid-template-columns:1fr}.admin-user-card{grid-template-columns:46px minmax(0,1fr)}.admin-user-avatar{width:46px;height:46px}.admin-user-activity{grid-column:2;text-align:left;margin-top:-5px}}
+</style>
+
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
 <div class="view" id="view-community">
   <header>Спільнота</header>
@@ -6164,7 +6169,45 @@ document.addEventListener('click', event => {
 <div class="view" id="view-profile">
   <header>Профіль</header>
   <div class="profile-wrap">
+    <div class="group-admin-only admin-users-entry" style="display:none;">
+      <button type="button" class="admin-users-open-btn" onclick="showMainView('view-admin-users')">
+        <span>🛡️ Адмін · Користувачі</span>
+        <span class="admin-users-open-arrow">→</span>
+      </button>
+    </div>
     <div id="profileContent" class="profile-loading">Завантажую профіль…</div>
+  </div>
+</div>
+
+<!-- ==================== АДМІН: КОРИСТУВАЧІ ==================== -->
+<div class="view" id="view-admin-users">
+  <header>Користувачі</header>
+  <div class="admin-users-wrap">
+    <button type="button" class="mini-game-back" onclick="showMainView('view-profile')">← До профілю</button>
+    <div class="admin-users-title-row">
+      <div>
+        <h2>🛡️ Адмін-панель</h2>
+        <p>Хто користується ботом і коли був активний.</p>
+      </div>
+      <button type="button" class="admin-users-refresh" onclick="loadAdminUsers(true)">↻</button>
+    </div>
+    <div class="admin-users-stats" id="adminUsersStats">
+      <div class="admin-user-stat"><strong>—</strong><span>всього</span></div>
+      <div class="admin-user-stat"><strong>—</strong><span>сьогодні</span></div>
+      <div class="admin-user-stat"><strong>—</strong><span>7 днів</span></div>
+      <div class="admin-user-stat"><strong>—</strong><span>нові сьогодні</span></div>
+    </div>
+    <div class="admin-users-toolbar">
+      <input id="adminUsersSearch" class="admin-users-search" type="search" placeholder="Пошук за ім’ям, @username або Telegram ID" oninput="renderAdminUsersList()">
+      <select id="adminUsersSort" class="admin-users-sort" onchange="renderAdminUsersList()">
+        <option value="activity">Остання активність</option>
+        <option value="visits">Відвідування</option>
+        <option value="xp">XP</option>
+        <option value="gold">Золото</option>
+        <option value="games">Ігри</option>
+      </select>
+    </div>
+    <div id="adminUsersList" class="admin-users-list"><div class="profile-loading">Завантажую користувачів…</div></div>
   </div>
 </div>
 
@@ -7405,7 +7448,117 @@ function eventGamesHtml(ev) {
 
 
 
+let adminUsersData = {stats:{}, users:[]};
+let adminUsersLoadedAt = 0;
+
+function adminRelativeTime(value) {
+  if (!value) return 'немає даних';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'немає даних';
+  const diff = Math.max(0, Date.now() - d.getTime());
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'щойно';
+  if (min < 60) return `${min} хв тому`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} год тому`;
+  const days = Math.floor(h / 24);
+  if (days < 30) return `${days} дн тому`;
+  return d.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+function adminUserInitials(name) {
+  return String(name || 'Г').trim().split(/\s+/).slice(0,2).map(x => x[0] || '').join('').toUpperCase() || 'Г';
+}
+
+function renderAdminUsersStats() {
+  const root = document.getElementById('adminUsersStats');
+  if (!root) return;
+  const s = adminUsersData.stats || {};
+  root.innerHTML = `
+    <div class="admin-user-stat"><strong>${Number(s.total_users)||0}</strong><span>всього</span></div>
+    <div class="admin-user-stat"><strong>${Number(s.active_today)||0}</strong><span>активні сьогодні</span></div>
+    <div class="admin-user-stat"><strong>${Number(s.active_7d)||0}</strong><span>активні 7 днів</span></div>
+    <div class="admin-user-stat"><strong>${Number(s.new_today)||0}</strong><span>нові сьогодні</span></div>`;
+}
+
+function renderAdminUsersList() {
+  const root = document.getElementById('adminUsersList');
+  if (!root) return;
+  const q = String(document.getElementById('adminUsersSearch')?.value || '').trim().toLowerCase();
+  const sort = document.getElementById('adminUsersSort')?.value || 'activity';
+  let users = Array.isArray(adminUsersData.users) ? [...adminUsersData.users] : [];
+  if (q) users = users.filter(u => `${u.display_name||''} ${u.username||''} ${u.telegram_user_id||''}`.toLowerCase().includes(q));
+  users.sort((a,b) => {
+    if (sort === 'visits') return (Number(b.visit_count)||0) - (Number(a.visit_count)||0);
+    if (sort === 'xp') return (Number(b.xp)||0) - (Number(a.xp)||0);
+    if (sort === 'gold') return (Number(b.gold)||0) - (Number(a.gold)||0);
+    if (sort === 'games') return (Number(b.game_runs)||0) - (Number(a.game_runs)||0);
+    return (new Date(b.last_seen_at||0).getTime()||0) - (new Date(a.last_seen_at||0).getTime()||0);
+  });
+  if (!users.length) {
+    root.innerHTML = '<div class="admin-users-empty">Користувачів не знайдено.</div>';
+    return;
+  }
+  root.innerHTML = users.map(u => {
+    const name = u.display_name || u.username || 'Гравець';
+    const handle = u.username ? `@${u.username}` : 'без @username';
+    const photo = u.photo_url ? `<img src="${escapeHtml(u.photo_url)}" alt="${escapeHtml(name)}" loading="lazy" decoding="async">` : escapeHtml(adminUserInitials(name));
+    return `<div class="admin-user-card">
+      <div class="admin-user-avatar">${photo}</div>
+      <div class="admin-user-main">
+        <div class="admin-user-name">${escapeHtml(name)}</div>
+        <div class="admin-user-handle">${escapeHtml(handle)} · ID ${escapeHtml(String(u.telegram_user_id||''))}</div>
+        <div class="admin-user-meta">
+          <span class="admin-user-chip">LV ${Number(u.level)||1}</span>
+          <span class="admin-user-chip">${Number(u.xp)||0} XP</span>
+          <span class="admin-user-chip">🪙 ${Number(u.gold)||0}</span>
+          <span class="admin-user-chip">🎮 ${Number(u.game_runs)||0}</span>
+          <span class="admin-user-chip">🛍 ${Number(u.shop_items_count)||0}</span>
+          <span class="admin-user-chip">↻ ${Number(u.visit_count)||0} входів</span>
+        </div>
+      </div>
+      <div class="admin-user-activity"><strong>${adminRelativeTime(u.last_seen_at)}</strong><span>з ${u.created_at ? new Date(u.created_at).toLocaleDateString('uk-UA') : '—'}</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadAdminUsers(force=false) {
+  const root = document.getElementById('adminUsersList');
+  if (!isAdmin) {
+    if (root) root.innerHTML = '<div class="admin-users-empty">Доступ лише для адміністратора.</div>';
+    if (document.getElementById('view-admin-users')?.classList.contains('active')) showMainView('view-profile');
+    return;
+  }
+  if (!force && adminUsersData.users?.length && Date.now() - adminUsersLoadedAt < 30000) {
+    renderAdminUsersStats(); renderAdminUsersList(); return;
+  }
+  if (root) root.innerHTML = '<div class="profile-loading">Завантажую користувачів…</div>';
+  try {
+    const res = await fetch('/api/admin/users', {headers:telegramAuthHeaders(), cache:'no-store'});
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'admin_users_failed');
+    adminUsersData = data;
+    adminUsersLoadedAt = Date.now();
+    renderAdminUsersStats();
+    renderAdminUsersList();
+  } catch (e) {
+    if (root) root.innerHTML = '<div class="admin-users-empty">Не вдалося завантажити список користувачів.</div>';
+  }
+}
+
+async function recordMiniAppVisit() {
+  try {
+    if (!telegramInitData) return;
+    const key = `styloteka_visit_${telegramUserId || 'guest'}`;
+    if (sessionStorage.getItem(key) === '1') return;
+    const res = await fetch('/api/profile/visit', {method:'POST', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:'{}'});
+    if (res.ok) sessionStorage.setItem(key, '1');
+  } catch (_) {}
+}
+
+
 checkAdminStatus();
+recordMiniAppVisit();
 loadEvents();
 
 /* ==================== ПІДВКЛАДКИ БІБЛІОТЕКИ ==================== */
@@ -8624,12 +8777,13 @@ function showMainView(viewId) {
   if (!document.getElementById(viewId)) viewId = 'view-home';
   if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
-  const navView = (viewId === 'view-dungeon' || viewId === 'view-coins' || viewId === 'view-treasure') ? 'view-games' : viewId;
+  const navView = (viewId === 'view-dungeon' || viewId === 'view-coins' || viewId === 'view-treasure') ? 'view-games' : (viewId === 'view-admin-users' ? 'view-profile' : viewId);
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === navView));
   if (viewId === 'view-home') loadHomeHub();
   if (viewId === 'view-community') loadCommunity();
   if (viewId === 'view-library') loadGames();
   if (viewId === 'view-profile') loadMyProfile();
+  if (viewId === 'view-admin-users') loadAdminUsers();
   if (viewId === 'view-events') loadEvents();
   if (viewId === 'view-dungeon') initDungeonTab();
   if (viewId === 'view-coins') initCoinCatcherTab();
