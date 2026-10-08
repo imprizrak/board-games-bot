@@ -172,7 +172,7 @@ async function initCoinCatcherTab() {
   coinRushSetupCanvas();
   if (!coinRush.active) {
     coinRushHud();
-    coinRushOverlay('Натисни «Почати». Монети падають одразу, сервер не потрібен для запуску.');
+    coinRushOverlay('Натисни «Почати». Стілси падають одразу, сервер не потрібен для запуску.');
   }
   try {
     const profile = await coinRushFetchJson('/api/profile/summary', {headers: telegramAuthHeaders()}, 9000);
@@ -230,28 +230,71 @@ function coinRushDrawCoin(ctx, c, now) {
   const crystalSkin = document.body.classList.contains('coin-skin-crystal');
   const runeSkin = document.body.classList.contains('coin-skin-rune');
   const clubSkin = document.body.classList.contains('coin-skin-styloteka');
+  const drawStar = (outer, inner) => {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const angle = -Math.PI / 2 + i * Math.PI / 5;
+      const radius = i % 2 === 0 ? outer : inner;
+      const px = Math.cos(angle) * radius;
+      const py = Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  };
   ctx.save();
   ctx.translate(x, c.y);
   ctx.rotate(Math.sin(now / 260 + c.phase) * .14);
-  const g = ctx.createRadialGradient(-c.r*.34, -c.r*.36, c.r*.08, 0, 0, c.r);
+
+  const outer = c.r + 2;
+  const inner = c.r * 0.45;
+  const glow = ctx.createRadialGradient(-c.r*.22, -c.r*.24, c.r*.1, 0, 0, outer);
   if (c.rare) {
-    g.addColorStop(0, '#fff8ff'); g.addColorStop(.28, '#e5b7ff'); g.addColorStop(.68, '#8f5be0'); g.addColorStop(1, '#35215f');
-    ctx.shadowColor = 'rgba(195,130,255,.8)';
+    glow.addColorStop(0, '#fff8ff');
+    glow.addColorStop(.28, '#e6c5ff');
+    glow.addColorStop(.68, '#9a63ff');
+    glow.addColorStop(1, '#402167');
+    ctx.shadowColor = 'rgba(196,132,255,.78)';
+  } else if (crystalSkin) {
+    glow.addColorStop(0, '#effcff');
+    glow.addColorStop(.34, '#9ee7ff');
+    glow.addColorStop(.7, '#39a9e8');
+    glow.addColorStop(1, '#125f94');
+    ctx.shadowColor = 'rgba(110,219,255,.62)';
+  } else if (runeSkin) {
+    glow.addColorStop(0, '#fff9e9');
+    glow.addColorStop(.34, '#f6e0a0');
+    glow.addColorStop(.7, '#b08a2d');
+    glow.addColorStop(1, '#5c4616');
+    ctx.shadowColor = 'rgba(241,205,112,.64)';
+  } else if (clubSkin) {
+    glow.addColorStop(0, '#fff7d6');
+    glow.addColorStop(.34, '#ffd676');
+    glow.addColorStop(.7, '#ff9b2e');
+    glow.addColorStop(1, '#8f3c12');
+    ctx.shadowColor = 'rgba(255,190,86,.66)';
   } else {
-    g.addColorStop(0, '#fff8c7'); g.addColorStop(.28, '#f5d95d'); g.addColorStop(.68, '#c68d20'); g.addColorStop(1, '#724707');
-    ctx.shadowColor = 'rgba(246,204,73,.65)';
+    glow.addColorStop(0, '#fffad8');
+    glow.addColorStop(.34, '#ffe16d');
+    glow.addColorStop(.7, '#d19a22');
+    glow.addColorStop(1, '#7c4f07');
+    ctx.shadowColor = 'rgba(248,210,82,.66)';
   }
-  ctx.shadowBlur = c.rare ? 18 : 12;
+  ctx.shadowBlur = c.rare ? 20 : 14;
   ctx.shadowOffsetY = 4;
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(0,0,c.r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = glow;
+  drawStar(outer, inner);
+  ctx.fill();
+
   ctx.shadowColor = 'transparent';
-  ctx.lineWidth = 2; ctx.strokeStyle = c.rare ? '#f1dcff' : '#ffeb91';
-  ctx.beginPath(); ctx.arc(0,0,c.r-3,0,Math.PI*2); ctx.stroke();
-  ctx.fillStyle = c.rare ? '#fff' : '#684005';
-  ctx.font = `800 ${Math.round(c.r)}px Georgia,serif`;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(c.rare ? '✦' : (crystalSkin ? '◆' : runeSkin ? '✧' : clubSkin ? '🎲' : '●'), 0, 1);
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = c.rare ? '#f3deff' : '#fff1a2';
+  drawStar(outer - 2, inner - .8);
+  ctx.stroke();
+
+  ctx.fillStyle = c.rare ? 'rgba(255,255,255,.95)' : 'rgba(255,248,212,.95)';
+  ctx.beginPath();
+  ctx.arc(-2, -4, Math.max(2, c.r * .18), 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -295,7 +338,7 @@ function startCoinCatcherGame() {
   coinRush.nextSpawnAt = 0;
   const ready = document.getElementById('coinCatcherReady');
   if (ready) ready.hidden = true;
-  coinRushOverlay('Лови монети! <strong>Фіолетова = 3 очки.</strong>');
+  coinRushOverlay('Лови стілси! <strong>Фіолетовий = 3 очки.</strong>');
   coinRushSetupCanvas();
   coinRushHud(COIN_RUSH_DURATION_MS);
   coinRush.raf = requestAnimationFrame(coinRushFrame);
@@ -315,7 +358,7 @@ async function finishCoinCatcherGame() {
     duration_ms: COIN_RUSH_DURATION_MS,
   };
   coinRushPendingPut(payload);
-  coinRushOverlay(`Раунд завершено: <strong>${coinRush.score} очок</strong>. Зараховую золото…`, 'Грати ще раз');
+  coinRushOverlay(`Раунд завершено: <strong>${coinRush.score} очок</strong>. Зараховую стілси…`, 'Грати ще раз');
 
   try {
     const data = await coinRushClaim(payload, 2);
@@ -327,7 +370,7 @@ async function finishCoinCatcherGame() {
     }
     coinRush.claiming = false;
     coinRushHud();
-    coinRushOverlay(`Спіймано <strong>${coinRush.caught}</strong> монет · ${coinRush.score} очок.<br>Зараховано: <strong>+${reward} 🪙</strong>.`, 'Грати ще раз');
+    coinRushOverlay(`Спіймано <strong>${coinRush.caught}</strong> стілсів · ${coinRush.score} очок.<br>Зараховано: <strong>+${reward} ⭐</strong>.`, 'Грати ще раз');
   } catch (err) {
     coinRush.claiming = false;
     coinRushHud();
@@ -378,7 +421,7 @@ function treasureHud(leftMs = TREASURE_DURATION_MS) {
   if (pairs) pairs.textContent = `${treasureGame.pairs}/8`;
   if (moves) moves.textContent = String(treasureGame.moves);
   if (streak) streak.textContent = String(treasureGame.streak);
-  if (gold) gold.textContent = `${Math.max(0, Number(treasureGame.gold) || 0)} 🪙`;
+  if (gold) gold.textContent = `${Math.max(0, Number(treasureGame.gold) || 0)} ⭐`;
   if (bar) bar.style.width = `${Math.max(0, Math.min(100, leftMs / TREASURE_DURATION_MS * 100))}%`;
 }
 
@@ -520,7 +563,7 @@ async function finishTreasureGame(completed) {
     treasureSetStartVisible(true);
     const startBtn = document.getElementById('treasureStartBtn');
     if (startBtn) startBtn.textContent = 'Грати ще раз';
-    treasureMessage(`Знайдено <strong>${treasureGame.pairs}/8</strong> пар за ${treasureGame.moves} ходів.<br>Нагорода: <strong>+${reward} 🪙</strong>.`);
+    treasureMessage(`Знайдено <strong>${treasureGame.pairs}/8</strong> пар за ${treasureGame.moves} ходів.<br>Нагорода: <strong>+${reward} ⭐</strong>.`);
   } catch (err) {
     treasureGame.claiming = false;
     treasureSetStartVisible(true);
@@ -6046,7 +6089,7 @@ document.addEventListener('click', event => {
         <div class="home-user-name" id="homeUserName">Завантаження…</div>
         <div class="mmorpg-title-row">
           <div class="mmorpg-title" id="homeTitleLine">Новачок</div>
-          <div class="mmorpg-wallet" role="button" tabindex="0" aria-label="Відкрити магазин" onclick="event.stopPropagation(); openProfileShop();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileShop();}">🪙 <strong id="homeGoldBalance">0</strong></div>
+          <div class="mmorpg-wallet" role="button" tabindex="0" aria-label="Відкрити магазин" onclick="event.stopPropagation(); openProfileShop();" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileShop();}">⭐ <strong id="homeGoldBalance">0</strong></div>
         </div>
 
         <div class="mmorpg-xp-head">
@@ -6285,7 +6328,7 @@ document.addEventListener('click', event => {
 <div class="view" id="view-games">
   <header>Ігри</header>
   <div class="games-hub-wrap">
-    <div class="games-hub-intro">Обирай мінігру. Золото з ігор зараховується у твій загальний баланс профілю та може використовуватися в магазині.</div>
+    <div class="games-hub-intro">Обирай мінігру. Стілси з ігор зараховується у твій загальний баланс профілю та може використовуватися в магазині.</div>
 
     <div class="games-hub-grid">
       <article class="mini-game-card dungeon-game">
@@ -6293,16 +6336,16 @@ document.addEventListener('click', event => {
         <div class="mini-game-tag">Пригода · ризик</div>
         <h2 class="mini-game-title">Данж</h2>
         <p class="mini-game-desc">Пройди 10 кімнат, обирай дії, бийся з ворогами, шукай скарби та дістанься фінального боса.</p>
-        <div class="mini-game-meta"><span>10 кімнат</span><span>50/50 фінал</span><span>🪙 нагорода</span></div>
+        <div class="mini-game-meta"><span>10 кімнат</span><span>50/50 фінал</span><span>⭐ нагорода</span></div>
         <button type="button" class="mini-game-launch" onclick="openMiniGame('view-dungeon')">Грати</button>
       </article>
 
       <article class="mini-game-card coin-game">
-        <div class="mini-game-icon">🪙</div>
+        <div class="mini-game-icon">⭐</div>
         <div class="mini-game-tag">Реакція · швидкість</div>
-        <h2 class="mini-game-title">Лови монети</h2>
-        <p class="mini-game-desc">Монети падають зверху — встигай натискати на них за 20 секунд. Рідкісні монети дають більше очок.</p>
-        <div class="mini-game-meta"><span>20 секунд</span><span>без ліміту</span><span>до 5 🪙</span></div>
+        <h2 class="mini-game-title">Лови стілси</h2>
+        <p class="mini-game-desc">Зірочки-стілси падають зверху — встигай натискати на них за 20 секунд. Рідкісні стілси дають більше очок.</p>
+        <div class="mini-game-meta"><span>20 секунд</span><span>без ліміту</span><span>до 5 ⭐</span></div>
         <button type="button" class="mini-game-launch" onclick="openMiniGame('view-coins')">Грати</button>
       </article>
 
@@ -6330,10 +6373,10 @@ document.addEventListener('click', event => {
         <div class="dungeon-kicker">Шукач пригод</div>
         <div class="dungeon-player-name" id="dungeonPlayerName">Гравець</div>
         <div class="dungeon-player-title" id="dungeonPlayerTitle">Новачок · LV 1</div>
-        <div class="dungeon-wallet" role="button" tabindex="0" aria-label="Відкрити магазин" onclick="openProfileShop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileShop();}">Гаманець: 🪙 <strong id="dungeonAccountGold">0</strong></div>
+        <div class="dungeon-wallet" role="button" tabindex="0" aria-label="Відкрити магазин" onclick="openProfileShop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileShop();}">Гаманець: ⭐ <strong id="dungeonAccountGold">0</strong></div>
         <div class="dungeon-resources">
           <div class="dungeon-resource"><strong id="dungeonHp">10/10</strong><span>❤️ Здоров'я</span></div>
-          <div class="dungeon-resource"><strong id="dungeonGold">0</strong><span>🪙 Здобич</span></div>
+          <div class="dungeon-resource"><strong id="dungeonGold">0</strong><span>⭐ Стілси</span></div>
           <div class="dungeon-resource"><strong id="dungeonPotions">1</strong><span>🧪 Зілля</span></div>
         </div>
       </div>
@@ -6345,7 +6388,7 @@ document.addEventListener('click', event => {
       <div class="dungeon-start" id="dungeonStart">
         <div class="dungeon-start-icon">🏰</div>
         <h2>Підземелля Про100 Настолки</h2>
-        <p>Десять кімнат, випадкові зустрічі, різні рішення, рідкісні скарби та фінальний бос. Можна ризикувати, оборонятися, тікати або шукати безпечний шлях. Після перемоги над босом фінальний жереб дає 50% шанс на перемогу і 50% на поразку. Золото тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
+        <p>Десять кімнат, випадкові зустрічі, різні рішення, рідкісні скарби та фінальний бос. Можна ризикувати, оборонятися, тікати або шукати безпечний шлях. Після перемоги над босом фінальний жереб дає 50% шанс на перемогу і 50% на поразку. Стілси тут трапляється нечасто, а при поразці більшість здобичі буде втрачено.</p>
         <button type="button" class="dungeon-action primary" id="dungeonStartBtn">Почати похід</button>
       </div>
 
@@ -6380,31 +6423,31 @@ document.addEventListener('click', event => {
 
 <!-- ==================== ВКЛАДКА: ЛОВИ МОНЕТИ ==================== -->
 <div class="view" id="view-coins">
-  <header>Лови монети</header>
+  <header>Лови стілси</header>
   <button type="button" class="mini-game-back" onclick="showMainView('view-games')">← До ігор</button>
   <div class="coin-catcher-wrap">
     <div class="coin-catcher-top">
       <div class="coin-catcher-stat"><strong id="coinGameTime">20</strong><span>⏱ секунд</span></div>
       <div class="coin-catcher-stat"><strong id="coinGameScore">0</strong><span>✨ очки</span></div>
-      <div class="coin-catcher-stat coin-catcher-wallet" role="button" tabindex="0" onclick="openProfileShop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileShop();}"><strong id="coinGameGold">0 🪙</strong><span>гаманець</span></div>
+      <div class="coin-catcher-stat coin-catcher-wallet" role="button" tabindex="0" onclick="openProfileShop()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileShop();}"><strong id="coinGameGold">0 ⭐</strong><span>стілс</span></div>
     </div>
 
     <div class="coin-catcher-card">
       <div class="coin-catcher-arena" id="coinCatcherArena">
         <canvas class="coin-catcher-canvas" id="coinCatcherCanvas" aria-label="Ігрове поле Лови монети"></canvas>
         <div class="coin-catcher-ready" id="coinCatcherReady">
-          <div class="coin-catcher-ready-icon">🪙</div>
-          <h2>Полювання на монети</h2>
-          <p>Монети падають зверху — тисни на них, поки вони не зникли. Фіолетова монета рідкісна й дає 3 очки. За одну гру можна отримати до 5 золота.</p>
+          <div class="coin-catcher-ready-icon">⭐</div>
+          <h2>Полювання на стілси</h2>
+          <p>Стілси падають зверху — тисни на них, поки вони не зникли. Фіолетовий стілс рідкісний і дає 3 очки. За одну гру можна отримати до 5 стілсів.</p>
           <button type="button" class="coin-catcher-start-btn" id="coinCatcherStartBtn" onclick="startCoinCatcherGame()">Почати</button>
         </div>
       </div>
       <div class="coin-catcher-bottom">
-        <div class="coin-catcher-message" id="coinCatcherMessage">Натисни «Почати». Монети почнуть падати одразу.</div>
+        <div class="coin-catcher-message" id="coinCatcherMessage">Натисни «Почати». Стілси почнуть падати одразу.</div>
         <div class="coin-catcher-progress" aria-hidden="true"><div id="coinCatcherProgressBar"></div></div>
       </div>
     </div>
-    <div class="coin-catcher-footnote">Без ліміту спроб · максимум 5 🪙 за одну гру · золото зараховується у профіль після завершення 20 секунд.</div>
+    <div class="coin-catcher-footnote">Без ліміту спроб · максимум 5 ⭐ за одну гру · стілси зараховуються у профіль після завершення 20 секунд.</div>
   </div>
 </div>
 
@@ -6419,7 +6462,7 @@ document.addEventListener('click', event => {
       <div class="treasure-stat"><strong id="treasurePairs">0/8</strong><span>пари</span></div>
       <div class="treasure-stat"><strong id="treasureMoves">0</strong><span>ходи</span></div>
       <div class="treasure-stat"><strong id="treasureStreak">0</strong><span>серія</span></div>
-      <div class="treasure-stat" role="button" tabindex="0" onclick="openProfileShop()"><strong id="treasureGold">0 🪙</strong><span>гаманець</span></div>
+      <div class="treasure-stat" role="button" tabindex="0" onclick="openProfileShop()"><strong id="treasureGold">0 ⭐</strong><span>стілс</span></div>
     </div>
 
     <div class="treasure-board" id="treasureBoard" aria-label="Поле гри Скарбниця"></div>
@@ -6427,13 +6470,13 @@ document.addEventListener('click', event => {
     <div class="treasure-panel">
       <div class="treasure-start-panel" id="treasureStartPanel">
         <h2>🃏 Скарбниця</h2>
-        <p>Знайди 8 однакових пар. Помилка скидає серію, але не забирає золото.</p>
+        <p>Знайди 8 однакових пар. Помилка скидає серію, але не забирає стілси.</p>
         <button type="button" class="treasure-start-btn" id="treasureStartBtn" onclick="startTreasureGame()">Почати</button>
       </div>
       <div class="treasure-message" id="treasureMessage">Знайди всі пари до завершення часу.</div>
       <div class="treasure-progress" aria-hidden="true"><div id="treasureProgressBar"></div></div>
     </div>
-    <div class="treasure-footnote">0–2 пари = 0 🪙 · 3–4 = 1 🪙 · 5–6 = 2 🪙 · 7 = 3 🪙 · усі 8 = 4 🪙, а за повне проходження до 30 секунд — 5 🪙.</div>
+    <div class="treasure-footnote">0–2 пари = 0 ⭐ · 3–4 = 1 ⭐ · 5–6 = 2 ⭐ · 7 = 3 ⭐ · усі 8 = 4 ⭐, а за повне проходження до 30 секунд — 5 ⭐.</div>
   </div>
 </div>
 
@@ -6500,7 +6543,7 @@ document.addEventListener('click', event => {
         <option value="activity">Остання активність</option>
         <option value="visits">Відвідування</option>
         <option value="xp">XP</option>
-        <option value="gold">Золото</option>
+        <option value="gold">Стілси</option>
         <option value="games">Ігри</option>
       </select>
     </div>
@@ -7819,7 +7862,7 @@ function renderAdminUsersList() {
         <div class="admin-user-meta">
           <span class="admin-user-chip">LV ${Number(u.level)||1}</span>
           <span class="admin-user-chip">${Number(u.xp)||0} XP</span>
-          <span class="admin-user-chip">🪙 ${Number(u.gold)||0}</span>
+          <span class="admin-user-chip">⭐ ${Number(u.gold)||0}</span>
           <span class="admin-user-chip">🎮 ${Number(u.game_runs)||0}</span>
           <span class="admin-user-chip">🛍 ${Number(u.shop_items_count)||0}</span>
           <span class="admin-user-chip">↻ ${Number(u.visit_count)||0} входів</span>
@@ -7838,7 +7881,7 @@ function closeAdminUserDetail() {
 }
 
 function adminActionLabel(a) {
-  const map = {add_gold:'Додано золото',add_xp:'Додано XP',gift_item:'Подаровано предмет',toggle_block:'Змінено блокування'};
+  const map = {add_gold:'Додано стілси',add_xp:'Додано XP',gift_item:'Подаровано предмет',toggle_block:'Змінено блокування'};
   return map[a] || a || 'Дія';
 }
 
@@ -7864,7 +7907,7 @@ function renderAdminUserDetail(data) {
     <div class="admin-detail-grid">
       <div class="admin-detail-tile"><strong>LV ${Number(u.level)||1}</strong><span>рівень</span></div>
       <div class="admin-detail-tile"><strong>${Number(u.xp)||0}</strong><span>XP</span></div>
-      <div class="admin-detail-tile"><strong>🪙 ${Number(u.gold)||0}</strong><span>золото</span></div>
+      <div class="admin-detail-tile"><strong>⭐ ${Number(u.gold)||0}</strong><span>стілси</span></div>
       <div class="admin-detail-tile"><strong>${totalGames}</strong><span>ігор</span></div>
       <div class="admin-detail-tile"><strong>${Number(u.visit_count)||0}</strong><span>входів</span></div>
       <div class="admin-detail-tile"><strong>${Number(runs.dungeon)||0}</strong><span>Данж</span></div>
@@ -7875,7 +7918,7 @@ function renderAdminUserDetail(data) {
     <div class="admin-detail-section">
       <h3>Адмін-дії</h3>
       <div class="admin-action-grid">
-        <button class="admin-action-btn" onclick="adminAddCurrency('add_gold')">🪙 + золото</button>
+        <button class="admin-action-btn" onclick="adminAddCurrency('add_gold')">⭐ + стілси</button>
         <button class="admin-action-btn" onclick="adminAddCurrency('add_xp')">⭐ + XP</button>
         <button class="admin-action-btn" onclick="adminGiftItem()">🎁 Подарувати предмет</button>
         <button class="admin-action-btn ${u.is_blocked ? 'safe' : 'danger'}" onclick="adminToggleBlock()">${u.is_blocked ? '✅ Розблокувати' : '🚫 Заблокувати'}</button>
@@ -7926,7 +7969,7 @@ async function adminRunUserAction(action, payload={}) {
 }
 
 function adminAddCurrency(action) {
-  const title = action === 'add_gold' ? 'Скільки золота додати?' : 'Скільки XP додати?';
+  const title = action === 'add_gold' ? 'Скільки стілсів додати?' : 'Скільки XP додати?';
   const raw = prompt(title, action === 'add_gold' ? '100' : '250');
   if (raw === null) return;
   const amount = Number(raw);
@@ -10748,7 +10791,7 @@ function shopPreviewHtml(item) {
     return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">${escapeHtml(item.icon || '🎟️')} ${label}</div></div>`;
   }
   if (item.type === 'companion') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-avatar">🙂</span><span class="shop-preview-companion">${escapeHtml(item.icon || '✨')}</span></div>`;
-  if (item.type === 'coin_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-big">${escapeHtml(item.icon || '🪙')}</span><span>Coin Rush</span></div>`;
+  if (item.type === 'coin_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-big">${escapeHtml(item.icon || '⭐')}</span><span>Stils Rush</span></div>`;
   if (item.type === 'treasure_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-cards">✦ ✦</span><span>${escapeHtml(item.icon || '🃏')}</span></div>`;
   if (item.type === 'dungeon_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-big">${escapeHtml(item.icon || '🏰')}</span><span>Данж</span></div>`;
   if (item.type === 'background') return `<div class="profile-shop-preview profile-shop-background-preview ${shopExtraClass(item.id)}"><span>${escapeHtml(item.icon || '🌌')}</span></div>`;
@@ -10776,7 +10819,7 @@ async function buyProfileShopItem(itemId) {
     const data = await res.json().catch(() => ({}));
     if (res.status === 409 || data.status === 'not_enough_gold') {
       const missing = Math.max(0, Number(data.missing_gold) || ((Number(data.price) || 0) - (Number(data.gold_balance) || 0)));
-      tg.showAlert(`Не вистачає золота${missing ? `. Потрібно ще ${missing} 🪙` : ''}.`);
+      tg.showAlert(`Не вистачає стілсів${missing ? `. Потрібно ще ${missing} ⭐` : ''}.`);
       return;
     }
     if (!res.ok) {
@@ -10849,7 +10892,7 @@ async function openProfileShop() {
 }
 
 function shopRarityLabel(rarity) { return ({common:'Звичайний',rare:'Рідкісний',epic:'Епічний',legendary:'Легендарний'})[rarity] || 'Звичайний'; }
-function shopSectionLabel(type) { return ({frame:'🖼️ Рамки',theme:'🎨 Теми',background:'🌌 Фони профілю',companion:'🐉 Компаньйони',coin_skin:'🪙 Скіни Coin Rush',treasure_skin:'🃏 Скіни Скарбниці',dungeon_skin:'🏰 Скіни Данжу',coupon:'🎟 Подарункові купони'})[type] || '✨ Інше'; }
+function shopSectionLabel(type) { return ({frame:'🖼️ Рамки',theme:'🎨 Теми',background:'🌌 Фони профілю',companion:'🐉 Компаньйони',coin_skin:'⭐ Скіни Stils Rush',treasure_skin:'🃏 Скіни Скарбниці',dungeon_skin:'🏰 Скіни Данжу',coupon:'🎟 Подарункові купони'})[type] || '✨ Інше'; }
 
 function profileShopHtml(data) {
   const items = Array.isArray(data.shop_items) ? data.shop_items : [];
@@ -10859,12 +10902,12 @@ function profileShopHtml(data) {
   const renderItem = (item) => {
     const owned=Boolean(item.owned), active=Boolean(item.active), price=Math.max(0,Number(item.price)||0), missing=Math.max(0,price-gold), canBuy=missing===0;
     let action='';
-    if (item.type==='coupon') action=owned?`<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · 🪙 ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
-    else action=active?`<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`:owned?`<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · 🪙 ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} 🪙</span>`}`;
+    if (item.type==='coupon') action=owned?`<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
+    else action=active?`<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`:owned?`<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
     return `<div class="profile-shop-item rarity-${escapeHtml(item.rarity||'common')} ${item.type==='coupon'?'coupon':''} ${owned?'owned':''} ${active?'active':''}">${shopPreviewHtml(item)}<div class="profile-shop-rarity">${shopRarityLabel(item.rarity)}</div><div class="profile-shop-icon">${escapeHtml(item.icon||'🎁')}</div><div class="profile-shop-name">${escapeHtml(item.name||'')}</div><div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div><div class="profile-shop-desc">${escapeHtml(item.description||'')}</div>${action}</div>`;
   };
   const sections=order.map(type=>{const group=items.filter(x=>x.type===type);return group.length?`<div class="profile-shop-section-title">${shopSectionLabel(type)}</div>${group.map(renderItem).join('')}`:'';}).join('');
-  return `<div class="profile-shop-panel"><div class="profile-shop-head"><div class="profile-shop-title">🛍 Магазин</div><div class="profile-shop-balance">🪙 ${gold}</div></div><div class="profile-shop-subtitle">Рамки, теми, фони, компаньйони, скіни мініігор і подарункові купони. Куплене залишається у колекції назавжди.</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button><div class="profile-shop-grid">${sections}</div></div>`;
+  return `<div class="profile-shop-panel"><div class="profile-shop-head"><div class="profile-shop-title">🛍 Магазин</div><div class="profile-shop-balance">⭐ ${gold}</div></div><div class="profile-shop-subtitle">Рамки, теми, фони, компаньйони, скіни мініігор і подарункові купони. Куплене залишається у колекції назавжди.</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button><div class="profile-shop-grid">${sections}</div></div>`;
 }
 
 function renderMyProfile(data) {
@@ -10902,7 +10945,7 @@ function renderMyProfile(data) {
         <div class="profile-title-row">
           <span class="profile-title">${escapeHtml(data.title || 'Новачок')}</span>
           <span class="profile-level-badge">Рівень ${Number(data.level) || 1}</span>
-          <button type="button" class="profile-gold-badge" onclick="openProfileShop()" aria-label="Відкрити магазин">🪙 ${Math.max(0, Number(data.gold) || 0)}</button>
+          <button type="button" class="profile-gold-badge" onclick="openProfileShop()" aria-label="Відкрити магазин">⭐ ${Math.max(0, Number(data.gold) || 0)}</button>
         </div>
         ${activeBadge ? `<div class="profile-active-badge">${escapeHtml(activeBadge)}</div>` : ''}
         <div class="profile-avatar-actions">
@@ -11203,7 +11246,7 @@ async function settleDungeonReward() {
 
     dungeonState.settled = true;
     dungeonState.accountGold = Math.max(0, Number(data.gold_balance) || dungeonState.accountGold || 0);
-    dungeonState.message += `<br><strong>На рахунок профілю зараховано +${Math.max(0, Number(data.reward_gold) || dungeonState.gold)} 🪙.</strong>`;
+    dungeonState.message += `<br><strong>На рахунок профілю зараховано +${Math.max(0, Number(data.reward_gold) || dungeonState.gold)} ⭐.</strong>`;
     saveDungeonState();
     dungeonProfileCache = dungeonProfileCache
       ? {...dungeonProfileCache, gold: dungeonState.accountGold}
@@ -11222,7 +11265,7 @@ function finishDungeon(won, reason = '') {
   if (won) {
     const bonus = dungeonRandom(4, 7);
     dungeonState.gold += bonus;
-    dungeonState.message = `<strong>Перемога!</strong> Підземелля пройдено. Бонус зі скарбниці: +${bonus} 🪙`;
+    dungeonState.message = `<strong>Перемога!</strong> Підземелля пройдено. Бонус зі скарбниці: +${bonus} ⭐`;
     dungeonLog(`Боса переможено. Загальна здобич: ${dungeonState.gold} золота.`);
   } else {
     const gatheredGold = Math.max(0, Number(dungeonState.gold) || 0);
