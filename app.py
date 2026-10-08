@@ -9,6 +9,7 @@ import json
 import time
 import re
 from threading import Thread
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from urllib.parse import quote, parse_qsl, urlparse, unquote, parse_qs
@@ -2531,6 +2532,212 @@ def check_admin():
     user = _request_telegram_user()
     is_admin = bool(user and _telegram_user_is_group_admin(user.get("id")))
     return jsonify({"is_admin": is_admin})
+
+
+@app.route("/api/profile/visit", methods=["POST"])
+def record_profile_visit():
+    """Фіксує одне відкриття Mini App для авторизованого Telegram-користувача."""
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    user_id = int(user.get("id"))
+    username = (user.get("username") or "").lstrip("@").lower()
+    display_name = " ".join(
+        x for x in [user.get("first_name"), user.get("last_name")] if x
+    ).strip() or username or "Гравець"
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    try:
+        current = requests.get(
+            PROFILES_REST,
+            headers=HEADERS,
+            params={
+                "telegram_user_id": f"eq.{user_id}",
+                "select": "telegram_user_id,visit_count,photo_url",
+                "limit": 1,
+            },
+            timeout=15,
+        )
+        current.raise_for_status()
+        rows = current.json() or []
+        existing = rows[0] if rows else None
+
+        visit_count = int((existing or {}).get("visit_count") or 0) + 1
+        payload = {
+            "telegram_user_id": user_id,
+            "username": username,
+            "display_name": display_name,
+            "last_seen_at": now_iso,
+            "visit_count": visit_count,
+            "updated_at": now_iso,
+        }
+        if not existing:
+            payload["photo_url"] = _profile_avatar_url(user_id)
+
+        saved = requests.post(
+            PROFILES_REST,
+            headers={
+                **HEADERS,
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=representation",
+            },
+            params={"on_conflict": "telegram_user_id"},
+            json=payload,
+            timeout=20,
+        )
+        saved.raise_for_status()
+        return jsonify({
+            "ok": True,
+            "telegram_user_id": user_id,
+            "last_seen_at": now_iso,
+            "visit_count": visit_count,
+        })
+    except Exception as exc:
+        logging.exception("Не вдалося зафіксувати відвідування Mini App")
+        return jsonify({"error": "visit_save_failed", "detail": str(exc)[:180]}), 500
+
+
+def _supabase_fetch_all(url, select="*", order=None, extra_params=None, page_size=1000):
+    """Зчитує всі рядки PostgREST сторінками, щоб адмінка не обрізала список."""
+    result = []
+    offset = 0
+    extra_params = dict(extra_params or {})
+    while True:
+        params = {**extra_params, "select": select, "limit": page_size, "offset": offset}
+        if order:
+            params["order"] = order
+        resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
+        resp.raise_for_status()
+        page = resp.json() or []
+        if not isinstance(page, list):
+            raise ValueError("supabase_page_not_list")
+        result.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
+    return result
+
+
+def _parse_iso_datetime(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+@app.route("/api/admin/users", methods=["GET"])
+def admin_users_dashboard():
+    """Повний список користувачів Mini App. Доступ лише адміну Telegram-групи."""
+    denied = _admin_required_response()
+    if denied:
+        return denied
+
+    try:
+        profiles = _supabase_fetch_all(
+            PROFILES_REST,
+            select=(
+                "telegram_user_id,username,display_name,photo_url,xp,gold,"
+                "owned_shop_items,created_at,updated_at,last_seen_at,visit_count"
+            ),
+            order="last_seen_at.desc.nullslast,created_at.desc",
+        )
+
+        run_counts = Counter()
+        for run_url in (
+            DUNGEON_RUNS_REST,
+            f"{SUPABASE_URL}/rest/v1/coin_catcher_runs",
+            f"{SUPABASE_URL}/rest/v1/treasure_memory_runs",
+        ):
+            try:
+                for row in _supabase_fetch_all(run_url, select="telegram_user_id"):
+                    uid = row.get("telegram_user_id")
+                    if uid is not None:
+                        run_counts[int(uid)] += 1
+            except Exception:
+                # Одна відсутня/тимчасово недоступна таблиця не повинна ламати весь список.
+                logging.exception("Не вдалося порахувати частину запусків мініігор")
+
+        tz = ZoneInfo(EVENT_TIMEZONE)
+        now_local = datetime.now(tz)
+        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_utc = today_start_local.astimezone(timezone.utc)
+        seven_days_ago_utc = (now_local - timedelta(days=7)).astimezone(timezone.utc)
+
+        users = []
+        active_today = 0
+        active_7d = 0
+        new_today = 0
+
+        for row in profiles:
+            try:
+                uid = int(row.get("telegram_user_id"))
+            except Exception:
+                continue
+
+            xp = int(row.get("xp") or 0)
+            gold = int(row.get("gold") or 0)
+            owned = row.get("owned_shop_items") or []
+            if isinstance(owned, str):
+                try:
+                    owned = json.loads(owned)
+                except Exception:
+                    owned = []
+            if not isinstance(owned, list):
+                owned = []
+
+            last_seen_raw = row.get("last_seen_at") or row.get("updated_at") or row.get("created_at")
+            last_seen = _parse_iso_datetime(last_seen_raw)
+            created = _parse_iso_datetime(row.get("created_at"))
+            if last_seen and last_seen >= today_start_utc:
+                active_today += 1
+            if last_seen and last_seen >= seven_days_ago_utc:
+                active_7d += 1
+            if created and created >= today_start_utc:
+                new_today += 1
+
+            users.append({
+                "telegram_user_id": uid,
+                "username": row.get("username") or "",
+                "display_name": row.get("display_name") or row.get("username") or "Гравець",
+                "photo_url": str(row.get("photo_url") or "").strip() or _profile_avatar_url(uid),
+                "xp": xp,
+                "level": max(1, xp // 250 + 1),
+                "gold": gold,
+                "shop_items_count": len(owned),
+                "visit_count": max(1, int(row.get("visit_count") or 0)),
+                "game_runs": int(run_counts.get(uid, 0)),
+                "created_at": row.get("created_at"),
+                "last_seen_at": last_seen_raw,
+            })
+
+        users.sort(
+            key=lambda x: _parse_iso_datetime(x.get("last_seen_at")) or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+
+        response = jsonify({
+            "stats": {
+                "total_users": len(users),
+                "active_today": active_today,
+                "active_7d": active_7d,
+                "new_today": new_today,
+            },
+            "users": users,
+        })
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    except Exception as exc:
+        logging.exception("Не вдалося завантажити список користувачів для адмінки")
+        return jsonify({"error": "admin_users_load_failed", "detail": str(exc)[:220]}), 500
 
 
 def _is_admin_username(username):

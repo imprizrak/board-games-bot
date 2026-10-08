@@ -7542,7 +7542,10 @@ async function loadAdminUsers(force=false) {
     renderAdminUsersStats();
     renderAdminUsersList();
   } catch (e) {
-    if (root) root.innerHTML = '<div class="admin-users-empty">Не вдалося завантажити список користувачів.</div>';
+    adminUsersData = {stats:{total_users:0,active_today:0,active_7d:0,new_today:0}, users:[]};
+    renderAdminUsersStats();
+    const msg = String(e?.message || 'admin_users_failed');
+    if (root) root.innerHTML = `<div class="admin-users-empty">Не вдалося завантажити список користувачів.<br><small>${escapeHtml(msg)}</small></div>`;
   }
 }
 
