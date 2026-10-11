@@ -57,6 +57,7 @@ PROFILE_TOOL_STATS_REST = f"{SUPABASE_URL}/rest/v1/profile_tool_stats"
 PROFILE_TOOL_EVENT_RPC = f"{SUPABASE_URL}/rest/v1/rpc/record_profile_tool_event"
 DUNGEON_RUNS_REST = f"{SUPABASE_URL}/rest/v1/dungeon_runs"
 DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
+GAME_SUBMISSIONS_REST = f"{SUPABASE_URL}/rest/v1/game_submissions"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -523,10 +524,13 @@ def get_games():
 # Додавання гри — тільки адміністратор/власник підключеної Telegram-групи.
 @app.route("/api/games", methods=["POST"])
 def add_game():
-    denied = _admin_required_response()
-    if denied:
-        return denied
-    name = request.form.get("name")
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name_required"}), 400
     description = request.form.get("description", "")
     added_by = request.form.get("added_by", "невідомо")
     tags = request.form.get("tags", "")
@@ -536,11 +540,60 @@ def add_game():
 
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
-
     cover_url = upload_file(cover_file, "covers") if cover_file else None
-    # Якщо одночасно додані URL і PDF, файл має пріоритет.
     rules_url = upload_file(rules_file, "rules") if rules_file else (rules_link or None)
 
+    is_group_admin = _telegram_user_is_group_admin(user.get("id"))
+    if not is_group_admin:
+        # Не даємо одному користувачу створити однакову незавершену заявку двічі.
+        try:
+            dup = requests.get(
+                GAME_SUBMISSIONS_REST,
+                headers=HEADERS,
+                params={
+                    "submitted_by_telegram_user_id": f"eq.{int(user.get('id'))}",
+                    "status": "eq.pending",
+                    "name": f"ilike.{name}",
+                    "select": "id",
+                    "limit": 1,
+                },
+                timeout=20,
+            )
+            if dup.ok and dup.json():
+                if cover_url: delete_file(cover_url)
+                if rules_file and rules_url: delete_file(rules_url)
+                return jsonify({"error": "submission_already_pending"}), 409
+        except Exception:
+            logging.exception("Не вдалося перевірити дубль заявки гри")
+
+        username = (user.get("username") or "").lstrip("@")
+        display_name = " ".join(x for x in [user.get("first_name"), user.get("last_name")] if x).strip() or username or "Учасник"
+        payload = {
+            "submitted_by_telegram_user_id": int(user.get("id")),
+            "submitted_by_username": username or None,
+            "submitted_by_display_name": display_name,
+            "name": name,
+            "description": description,
+            "tags": tags,
+            "cover_url": cover_url,
+            "rules_url": rules_url,
+            "status": "pending",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        resp = requests.post(
+            GAME_SUBMISSIONS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            json=payload,
+            timeout=30,
+        )
+        if not resp.ok:
+            logging.warning("Не вдалося зберегти заявку гри: %s", resp.text[:500])
+            if cover_url: delete_file(cover_url)
+            if rules_file and rules_url: delete_file(rules_url)
+            return jsonify({"error": "submission_create_failed"}), 500
+        return jsonify({"status": "pending", "submission": (resp.json() or [None])[0]}), 202
+
+    # Адміністратор публікує гру одразу.
     resp = requests.post(
         REST,
         headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
@@ -570,7 +623,6 @@ def add_game():
         image_url=cover_url,
         metadata={"game_name": name},
     )
-
     return jsonify({"status": "ok"})
 
 
@@ -636,6 +688,9 @@ def update_game(game_id):
 
 @app.route("/api/games/<int:game_id>/favorite", methods=["POST"])
 def toggle_favorite(game_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
     is_favorite = bool(request.get_json(silent=True, force=True).get("is_favorite"))
     resp = requests.patch(
         REST,
@@ -927,6 +982,190 @@ def _admin_required_response():
     if not _request_is_group_admin():
         return jsonify({"error": "group_admin_required"}), 403
     return None
+
+
+@app.route("/api/admin/game-submissions", methods=["GET"])
+def admin_game_submissions():
+    denied = _admin_required_response()
+    if denied:
+        return denied
+    status = (request.args.get("status") or "pending").strip().lower()
+    if status not in {"pending", "approved", "rejected", "all"}:
+        status = "pending"
+    params = {"select": "*", "order": "created_at.desc"}
+    if status != "all":
+        params["status"] = f"eq.{status}"
+    try:
+        resp = requests.get(GAME_SUBMISSIONS_REST, headers=HEADERS, params=params, timeout=30)
+        if not resp.ok:
+            logging.warning("Не вдалося завантажити заявки: %s", resp.text[:500])
+            return jsonify({"error": "moderation_load_failed"}), 500
+        return jsonify(resp.json())
+    except Exception:
+        logging.exception("Не вдалося завантажити заявки ігор")
+        return jsonify({"error": "moderation_load_failed"}), 500
+
+
+def _admin_get_game_submission(submission_id):
+    try:
+        resp = requests.get(
+            GAME_SUBMISSIONS_REST,
+            headers=HEADERS,
+            params={"id": f"eq.{int(submission_id)}", "select": "*", "limit": 1},
+            timeout=20,
+        )
+        if resp.ok and resp.json():
+            return resp.json()[0]
+    except Exception:
+        logging.exception("Не вдалося отримати заявку %s", submission_id)
+    return None
+
+
+@app.route("/api/admin/game-submissions/<int:submission_id>", methods=["PUT"])
+def admin_edit_game_submission(submission_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
+    current = _admin_get_game_submission(submission_id)
+    if not current:
+        return jsonify({"error": "submission_not_found"}), 404
+    if current.get("status") != "pending":
+        return jsonify({"error": "submission_already_reviewed"}), 409
+
+    name = (request.form.get("name") or current.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name_required"}), 400
+    description = request.form.get("description", current.get("description") or "")
+    tags = request.form.get("tags", current.get("tags") or "")
+    cover_url = current.get("cover_url")
+    rules_url = current.get("rules_url")
+    cover_file = request.files.get("cover")
+    rules_file = request.files.get("rules")
+    rules_link_raw = request.form.get("rules_url", None)
+
+    if cover_file:
+        delete_file(cover_url)
+        cover_url = upload_file(cover_file, "covers")
+    if rules_file:
+        delete_file(rules_url)
+        rules_url = upload_file(rules_file, "rules")
+    elif rules_link_raw is not None:
+        normalized = normalize_rules_url(rules_link_raw)
+        if str(rules_link_raw).strip() and normalized is None:
+            return jsonify({"error": "Некоректне посилання на правила."}), 400
+        if normalized != rules_url:
+            delete_file(rules_url)
+            rules_url = normalized or None
+
+    patch = {
+        "name": name,
+        "description": description,
+        "tags": tags,
+        "cover_url": cover_url,
+        "rules_url": rules_url,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    resp = requests.patch(
+        GAME_SUBMISSIONS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+        params={"id": f"eq.{submission_id}", "status": "eq.pending"},
+        json=patch,
+        timeout=30,
+    )
+    if not resp.ok:
+        return jsonify({"error": "submission_update_failed"}), 500
+    return jsonify({"status": "updated", "submission": (resp.json() or [None])[0]})
+
+
+@app.route("/api/admin/game-submissions/<int:submission_id>/approve", methods=["POST"])
+def admin_approve_game_submission(submission_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
+    admin = _request_telegram_user()
+    current = _admin_get_game_submission(submission_id)
+    if not current:
+        return jsonify({"error": "submission_not_found"}), 404
+    if current.get("status") != "pending":
+        return jsonify({"error": "submission_already_reviewed"}), 409
+
+    game_payload = {
+        "name": current.get("name") or "Без назви",
+        "description": current.get("description") or "",
+        "cover_url": current.get("cover_url"),
+        "rules_url": current.get("rules_url"),
+        "added_by": current.get("submitted_by_display_name") or current.get("submitted_by_username") or "учасник",
+        "tags": current.get("tags") or "",
+        "is_favorite": False,
+    }
+    created = requests.post(
+        REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+        json=game_payload,
+        timeout=30,
+    )
+    if not created.ok:
+        logging.warning("Не вдалося опублікувати схвалену гру: %s", created.text[:500])
+        return jsonify({"error": "game_publish_failed"}), 500
+
+    patch = {
+        "status": "approved",
+        "reviewed_by_telegram_user_id": int(admin.get("id")),
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    reviewed = requests.patch(
+        GAME_SUBMISSIONS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        params={"id": f"eq.{submission_id}", "status": "eq.pending"},
+        json=patch,
+        timeout=30,
+    )
+    if not reviewed.ok:
+        logging.warning("Гру опубліковано, але заявку не позначено схваленою: %s", reviewed.text[:500])
+
+    name = game_payload["name"]
+    description = game_payload["description"]
+    notify_text = f"🎲 Нова гра в бібліотеці: {name}"
+    if description:
+        notify_text += f"\n\n{description}"
+    notify_subscribers_async(notify_text, photo_url=game_payload.get("cover_url"))
+    notify_game_groups_async(name, description=description, cover_url=game_payload.get("cover_url"))
+    log_activity("game_added", f"У бібліотеці з’явилась нова гра: {name}", description,
+                 actor_name=game_payload.get("added_by"), image_url=game_payload.get("cover_url"),
+                 metadata={"game_name": name, "moderated": True})
+    return jsonify({"status": "approved", "game": (created.json() or [None])[0]})
+
+
+@app.route("/api/admin/game-submissions/<int:submission_id>/reject", methods=["POST"])
+def admin_reject_game_submission(submission_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
+    admin = _request_telegram_user()
+    current = _admin_get_game_submission(submission_id)
+    if not current:
+        return jsonify({"error": "submission_not_found"}), 404
+    if current.get("status") != "pending":
+        return jsonify({"error": "submission_already_reviewed"}), 409
+    data = request.get_json(silent=True) or {}
+    patch = {
+        "status": "rejected",
+        "review_note": str(data.get("note") or "").strip() or None,
+        "reviewed_by_telegram_user_id": int(admin.get("id")),
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    resp = requests.patch(
+        GAME_SUBMISSIONS_REST,
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        params={"id": f"eq.{submission_id}", "status": "eq.pending"},
+        json=patch,
+        timeout=30,
+    )
+    if not resp.ok:
+        return jsonify({"error": "submission_reject_failed"}), 500
+    return jsonify({"status": "rejected"})
 
 
 
