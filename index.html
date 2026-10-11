@@ -6068,6 +6068,29 @@ document.addEventListener('click', event => {
     filter: drop-shadow(0 0 4px rgba(255,255,255,.18));
   }
 
+
+  .game-submit-note{margin:0 0 14px;padding:11px 12px;border-radius:12px;background:rgba(99,102,241,.09);border:1px solid rgba(129,140,248,.22);color:var(--muted);font-size:12px;line-height:1.45}
+  .game-moderation-row{margin:10px 0 14px}
+  .game-moderation-open{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(227,191,85,.28);background:linear-gradient(135deg,rgba(227,191,85,.10),rgba(115,79,182,.10));color:var(--text);padding:12px 14px;border-radius:14px;font:inherit;font-weight:850}
+  .game-moderation-count{min-width:28px;height:28px;display:grid;place-items:center;border-radius:999px;background:rgba(227,191,85,.18);color:#f2d77b;font-weight:950}
+  .game-moderation-sheet{max-height:90vh;overflow:auto}
+  .game-moderation-help{color:var(--muted);font-size:12px;line-height:1.45;margin:-4px 0 13px}
+  .game-moderation-list{display:grid;gap:10px}
+  .game-moderation-card{display:grid;grid-template-columns:86px minmax(0,1fr);gap:12px;padding:11px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(255,255,255,.035)}
+  .game-moderation-cover{width:86px;height:104px;border-radius:11px;overflow:hidden;background:rgba(255,255,255,.05);display:grid;place-items:center}
+  .game-moderation-cover img{width:100%;height:100%;object-fit:contain}
+  .game-moderation-placeholder{font-size:34px}
+  .game-moderation-name{font-weight:900;font-size:15px}
+  .game-moderation-author{margin-top:3px;color:var(--muted);font-size:10px}
+  .game-moderation-tags{margin-top:7px;font-size:10px;color:#d8c071}
+  .game-moderation-desc{margin-top:6px;font-size:12px;line-height:1.35;color:#d4d8e0}
+  .game-moderation-rules{margin-top:7px;font-size:11px}.game-moderation-rules a{color:var(--accent)}
+  .game-moderation-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+  .game-moderation-actions button{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.06);color:var(--text);border-radius:10px;padding:8px 6px;font:inherit;font-size:10px;font-weight:850}
+  .game-moderation-actions .moderation-approve{border-color:rgba(51,190,114,.35);background:rgba(51,190,114,.12);color:#aaf1c7}
+  .game-moderation-actions .moderation-reject{border-color:rgba(235,87,87,.35);background:rgba(235,87,87,.10);color:#ffc0c0}
+  @media(max-width:480px){.game-moderation-card{grid-template-columns:70px minmax(0,1fr)}.game-moderation-cover{width:70px;height:88px}.game-moderation-actions{grid-template-columns:1fr}.game-moderation-actions button{font-size:11px}}
+
 </style>
 </head>
 <body>
@@ -6176,8 +6199,14 @@ document.addEventListener('click', event => {
       <button class="lib-genre-chip" data-genre="Сімейна">Сімейна</button>
       <button class="lib-genre-chip" id="libFavChip" data-genre="__favorites__">★ Улюблені</button>
     </div>
+    <div class="game-moderation-row group-admin-only" id="gameModerationRow" style="display:none;">
+      <button type="button" class="game-moderation-open" onclick="openGameModeration()">
+        <span>🛡 Модерація нових ігор</span>
+        <span class="game-moderation-count" id="gameModerationCount">0</span>
+      </button>
+    </div>
     <div class="grid" id="gamesGrid"></div>
-    <button class="fab group-admin-only" onclick="openAddModal()" style="display:none;">
+    <button class="fab" onclick="openAddModal()">
       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </div>
@@ -6658,7 +6687,8 @@ document.addEventListener('click', event => {
 <div class="modal" id="addModal">
   <div class="sheet">
     <button class="close-btn" onclick="closeModal('addModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
-    <h2>Додати гру</h2>
+    <h2>Додати настільну гру</h2>
+    <div class="game-submit-note" id="gameSubmitNote">Учасники можуть запропонувати гру. Вона з’явиться у бібліотеці після перевірки адміністратором.</div>
 
     <label>Назва гри</label>
     <input type="text" id="inputName" placeholder="Наприклад, Каркассон">
@@ -6680,7 +6710,32 @@ document.addEventListener('click', event => {
     <label>Або файл з правилами (PDF)</label>
     <input type="file" id="inputRules" accept="application/pdf">
 
-    <button class="btn" onclick="submitGame()">Зберегти гру</button>
+    <button class="btn" id="submitGameBtn" onclick="submitGame()">Надіслати гру</button>
+  </div>
+</div>
+
+<!-- Модерація запропонованих ігор -->
+<div class="modal" id="gameModerationModal">
+  <div class="sheet game-moderation-sheet">
+    <button class="close-btn" onclick="closeModal('gameModerationModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h2>Модерація ігор</h2>
+    <div class="game-moderation-help">Тут показуються ігри, які запропонували учасники. Можна схвалити, відредагувати або відхилити.</div>
+    <div id="gameModerationList" class="game-moderation-list"><div class="empty">Завантажую…</div></div>
+  </div>
+</div>
+
+<!-- Редагування заявки на гру -->
+<div class="modal" id="gameSubmissionEditModal">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('gameSubmissionEditModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h2>Редагувати заявку</h2>
+    <label>Назва гри</label><input type="text" id="modGameName">
+    <label>Опис</label><textarea id="modGameDescription" rows="3"></textarea>
+    <label>Теги</label><input type="text" id="modGameTags">
+    <label>Нова обкладинка (необов’язково)</label><input type="file" id="modGameCover" accept="image/*">
+    <label>Посилання на правила</label><input type="url" id="modGameRulesUrl" placeholder="https://site.com/rules">
+    <label>Новий PDF правил (необов’язково)</label><input type="file" id="modGameRules" accept="application/pdf">
+    <button class="btn" onclick="saveGameSubmissionEdit()">Зберегти заявку</button>
   </div>
 </div>
 
@@ -6992,6 +7047,7 @@ function applyAdminPermissionsUi() {
   });
   const eventsFab = document.getElementById("eventsFab");
   if (eventsFab) eventsFab.style.display = isAdmin ? "flex" : "none";
+  if (isAdmin) loadGameModerationCount();
 }
 
 /* ==================== НАВІГАЦІЯ ВКЛАДКАМИ ==================== */
@@ -7242,7 +7298,7 @@ function renderGamesGrid() {
   grid.innerHTML = "";
 
   if (allGames.length === 0) {
-    grid.innerHTML = '<div class="empty">Ще немає жодної гри.' + (isAdmin ? '<br>Натисни "+", щоб додати першу!' : '') + '</div>';
+    grid.innerHTML = '<div class="empty">Ще немає жодної гри.<br>Натисни "+", щоб запропонувати першу!</div>';
     return;
   }
   if (games.length === 0) {
@@ -7262,15 +7318,15 @@ function renderGamesGrid() {
     const tagsHtml = game.tags ? `<div class="card-tags">${escapeHtml(game.tags)}</div>` : "";
 
     card.innerHTML = `
-      <button class="fav-star ${game.is_favorite ? 'active' : ''}" data-id="${game.id}">
+      ${isAdmin ? `<button class="fav-star ${game.is_favorite ? 'active' : ''}" data-id="${game.id}">
         <svg viewBox="0 0 24 24" fill="${game.is_favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17.3l-5.8 3.2 1.1-6.5-4.8-4.6 6.6-.9L12 2.5Z"/></svg>
-      </button>
+      </button>` : ''}
       ${img}
       <div class="card-title">${escapeHtml(game.name || '')}</div>
       ${tagsHtml}
     `;
 
-    card.querySelector(".fav-star").addEventListener("click", async (e) => {
+    card.querySelector(".fav-star")?.addEventListener("click", async (e) => {
       e.stopPropagation();
       const newState = !game.is_favorite;
       game.is_favorite = newState;
@@ -7311,7 +7367,12 @@ let currentGame = null;
 
 
 function openAddModal() {
-  if (!isAdmin) { tg.showAlert("Додавати ігри можуть лише адміністратори Telegram-групи."); return; }
+  const note = document.getElementById('gameSubmitNote');
+  const btn = document.getElementById('submitGameBtn');
+  if (note) note.textContent = isAdmin
+    ? 'Ти адміністратор — гра буде одразу опублікована у бібліотеці.'
+    : 'Після надсилання гра потрапить на модерацію. Редагувати або видаляти ігри можуть тільки адміністратори.';
+  if (btn) btn.textContent = isAdmin ? 'Опублікувати гру' : 'Надіслати на модерацію';
   document.getElementById("addModal").classList.add("open");
 }
 
@@ -7390,7 +7451,6 @@ function closeModal(id) {
 }
 
 async function submitGame() {
-  if (!isAdmin) { tg.showAlert("Додавати ігри можуть лише адміністратори Telegram-групи."); return; }
   const name = document.getElementById("inputName").value.trim();
   if (!name) {
     tg.showAlert("Введи назву гри");
@@ -7424,10 +7484,11 @@ async function submitGame() {
     headers: telegramAuthHeaders(),
     body: formData,
   });
-  if (res.status === 403) { tg.showAlert("Цю дію можуть виконувати лише адміністратори Telegram-групи."); return; }
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { tg.showAlert("Відкрий Mini App через Telegram, щоб запропонувати гру."); return; }
+  if (res.status === 409 && data.error === 'submission_already_pending') { tg.showAlert("Така гра вже є серед твоїх заявок на перевірці."); return; }
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    tg.showAlert(data.error || "Не вдалося додати гру.");
+    tg.showAlert(data.error || "Не вдалося надіслати гру.");
     return;
   }
 
@@ -7439,7 +7500,146 @@ async function submitGame() {
   document.getElementById("inputRulesUrl").value = "";
   document.getElementById("inputRules").value = "";
 
-  loadGames(true);
+  if (data.status === 'pending') {
+    tg.showAlert('Гру надіслано на модерацію ✅ Після схвалення вона з’явиться у бібліотеці.');
+    if (isAdmin) loadGameModerationCount();
+  } else {
+    tg.showAlert('Гру опубліковано ✅');
+    loadGames(true);
+  }
+}
+
+
+let gameModerationItems = [];
+let editingGameSubmission = null;
+
+async function loadGameModerationCount() {
+  if (!isAdmin) return;
+  try {
+    const res = await fetch('/api/admin/game-submissions?status=pending', {headers:telegramAuthHeaders(), cache:'no-store'});
+    if (!res.ok) return;
+    const rows = await res.json();
+    const count = Array.isArray(rows) ? rows.length : 0;
+    const el = document.getElementById('gameModerationCount');
+    if (el) el.textContent = String(count);
+  } catch (_) {}
+}
+
+async function openGameModeration() {
+  if (!isAdmin) { tg.showAlert('Доступ лише для адміністратора.'); return; }
+  document.getElementById('gameModerationModal')?.classList.add('open');
+  await loadGameModeration();
+}
+
+async function loadGameModeration() {
+  const root = document.getElementById('gameModerationList');
+  if (!root) return;
+  root.innerHTML = '<div class="empty">Завантажую заявки…</div>';
+  try {
+    const res = await fetch('/api/admin/game-submissions?status=pending', {headers:telegramAuthHeaders(), cache:'no-store'});
+    const data = await res.json().catch(()=>[]);
+    if (!res.ok) throw new Error(data.error || 'moderation_load_failed');
+    gameModerationItems = Array.isArray(data) ? data : [];
+    const count = document.getElementById('gameModerationCount');
+    if (count) count.textContent = String(gameModerationItems.length);
+    renderGameModeration();
+  } catch (e) {
+    root.innerHTML = `<div class="empty">Не вдалося завантажити заявки.<br><small>${escapeHtml(String(e?.message||e))}</small></div>`;
+  }
+}
+
+function renderGameModeration() {
+  const root = document.getElementById('gameModerationList');
+  if (!root) return;
+  if (!gameModerationItems.length) {
+    root.innerHTML = '<div class="empty">Нових заявок немає 🎉</div>';
+    return;
+  }
+  root.innerHTML = gameModerationItems.map(item => {
+    const author = item.submitted_by_display_name || (item.submitted_by_username ? '@'+item.submitted_by_username : 'Учасник');
+    const cover = item.cover_url ? `<img src="${escapeHtml(item.cover_url)}" alt="${escapeHtml(item.name||'')}">` : '<div class="game-moderation-placeholder">🎲</div>';
+    const rules = item.rules_url ? `<a href="${escapeHtml(item.rules_url)}" target="_blank" rel="noopener">Правила ↗</a>` : '<span>Без правил</span>';
+    const when = item.created_at ? new Date(item.created_at).toLocaleString('uk-UA') : '';
+    return `<article class="game-moderation-card">
+      <div class="game-moderation-cover">${cover}</div>
+      <div class="game-moderation-body">
+        <div class="game-moderation-name">${escapeHtml(item.name||'Без назви')}</div>
+        <div class="game-moderation-author">Запропонував(ла): ${escapeHtml(author)}${when ? ' · '+escapeHtml(when) : ''}</div>
+        ${item.tags ? `<div class="game-moderation-tags">${escapeHtml(item.tags)}</div>` : ''}
+        ${item.description ? `<div class="game-moderation-desc">${escapeHtml(item.description)}</div>` : ''}
+        <div class="game-moderation-rules">${rules}</div>
+        <div class="game-moderation-actions">
+          <button type="button" class="moderation-approve" onclick="approveGameSubmission(${Number(item.id)})">✓ Схвалити</button>
+          <button type="button" onclick="editGameSubmission(${Number(item.id)})">✎ Редагувати</button>
+          <button type="button" class="moderation-reject" onclick="rejectGameSubmission(${Number(item.id)})">✕ Відхилити</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+async function approveGameSubmission(id) {
+  if (!isAdmin) return;
+  const item = gameModerationItems.find(x => Number(x.id) === Number(id));
+  tg.showConfirm(`Схвалити гру «${item?.name || 'Без назви'}» і додати її в бібліотеку?`, async ok => {
+    if (!ok) return;
+    const res = await fetch(`/api/admin/game-submissions/${Number(id)}/approve`, {method:'POST', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:JSON.stringify({_tg_init_data:telegramInitData})});
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) { tg.showAlert(data.error || 'Не вдалося схвалити гру.'); return; }
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    await Promise.allSettled([loadGameModeration(), loadGames(true), loadHomeHub(true)]);
+  });
+}
+
+function editGameSubmission(id) {
+  if (!isAdmin) return;
+  const item = gameModerationItems.find(x => Number(x.id) === Number(id));
+  if (!item) return;
+  editingGameSubmission = item;
+  document.getElementById('modGameName').value = item.name || '';
+  document.getElementById('modGameDescription').value = item.description || '';
+  document.getElementById('modGameTags').value = item.tags || '';
+  document.getElementById('modGameRulesUrl').value = item.rules_url || '';
+  document.getElementById('modGameCover').value = '';
+  document.getElementById('modGameRules').value = '';
+  document.getElementById('gameSubmissionEditModal')?.classList.add('open');
+}
+
+async function saveGameSubmissionEdit() {
+  if (!isAdmin || !editingGameSubmission) return;
+  const name = document.getElementById('modGameName').value.trim();
+  if (!name) { tg.showAlert('Введи назву гри.'); return; }
+  const fd = new FormData();
+  fd.append('_tg_init_data', telegramInitData);
+  fd.append('name', name);
+  fd.append('description', document.getElementById('modGameDescription').value);
+  fd.append('tags', document.getElementById('modGameTags').value);
+  fd.append('rules_url', document.getElementById('modGameRulesUrl').value.trim());
+  const rawCover = document.getElementById('modGameCover').files[0];
+  const rules = document.getElementById('modGameRules').files[0];
+  if (rawCover) {
+    try { fd.append('cover', await prepareTransparentGameCover(rawCover)); }
+    catch (_) { fd.append('cover', rawCover); }
+  }
+  if (rules) fd.append('rules', rules);
+  const res = await fetch(`/api/admin/game-submissions/${Number(editingGameSubmission.id)}`, {method:'PUT', headers:telegramAuthHeaders(), body:fd});
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) { tg.showAlert(data.error || 'Не вдалося зберегти заявку.'); return; }
+  closeModal('gameSubmissionEditModal');
+  editingGameSubmission = null;
+  await loadGameModeration();
+}
+
+async function rejectGameSubmission(id) {
+  if (!isAdmin) return;
+  const item = gameModerationItems.find(x => Number(x.id) === Number(id));
+  if (!confirm(`Відхилити заявку «${item?.name || 'Без назви'}»?`)) return;
+  const note = prompt('Причина відхилення (необов’язково):', '') || '';
+  const res = await fetch(`/api/admin/game-submissions/${Number(id)}/reject`, {method:'POST', headers:telegramAuthHeaders({'Content-Type':'application/json'}), body:JSON.stringify({note, _tg_init_data:telegramInitData})});
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) { tg.showAlert(data.error || 'Не вдалося відхилити заявку.'); return; }
+  if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+  await loadGameModeration();
 }
 
 loadGames();

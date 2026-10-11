@@ -1522,59 +1522,82 @@ def _xp_reward_catalog(level):
 
 
 
-
 def _profile_shop_catalog():
-    """Косметика, яку можна придбати за золото з мініігор."""
+    """Косметика, яку можна придбати за золото з мінігри."""
     return [
-        {"id": "shop_frame_bronze", "type": "frame", "icon": "⭐", "name": "Зоряний слід", "value": "shop_frame_bronze", "price": 120, "rarity": "rare", "description": "Світла декоративна рамка з орбітою і золотими зірками."},
-        {"id": "shop_frame_frost", "type": "frame", "icon": "💫", "name": "Неоновий сад", "value": "shop_frame_frost", "price": 220, "rarity": "rare", "description": "Синьо-фіолетова рамка з мʼяким неоном і декоративними гілочками."},
-        {"id": "shop_frame_arcane", "type": "frame", "icon": "🐱", "name": "Котячі вушка", "value": "shop_frame_arcane", "price": 380, "rarity": "epic", "description": "Мила рамка з вушками та ніжним рожево-фіолетовим сяйвом."},
-        {"id": "shop_frame_dragonfire", "type": "frame", "icon": "🔥", "name": "Багряне полумʼя", "value": "shop_frame_dragonfire", "price": 560, "rarity": "epic", "description": "Яскрава рамка з червоними язиками полумʼя навколо аватарки."},
-        {"id": "shop_frame_lightning", "type": "frame", "icon": "🪽", "name": "Крила світанку", "value": "shop_frame_lightning", "price": 760, "rarity": "legendary", "description": "Легка світла рамка з крильцями та сяйвом по боках."},
-        {"id": "shop_frame_void", "type": "frame", "icon": "👾", "name": "Піксельний глітч", "value": "shop_frame_void", "price": 980, "rarity": "legendary", "description": "Піксельна рамка з ефектом цифрового глітчу навколо аватарки."},
-        {"id": "shop_theme_forest", "type": "theme", "icon": "🌿", "name": "Смарагдовий ліс", "value": "shop_theme_forest", "price": 300, "rarity": "rare", "description": "Темно-зелена тема профілю з мʼякими золотими акцентами."},
-        {"id": "shop_theme_crimson", "type": "theme", "icon": "🔥", "name": "Багряний рейд", "value": "shop_theme_crimson", "price": 450, "rarity": "epic", "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу."},
-        {"id": "shop_theme_royal", "type": "theme", "icon": "👑", "name": "Королівська ніч", "value": "shop_theme_royal", "price": 700, "rarity": "epic", "description": "Преміальна фіолетово-золота тема профілю."},
-        {"id": "shop_theme_starlight", "type": "theme", "icon": "✨", "name": "Зоряне сяйво", "value": "shop_theme_starlight", "price": 950, "rarity": "legendary", "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом."},
-        {"id": "shop_background_tavern", "type": "background", "icon": "🍻", "name": "Таверна пригод", "value": "shop_background_tavern", "price": 260, "rarity": "rare", "description": "Теплий таверновий фон для картки профілю."},
-        {"id": "shop_background_dungeon", "type": "background", "icon": "🪨", "name": "Камʼяний данж", "value": "shop_background_dungeon", "price": 340, "rarity": "rare", "description": "Похмурий фон у стилі темних коридорів підземелля."},
-        {"id": "shop_background_cosmos", "type": "background", "icon": "🌌", "name": "Космічна зала", "value": "shop_background_cosmos", "price": 520, "rarity": "epic", "description": "Зоряний фон для тих, хто любить футуристичний стиль."},
-        {"id": "shop_background_dragonlair", "type": "background", "icon": "🔥", "name": "Лігво дракона", "value": "shop_background_dragonlair", "price": 760, "rarity": "legendary", "description": "Полумʼяний фон із настроєм скарбниці дракона."},
-        {"id": "shop_companion_owl", "type": "companion", "icon": "🦉", "name": "Мудра сова", "value": "shop_companion_owl", "price": 240, "rarity": "rare", "description": "Маленький супутник біля аватарки, що додає шарму профілю."},
-        {"id": "shop_companion_mimic", "type": "companion", "icon": "🧰", "name": "Мімік", "value": "shop_companion_mimic", "price": 420, "rarity": "epic", "description": "Кумедний скринеподібний супутник для любителів фентезі."},
-        {"id": "shop_companion_ghost", "type": "companion", "icon": "👻", "name": "Привид", "value": "shop_companion_ghost", "price": 540, "rarity": "epic", "description": "Легкий примарний друг, який літає біля аватарки."},
-        {"id": "shop_companion_dragon", "type": "companion", "icon": "🐉", "name": "Міні-дракон", "value": "shop_companion_dragon", "price": 880, "rarity": "legendary", "description": "Легендарний дракон-компаньйон для найвідданіших гравців."},
-        {"id": "shop_coin_skin_crystal", "type": "coin_skin", "icon": "💎", "name": "Crystal Coin Rush", "value": "shop_coin_skin_crystal", "price": 210, "rarity": "rare", "description": "Крижаний вигляд монет у грі Coin Rush."},
-        {"id": "shop_coin_skin_rune", "type": "coin_skin", "icon": "🔷", "name": "Rune Coin Rush", "value": "shop_coin_skin_rune", "price": 360, "rarity": "epic", "description": "Рунічний стиль монет із магічним акцентом."},
-        {"id": "shop_coin_skin_styloteka", "type": "coin_skin", "icon": "👑", "name": "Styloteka Coin Rush", "value": "shop_coin_skin_styloteka", "price": 620, "rarity": "legendary", "description": "Преміальний фірмовий стиль для монет Coin Rush."},
-        {"id": "shop_treasure_skin_neon", "type": "treasure_skin", "icon": "🟣", "name": "Neon Treasure", "value": "shop_treasure_skin_neon", "price": 230, "rarity": "rare", "description": "Неонове оформлення карт для гри Скарбниця."},
-        {"id": "shop_treasure_skin_pirate", "type": "treasure_skin", "icon": "🏴‍☠️", "name": "Pirate Treasure", "value": "shop_treasure_skin_pirate", "price": 390, "rarity": "epic", "description": "Піратське оформлення колоди та поля Скарбниці."},
-        {"id": "shop_treasure_skin_dragon", "type": "treasure_skin", "icon": "🐲", "name": "Dragon Treasure", "value": "shop_treasure_skin_dragon", "price": 650, "rarity": "legendary", "description": "Драконяча тема для епічних партій у Скарбницю."},
-        {"id": "shop_dungeon_skin_crypt", "type": "dungeon_skin", "icon": "⚰️", "name": "Crypt Dungeon", "value": "shop_dungeon_skin_crypt", "price": 250, "rarity": "rare", "description": "Темний криптовий стиль для Данжу."},
-        {"id": "shop_dungeon_skin_arcane", "type": "dungeon_skin", "icon": "🪄", "name": "Arcane Dungeon", "value": "shop_dungeon_skin_arcane", "price": 410, "rarity": "epic", "description": "Арканне оформлення Данжу з фіолетовими акцентами."},
-        {"id": "shop_dungeon_skin_inferno", "type": "dungeon_skin", "icon": "🌋", "name": "Inferno Dungeon", "value": "shop_dungeon_skin_inferno", "price": 690, "rarity": "legendary", "description": "Палаючий стиль Данжу для найсміливіших гравців."},
-        {"id": "shop_coupon_gift_small", "type": "coupon", "icon": "🎟️", "name": "Стікерпак Styloteka", "value": "shop_coupon_gift_small", "price": 1200, "rarity": "epic", "description": "Купон на стікерпак Styloteka — найдешевший із подарункових лотів."},
-        {"id": "shop_coupon_gift_large", "type": "coupon", "icon": "☕", "name": "Чашка-мерч Styloteka", "value": "shop_coupon_gift_large", "price": 1800, "rarity": "legendary", "description": "Подарунковий купон на брендовану чашку Styloteka."},
-        {"id": "shop_coupon_gift_royal", "type": "coupon", "icon": "🎁", "name": "Виграш настолки", "value": "shop_coupon_gift_royal", "price": 2600, "rarity": "legendary", "description": "Найдорожчий лот магазину — купон на виграш настільної гри."},
+        {
+            "id": "shop_frame_bronze",
+            "type": "frame",
+            "icon": "🟤",
+            "name": "Бронзова рамка",
+            "value": "shop_frame_bronze",
+            "price": 120,
+            "description": "Тепла бронзова рамка у стилі пригодницької гільдії.",
+        },
+        {
+            "id": "shop_frame_frost",
+            "type": "frame",
+            "icon": "❄️",
+            "name": "Крижана рамка",
+            "value": "shop_frame_frost",
+            "price": 220,
+            "description": "Холодне блакитне сяйво навколо аватарки.",
+        },
+        {
+            "id": "shop_frame_arcane",
+            "type": "frame",
+            "icon": "🔮",
+            "name": "Арканна рамка",
+            "value": "shop_frame_arcane",
+            "price": 380,
+            "description": "Фіолетово-золота рамка для справжнього героя.",
+        },
+        {
+            "id": "shop_frame_dragonfire",
+            "type": "frame",
+            "icon": "🐉",
+            "name": "Вогонь дракона",
+            "value": "shop_frame_dragonfire",
+            "price": 560,
+            "description": "Вогняна рамка з теплим червоно-золотим сяйвом.",
+        },
+        {
+            "id": "shop_theme_forest",
+            "type": "theme",
+            "icon": "🌿",
+            "name": "Смарагдовий ліс",
+            "value": "shop_theme_forest",
+            "price": 300,
+            "description": "Темно-зелена тема профілю з м'якими золотими акцентами.",
+        },
+        {
+            "id": "shop_theme_crimson",
+            "type": "theme",
+            "icon": "🔥",
+            "name": "Багряний рейд",
+            "value": "shop_theme_crimson",
+            "price": 450,
+            "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу.",
+        },
+        {
+            "id": "shop_theme_royal",
+            "type": "theme",
+            "icon": "👑",
+            "name": "Королівська ніч",
+            "value": "shop_theme_royal",
+            "price": 700,
+            "description": "Преміальна фіолетово-золота тема профілю.",
+        },
+        {
+            "id": "shop_theme_starlight",
+            "type": "theme",
+            "icon": "✨",
+            "name": "Зоряне сяйво",
+            "value": "shop_theme_starlight",
+            "price": 950,
+            "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
+        },
     ]
-
-
-def _normalize_shop_loadout(profile=None):
-    profile = profile or {}
-    raw = profile.get("shop_loadout") or {}
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except Exception:
-            raw = {}
-    if not isinstance(raw, dict):
-        raw = {}
-    cleaned = {}
-    for key in ("background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"):
-        value = str(raw.get(key) or "").strip()
-        if value:
-            cleaned[key] = value
-    return cleaned
 
 
 def _owned_shop_items(profile=None):
@@ -1590,7 +1613,6 @@ def _owned_shop_items(profile=None):
     return {str(x) for x in raw if x}
 
 
-
 def _profile_shop_state(profile, cosmetics=None):
     profile = profile or {}
     cosmetics = cosmetics or {}
@@ -1598,21 +1620,14 @@ def _profile_shop_state(profile, cosmetics=None):
     selected_by_type = {
         "frame": str(cosmetics.get("frame_id") or ""),
         "theme": str(cosmetics.get("theme_id") or ""),
-        "background": str(cosmetics.get("background_id") or ""),
-        "companion": str(cosmetics.get("companion_id") or ""),
-        "coin_skin": str(cosmetics.get("coin_skin_id") or ""),
-        "treasure_skin": str(cosmetics.get("treasure_skin_id") or ""),
-        "dungeon_skin": str(cosmetics.get("dungeon_skin_id") or ""),
-        "coupon": "",
     }
     result = []
     for item in _profile_shop_catalog():
         row = dict(item)
         row["owned"] = row["id"] in owned
-        row["active"] = bool(selected_by_type.get(row["type"]) == row["id"])
+        row["active"] = selected_by_type.get(row["type"]) == row["id"]
         result.append(row)
     return result
-
 
 
 def _resolve_profile_cosmetics(level, profile=None):
@@ -1621,22 +1636,21 @@ def _resolve_profile_cosmetics(level, profile=None):
     unlocked = {r["id"]: r for r in rewards if r.get("unlocked")}
 
     owned_shop = _owned_shop_items(profile)
-    shop_available = {item["id"]: item for item in _profile_shop_catalog() if item["id"] in owned_shop}
+    shop_available = {
+        item["id"]: item
+        for item in _profile_shop_catalog()
+        if item["id"] in owned_shop
+    }
     available = {**unlocked, **shop_available}
-    shop_loadout = _normalize_shop_loadout(profile)
 
     selected = {
         "title": profile.get("selected_title_reward") or "",
         "frame": profile.get("selected_frame_reward") or "",
         "badge": profile.get("selected_badge_reward") or "",
         "theme": profile.get("selected_theme_reward") or "",
-        "background": shop_loadout.get("background") or "",
-        "companion": shop_loadout.get("companion") or "",
-        "coin_skin": shop_loadout.get("coin_skin") or "",
-        "treasure_skin": shop_loadout.get("treasure_skin") or "",
-        "dungeon_skin": shop_loadout.get("dungeon_skin") or "",
     }
 
+    # XP-нагороди доступні після рівня, магазинні — після покупки.
     for kind in tuple(selected):
         rid = selected[kind]
         reward = available.get(rid)
@@ -1651,11 +1665,6 @@ def _resolve_profile_cosmetics(level, profile=None):
         "frame_id": selected["frame"],
         "badge_id": selected["badge"],
         "theme_id": selected["theme"],
-        "background_id": selected["background"],
-        "companion_id": selected["companion"],
-        "coin_skin_id": selected["coin_skin"],
-        "treasure_skin_id": selected["treasure_skin"],
-        "dungeon_skin_id": selected["dungeon_skin"],
         "title_label": title_reward.get("value") if title_reward else "",
         "badge_label": badge_reward.get("value") if badge_reward else "",
     }
@@ -1703,7 +1712,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,shop_loadout,xp,gold,owned_shop_items",
+                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items",
                 "limit": 1,
             },
             timeout=20,
@@ -1839,7 +1848,7 @@ def get_profile_summary():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,shop_loadout",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
                 "limit": 1,
             },
             timeout=10,
@@ -1994,7 +2003,7 @@ def set_profile_cosmetics():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,shop_loadout",
+                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
                 "limit": 1,
             },
             timeout=20,
@@ -2024,13 +2033,6 @@ def set_profile_cosmetics():
         "badge": "selected_badge_reward",
         "theme": "selected_theme_reward",
     }
-    shop_loadout_keys = {
-        "background": "background",
-        "companion": "companion",
-        "coin_skin": "coin_skin",
-        "treasure_skin": "treasure_skin",
-        "dungeon_skin": "dungeon_skin",
-    }
 
     patch = {}
     for kind, field in field_map.items():
@@ -2044,21 +2046,6 @@ def set_profile_cosmetics():
         if not reward or reward.get("type") != kind:
             return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
         patch[field] = reward_id
-
-    if any(kind in data for kind in shop_loadout_keys):
-        loadout = _normalize_shop_loadout(profile)
-        for kind, loadout_key in shop_loadout_keys.items():
-            if kind not in data:
-                continue
-            reward_id = str(data.get(kind) or "").strip()
-            if not reward_id:
-                loadout.pop(loadout_key, None)
-                continue
-            reward = available.get(reward_id)
-            if not reward or reward.get("type") != kind:
-                return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
-            loadout[loadout_key] = reward_id
-        patch["shop_loadout"] = loadout
 
     if not patch:
         return jsonify({"status": "ok"})
@@ -2083,7 +2070,6 @@ def set_profile_cosmetics():
 
 
 
-
 def _purchase_profile_shop_item_atomic(user_id, item):
     """Атомарно списує золото і додає косметику до профілю без окремого RPC.
 
@@ -2094,12 +2080,23 @@ def _purchase_profile_shop_item_atomic(user_id, item):
     item_id = str(item.get("id") or "")
     item_type = str(item.get("type") or "")
     price = max(0, int(item.get("price") or 0))
-    selected_field = {"frame": "selected_frame_reward", "theme": "selected_theme_reward"}.get(item_type)
-    loadout_key = {"background": "background", "companion": "companion", "coin_skin": "coin_skin", "treasure_skin": "treasure_skin", "dungeon_skin": "dungeon_skin"}.get(item_type)
+    selected_field = {
+        "frame": "selected_frame_reward",
+        "theme": "selected_theme_reward",
+    }.get(item_type)
 
     for _ in range(2):
         try:
-            current = requests.get(PROFILES_REST, headers=HEADERS, params={"telegram_user_id": f"eq.{user_id}", "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward,shop_loadout", "limit": 1}, timeout=20)
+            current = requests.get(
+                PROFILES_REST,
+                headers=HEADERS,
+                params={
+                    "telegram_user_id": f"eq.{user_id}",
+                    "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
+                    "limit": 1,
+                },
+                timeout=20,
+            )
         except Exception:
             logging.exception("Не вдалося прочитати профіль перед покупкою")
             return {"error": "shop_profile_lookup_failed"}, 503
@@ -2117,22 +2114,47 @@ def _purchase_profile_shop_item_atomic(user_id, item):
         owned = _owned_shop_items(profile)
 
         if item_id in owned:
-            return {"status": "already_owned", "item_id": item_id, "gold_balance": gold}, 200
+            return {
+                "status": "already_owned",
+                "item_id": item_id,
+                "gold_balance": gold,
+            }, 200
 
         if gold < price:
-            return {"status": "not_enough_gold", "item_id": item_id, "price": price, "gold_balance": gold, "missing_gold": price - gold}, 409
+            return {
+                "status": "not_enough_gold",
+                "item_id": item_id,
+                "price": price,
+                "gold_balance": gold,
+                "missing_gold": price - gold,
+            }, 409
 
-        patch = {"gold": gold - price, "owned_shop_items": sorted(owned | {item_id}), "updated_at": datetime.now(timezone.utc).isoformat()}
+        patch = {
+            "gold": gold - price,
+            "owned_shop_items": sorted(owned | {item_id}),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        # Після покупки одразу застосовуємо рамку/тему — користувач відразу бачить результат.
         if selected_field:
             patch[selected_field] = item_id
-        if loadout_key:
-            loadout = _normalize_shop_loadout(profile)
-            loadout[loadout_key] = item_id
-            patch["shop_loadout"] = loadout
 
-        params = {"telegram_user_id": f"eq.{user_id}", "gold": "is.null" if raw_gold is None else f"eq.{gold}", "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward,shop_loadout"}
+        params = {
+            "telegram_user_id": f"eq.{user_id}",
+            "gold": "is.null" if raw_gold is None else f"eq.{gold}",
+            "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
+        }
         try:
-            updated = requests.patch(PROFILES_REST, headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"}, params=params, json=patch, timeout=20)
+            updated = requests.patch(
+                PROFILES_REST,
+                headers={
+                    **HEADERS,
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation",
+                },
+                params=params,
+                json=patch,
+                timeout=20,
+            )
         except Exception:
             logging.exception("Не вдалося списати золото за покупку")
             return {"error": "shop_purchase_failed"}, 503
@@ -2143,7 +2165,15 @@ def _purchase_profile_shop_item_atomic(user_id, item):
 
         changed = updated.json()
         if changed:
-            return {"status": "purchased", "item_id": item_id, "item_type": item_type, "price": price, "gold_balance": max(0, gold - price), "equipped": bool(selected_field or loadout_key)}, 200
+            return {
+                "status": "purchased",
+                "item_id": item_id,
+                "item_type": item_type,
+                "price": price,
+                "gold_balance": max(0, gold - price),
+                "equipped": bool(selected_field),
+            }, 200
+        # Баланс змінився між GET і PATCH — ще раз перечитуємо профіль.
 
     return {"error": "shop_purchase_conflict"}, 409
 
@@ -2502,431 +2532,6 @@ def check_admin():
     is_admin = bool(user and _telegram_user_is_group_admin(user.get("id")))
     return jsonify({"is_admin": is_admin})
 
-
-
-@app.route("/api/profile/visit", methods=["POST"])
-def record_profile_visit():
-    """Фіксує відкриття Mini App для авторизованого Telegram-користувача."""
-    user = _request_telegram_user()
-    if not user:
-        return jsonify({"error": "telegram_auth_required"}), 401
-
-    user_id = int(user.get("id"))
-    username = (user.get("username") or "").lstrip("@").lower()
-    display_name = " ".join(
-        x for x in [user.get("first_name"), user.get("last_name")] if x
-    ).strip() or username or "Гравець"
-    now_iso = datetime.now(timezone.utc).isoformat()
-
-    try:
-        current = requests.get(
-            PROFILES_REST,
-            headers=HEADERS,
-            params={
-                "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,visit_count,photo_url,is_blocked",
-                "limit": 1,
-            },
-            timeout=15,
-        )
-        current.raise_for_status()
-        rows = current.json() or []
-        existing = rows[0] if rows else None
-
-        visit_count = int((existing or {}).get("visit_count") or 0) + 1
-        payload = {
-            "telegram_user_id": user_id,
-            "username": username,
-            "display_name": display_name,
-            "last_seen_at": now_iso,
-            "visit_count": visit_count,
-            "updated_at": now_iso,
-        }
-        if not existing:
-            payload["photo_url"] = _profile_avatar_url(user_id)
-
-        saved = requests.post(
-            PROFILES_REST,
-            headers={
-                **HEADERS,
-                "Content-Type": "application/json",
-                "Prefer": "resolution=merge-duplicates,return=representation",
-            },
-            params={"on_conflict": "telegram_user_id"},
-            json=payload,
-            timeout=20,
-        )
-        saved.raise_for_status()
-        return jsonify({
-            "ok": True,
-            "telegram_user_id": user_id,
-            "last_seen_at": now_iso,
-            "visit_count": visit_count,
-            "is_blocked": bool((existing or {}).get("is_blocked")),
-        })
-    except Exception as exc:
-        logging.exception("Не вдалося зафіксувати відвідування Mini App")
-        return jsonify({"error": "visit_save_failed", "detail": str(exc)[:180]}), 500
-
-
-def _supabase_fetch_all(url, select="*", order=None, extra_params=None, page_size=1000):
-    """Зчитує всі рядки PostgREST сторінками, щоб адмінка не обрізала список."""
-    result = []
-    offset = 0
-    extra_params = dict(extra_params or {})
-    while True:
-        params = {**extra_params, "select": select, "limit": page_size, "offset": offset}
-        if order:
-            params["order"] = order
-        resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
-        resp.raise_for_status()
-        page = resp.json() or []
-        if not isinstance(page, list):
-            raise ValueError("supabase_page_not_list")
-        result.extend(page)
-        if len(page) < page_size:
-            break
-        offset += page_size
-    return result
-
-
-def _parse_iso_datetime(value):
-    raw = str(value or "").strip()
-    if not raw:
-        return None
-    try:
-        if raw.endswith("Z"):
-            raw = raw[:-1] + "+00:00"
-        parsed = datetime.fromisoformat(raw)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc)
-    except Exception:
-        return None
-
-
-def _admin_profile_by_id(user_id):
-    resp = requests.get(
-        PROFILES_REST,
-        headers=HEADERS,
-        params={"telegram_user_id": f"eq.{int(user_id)}", "select": "*", "limit": 1},
-        timeout=20,
-    )
-    resp.raise_for_status()
-    rows = resp.json() or []
-    return rows[0] if rows else None
-
-
-def _admin_count_runs(url, user_id):
-    try:
-        rows = _supabase_fetch_all(
-            url,
-            select="id",
-            extra_params={"telegram_user_id": f"eq.{int(user_id)}"},
-            page_size=1000,
-        )
-        return len(rows)
-    except Exception:
-        logging.exception("Не вдалося порахувати запуски мінігри для %s", user_id)
-        return 0
-
-
-def _admin_action_log(admin_id, target_id, action_type, amount=None, item_id=None, reason=None, metadata=None):
-    try:
-        requests.post(
-            f"{SUPABASE_URL}/rest/v1/admin_user_actions",
-            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
-            json={
-                "admin_telegram_user_id": int(admin_id),
-                "target_telegram_user_id": int(target_id),
-                "action_type": str(action_type or ""),
-                "amount": int(amount) if amount is not None else None,
-                "item_id": item_id,
-                "reason": reason,
-                "metadata": metadata or {},
-            },
-            timeout=20,
-        ).raise_for_status()
-    except Exception:
-        logging.exception("Не вдалося записати адмін-дію")
-
-
-@app.route("/api/admin/users", methods=["GET"])
-def admin_users_dashboard():
-    """Повний список користувачів Mini App. Доступ лише адміну Telegram-групи."""
-    denied = _admin_required_response()
-    if denied:
-        return denied
-
-    try:
-        profiles = _supabase_fetch_all(
-            PROFILES_REST,
-            select=(
-                "telegram_user_id,username,display_name,photo_url,xp,gold,"
-                "owned_shop_items,created_at,updated_at,last_seen_at,visit_count,is_blocked"
-            ),
-            order="last_seen_at.desc.nullslast,created_at.desc",
-        )
-
-        run_counts = {}
-        for run_url in (
-            DUNGEON_RUNS_REST,
-            f"{SUPABASE_URL}/rest/v1/coin_catcher_runs",
-            f"{SUPABASE_URL}/rest/v1/treasure_memory_runs",
-        ):
-            try:
-                for row in _supabase_fetch_all(run_url, select="telegram_user_id"):
-                    uid = row.get("telegram_user_id")
-                    if uid is not None:
-                        uid = int(uid)
-                        run_counts[uid] = int(run_counts.get(uid, 0)) + 1
-            except Exception:
-                logging.exception("Не вдалося порахувати частину запусків мініігор")
-
-        tz = ZoneInfo(EVENT_TIMEZONE)
-        now_local = datetime.now(tz)
-        today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-        today_start_utc = today_start_local.astimezone(timezone.utc)
-        seven_days_ago_utc = (now_local - timedelta(days=7)).astimezone(timezone.utc)
-
-        users = []
-        active_today = 0
-        active_7d = 0
-        new_today = 0
-
-        for row in profiles:
-            try:
-                uid = int(row.get("telegram_user_id"))
-            except Exception:
-                continue
-
-            xp = int(row.get("xp") or 0)
-            gold = int(row.get("gold") or 0)
-            owned = row.get("owned_shop_items") or []
-            if isinstance(owned, str):
-                try:
-                    owned = json.loads(owned)
-                except Exception:
-                    owned = []
-            if not isinstance(owned, list):
-                owned = []
-
-            last_seen_raw = row.get("last_seen_at") or row.get("updated_at") or row.get("created_at")
-            last_seen = _parse_iso_datetime(last_seen_raw)
-            created = _parse_iso_datetime(row.get("created_at"))
-            if last_seen and last_seen >= today_start_utc:
-                active_today += 1
-            if last_seen and last_seen >= seven_days_ago_utc:
-                active_7d += 1
-            if created and created >= today_start_utc:
-                new_today += 1
-
-            users.append({
-                "telegram_user_id": uid,
-                "username": row.get("username") or "",
-                "display_name": row.get("display_name") or row.get("username") or "Гравець",
-                "photo_url": str(row.get("photo_url") or "").strip() or _profile_avatar_url(uid),
-                "xp": xp,
-                "level": max(1, xp // 250 + 1),
-                "gold": gold,
-                "shop_items_count": len(owned),
-                "visit_count": max(1, int(row.get("visit_count") or 0)),
-                "game_runs": int(run_counts.get(uid, 0)),
-                "created_at": row.get("created_at"),
-                "last_seen_at": last_seen_raw,
-                "is_blocked": bool(row.get("is_blocked")),
-            })
-
-        users.sort(
-            key=lambda x: _parse_iso_datetime(x.get("last_seen_at")) or datetime.min.replace(tzinfo=timezone.utc),
-            reverse=True,
-        )
-
-        response = jsonify({
-            "stats": {
-                "total_users": len(users),
-                "active_today": active_today,
-                "active_7d": active_7d,
-                "new_today": new_today,
-            },
-            "users": users,
-        })
-        response.headers["Cache-Control"] = "no-store"
-        return response
-    except Exception as exc:
-        logging.exception("Не вдалося завантажити список користувачів для адмінки")
-        return jsonify({"error": "admin_users_load_failed", "detail": str(exc)[:220]}), 500
-
-
-@app.route("/api/admin/users/<int:user_id>", methods=["GET"])
-def admin_user_detail(user_id):
-    denied = _admin_required_response()
-    if denied:
-        return denied
-
-    try:
-        profile = _admin_profile_by_id(user_id)
-        if not profile:
-            return jsonify({"error": "profile_not_found"}), 404
-
-        xp = int(profile.get("xp") or 0)
-        owned_ids = profile.get("owned_shop_items") or []
-        if isinstance(owned_ids, str):
-            try:
-                owned_ids = json.loads(owned_ids)
-            except Exception:
-                owned_ids = []
-        if not isinstance(owned_ids, list):
-            owned_ids = []
-
-        catalog = _profile_shop_catalog()
-        by_id = {str(item.get("id")): item for item in catalog}
-        owned_items = []
-        for item_id in owned_ids:
-            item = by_id.get(str(item_id))
-            if item:
-                owned_items.append({
-                    "id": item.get("id"),
-                    "name": item.get("name") or item.get("id"),
-                    "icon": item.get("icon") or "🎁",
-                    "type": item.get("type") or "item",
-                })
-            else:
-                owned_items.append({"id": str(item_id), "name": str(item_id), "icon": "🎁", "type": "item"})
-
-        profile_out = {
-            "telegram_user_id": int(profile.get("telegram_user_id")),
-            "username": profile.get("username") or "",
-            "display_name": profile.get("display_name") or profile.get("username") or "Гравець",
-            "photo_url": str(profile.get("photo_url") or "").strip() or _profile_avatar_url(user_id),
-            "xp": xp,
-            "level": max(1, xp // 250 + 1),
-            "gold": int(profile.get("gold") or 0),
-            "visit_count": max(1, int(profile.get("visit_count") or 0)),
-            "created_at": profile.get("created_at"),
-            "last_seen_at": profile.get("last_seen_at") or profile.get("updated_at") or profile.get("created_at"),
-            "is_blocked": bool(profile.get("is_blocked")),
-            "blocked_at": profile.get("blocked_at"),
-            "blocked_reason": profile.get("blocked_reason") or "",
-            "owned_shop_items": owned_items,
-        }
-
-        action_resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/admin_user_actions",
-            headers=HEADERS,
-            params={
-                "target_telegram_user_id": f"eq.{int(user_id)}",
-                "select": "id,admin_telegram_user_id,action_type,amount,item_id,reason,metadata,created_at",
-                "order": "created_at.desc",
-                "limit": 30,
-            },
-            timeout=20,
-        )
-        if action_resp.ok:
-            admin_actions = action_resp.json() or []
-        else:
-            admin_actions = []
-
-        return jsonify({
-            "user": profile_out,
-            "game_runs": {
-                "dungeon": _admin_count_runs(DUNGEON_RUNS_REST, user_id),
-                "coin_rush": _admin_count_runs(f"{SUPABASE_URL}/rest/v1/coin_catcher_runs", user_id),
-                "treasure": _admin_count_runs(f"{SUPABASE_URL}/rest/v1/treasure_memory_runs", user_id),
-            },
-            "gift_catalog": [
-                {"id": x.get("id"), "name": x.get("name") or x.get("id"), "icon": x.get("icon") or "🎁", "type": x.get("type") or "item"}
-                for x in catalog
-            ],
-            "admin_actions": admin_actions,
-        })
-    except Exception as exc:
-        logging.exception("Не вдалося завантажити картку користувача")
-        return jsonify({"error": "admin_user_detail_failed", "detail": str(exc)[:220]}), 500
-
-
-@app.route("/api/admin/users/<int:user_id>/action", methods=["POST"])
-def admin_user_action(user_id):
-    admin = _request_telegram_user()
-    if not admin or not _telegram_user_is_group_admin(admin.get("id")):
-        return jsonify({"error": "group_admin_required"}), 403
-
-    body = request.get_json(silent=True) or {}
-    action = str(body.get("action") or "").strip()
-    if action not in {"add_gold", "add_xp", "gift_item", "toggle_block"}:
-        return jsonify({"error": "unsupported_admin_action"}), 400
-
-    try:
-        profile = _admin_profile_by_id(user_id)
-        if not profile:
-            return jsonify({"error": "profile_not_found"}), 404
-
-        patch = {"updated_at": datetime.now(timezone.utc).isoformat()}
-        log_amount = None
-        log_item_id = None
-        log_reason = None
-
-        if action in {"add_gold", "add_xp"}:
-            try:
-                amount = int(body.get("amount"))
-            except Exception:
-                return jsonify({"error": "invalid_amount"}), 400
-            if amount < 1 or amount > 100000:
-                return jsonify({"error": "invalid_amount"}), 400
-            field = "gold" if action == "add_gold" else "xp"
-            patch[field] = max(0, int(profile.get(field) or 0) + amount)
-            log_amount = amount
-
-        elif action == "gift_item":
-            item_id = str(body.get("item_id") or "").strip()
-            catalog = {str(x.get("id")): x for x in _profile_shop_catalog()}
-            if not item_id or item_id not in catalog:
-                return jsonify({"error": "shop_item_not_found"}), 404
-            owned = profile.get("owned_shop_items") or []
-            if isinstance(owned, str):
-                try:
-                    owned = json.loads(owned)
-                except Exception:
-                    owned = []
-            if not isinstance(owned, list):
-                owned = []
-            owned = [str(x) for x in owned if x]
-            if item_id not in owned:
-                owned.append(item_id)
-            patch["owned_shop_items"] = owned
-            log_item_id = item_id
-
-        elif action == "toggle_block":
-            currently_blocked = bool(profile.get("is_blocked"))
-            new_blocked = not currently_blocked
-            patch["is_blocked"] = new_blocked
-            patch["blocked_at"] = datetime.now(timezone.utc).isoformat() if new_blocked else None
-            reason = str(body.get("reason") or "").strip()[:500]
-            patch["blocked_reason"] = reason if new_blocked else None
-            log_reason = reason if new_blocked else "розблоковано"
-
-        resp = requests.patch(
-            PROFILES_REST,
-            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
-            params={"telegram_user_id": f"eq.{int(user_id)}"},
-            json=patch,
-            timeout=20,
-        )
-        resp.raise_for_status()
-        rows = resp.json() or []
-        if not rows:
-            return jsonify({"error": "profile_update_failed"}), 500
-
-        _admin_action_log(
-            admin.get("id"), user_id, action,
-            amount=log_amount,
-            item_id=log_item_id,
-            reason=log_reason,
-        )
-        return jsonify({"ok": True, "user": rows[0]})
-    except Exception as exc:
-        logging.exception("Не вдалося виконати адмін-дію")
-        return jsonify({"error": "admin_action_failed", "detail": str(exc)[:220]}), 500
 
 def _is_admin_username(username):
     uname = (username or "").lstrip("@").lower()
