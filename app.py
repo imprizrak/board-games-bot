@@ -8,7 +8,6 @@ import hmac
 import json
 import time
 import re
-import random
 from threading import Thread
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -508,7 +507,16 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 МБ
 
 @app.route("/")
 def index():
-    return send_from_directory(".", "index.html")
+    response = send_from_directory(".", "index.html", conditional=False)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"}), 200
 
 
 # Перегляд бібліотеки та правил доступний усім користувачам Mini App.
@@ -1765,42 +1773,80 @@ def _xp_reward_catalog(level):
 
 
 def _profile_shop_catalog():
-    """Розширений каталог магазину профілю."""
+    """Косметика, яку можна придбати за золото з мінігри."""
     return [
-        {"id": "shop_bundle_starter_cosmetic", "type": "bundle", "icon": "🎁", "name": "Стартовий набір героя", "price": 520, "rarity": "rare", "description": "Набір із рамки, теми, фону й компаньйона — гарний старт для профілю.", "grants": ["shop_frame_bronze", "shop_theme_forest", "shop_background_tavern", "shop_companion_owl"]},
-        {"id": "shop_bundle_shadow_premium", "type": "bundle", "icon": "🪄", "name": "Тіньовий преміум-набір", "price": 1480, "rarity": "legendary", "description": "Преміум-комплект із космічним фоном, примарним супутником і скінами мініігор.", "grants": ["shop_frame_arcane", "shop_theme_starlight", "shop_background_cosmos", "shop_companion_ghost", "shop_coin_skin_rune", "shop_treasure_skin_neon", "shop_dungeon_skin_arcane"]},
-        {"id": "shop_mystery_box_basic", "type": "mystery", "icon": "🎲", "name": "Lucky Box", "price": 240, "rarity": "rare", "repeatable": True, "description": "Випадковий декоративний предмет: рамка, фон, компаньйон або скін.", "box_pool": ["shop_frame_bronze", "shop_frame_frost", "shop_theme_forest", "shop_background_tavern", "shop_background_dungeon", "shop_companion_owl", "shop_companion_mimic", "shop_coin_skin_crystal", "shop_treasure_skin_pirate", "shop_dungeon_skin_crypt"]},
-        {"id": "shop_mystery_box_epic", "type": "mystery", "icon": "🌠", "name": "Arcane Box", "price": 540, "rarity": "epic", "repeatable": True, "description": "Шанс дістати епічні та легендарні предмети колекції.", "box_pool": ["shop_frame_arcane", "shop_frame_dragonfire", "shop_frame_lightning", "shop_theme_crimson", "shop_theme_royal", "shop_theme_starlight", "shop_background_cosmos", "shop_background_dragonlair", "shop_companion_ghost", "shop_companion_dragon", "shop_coin_skin_rune", "shop_coin_skin_styloteka", "shop_treasure_skin_neon", "shop_treasure_skin_dragon", "shop_dungeon_skin_arcane", "shop_dungeon_skin_inferno"]},
-        {"id": "shop_frame_bronze", "type": "frame", "icon": "🟤", "name": "Бронзова гільдія", "value": "shop_frame_bronze", "price": 120, "rarity": "common", "description": "Тепла рамка з гільдійським блиском."},
-        {"id": "shop_frame_frost", "type": "frame", "icon": "❄️", "name": "Крижаний ореол", "value": "shop_frame_frost", "price": 220, "rarity": "rare", "description": "Холодне блакитне сяйво навколо аватарки."},
-        {"id": "shop_frame_arcane", "type": "frame", "icon": "🔮", "name": "Арканне коло", "value": "shop_frame_arcane", "price": 380, "rarity": "epic", "description": "Фіолетово-золота магічна рамка."},
-        {"id": "shop_frame_dragonfire", "type": "frame", "icon": "🐉", "name": "Вогонь дракона", "value": "shop_frame_dragonfire", "price": 560, "rarity": "legendary", "description": "Палаючий червоно-золотий контур."},
-        {"id": "shop_frame_lightning", "type": "frame", "icon": "⚡", "name": "Блискавичний розряд", "value": "shop_frame_lightning", "price": 640, "rarity": "legendary", "description": "Неоновий блиск з енергією бурі."},
-        {"id": "shop_frame_sakura", "type": "frame", "icon": "🌸", "name": "Сакура", "value": "shop_frame_sakura", "price": 460, "rarity": "epic", "description": "Ніжна рамка з рожевим сяйвом."},
-        {"id": "shop_theme_forest", "type": "theme", "icon": "🌿", "name": "Смарагдовий ліс", "value": "shop_theme_forest", "price": 300, "rarity": "rare", "description": "Темно-зелена тема профілю з теплими акцентами."},
-        {"id": "shop_theme_crimson", "type": "theme", "icon": "🔥", "name": "Багряний рейд", "value": "shop_theme_crimson", "price": 450, "rarity": "epic", "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу."},
-        {"id": "shop_theme_royal", "type": "theme", "icon": "👑", "name": "Королівська ніч", "value": "shop_theme_royal", "price": 700, "rarity": "legendary", "description": "Фіолетово-золота преміальна тема."},
-        {"id": "shop_theme_starlight", "type": "theme", "icon": "✨", "name": "Зоряне сяйво", "value": "shop_theme_starlight", "price": 950, "rarity": "legendary", "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом."},
-        {"id": "shop_background_tavern", "type": "background", "icon": "🍻", "name": "Таверна", "price": 260, "rarity": "common", "description": "Затишний фон для гравця, що любить лампові вечори."},
-        {"id": "shop_background_dungeon", "type": "background", "icon": "🪨", "name": "Крипта", "price": 340, "rarity": "rare", "description": "Темний підземний фон у стилі данжу."},
-        {"id": "shop_background_cosmos", "type": "background", "icon": "🌌", "name": "Космос", "price": 520, "rarity": "epic", "description": "Глибокий зоряний простір із магічним сяйвом."},
-        {"id": "shop_background_dragonlair", "type": "background", "icon": "🐲", "name": "Лігво дракона", "price": 760, "rarity": "legendary", "description": "Вогненний фон із відблисками скарбниці."},
-        {"id": "shop_companion_owl", "type": "companion", "icon": "🦉", "name": "Сова-хранитель", "price": 210, "rarity": "common", "description": "Мудрий супутник біля твоєї аватарки."},
-        {"id": "shop_companion_mimic", "type": "companion", "icon": "🧰", "name": "Мімік", "price": 360, "rarity": "rare", "description": "Хитрий маленький скринько-друг."},
-        {"id": "shop_companion_ghost", "type": "companion", "icon": "👻", "name": "Примарний дух", "price": 520, "rarity": "epic", "description": "Ефектний напівпрозорий супутник."},
-        {"id": "shop_companion_dragon", "type": "companion", "icon": "🐉", "name": "Міні-дракон", "price": 820, "rarity": "legendary", "description": "Легендарний дракончик для топових профілів."},
-        {"id": "shop_coin_skin_crystal", "type": "coin_skin", "icon": "💠", "name": "Crystal Stils", "price": 260, "rarity": "rare", "description": "Блискучий дизайн зірочки для Stils Rush."},
-        {"id": "shop_coin_skin_rune", "type": "coin_skin", "icon": "🜂", "name": "Rune Stils", "price": 420, "rarity": "epic", "description": "Рунічний стиль для монет у мінігрі."},
-        {"id": "shop_coin_skin_styloteka", "type": "coin_skin", "icon": "✦", "name": "Styloteka Gold", "price": 620, "rarity": "legendary", "description": "Фірмовий вигляд стілса з сяйвом бренду."},
-        {"id": "shop_treasure_skin_neon", "type": "treasure_skin", "icon": "💜", "name": "Neon Memory", "price": 240, "rarity": "rare", "description": "Неонові картки для Скарбниці."},
-        {"id": "shop_treasure_skin_pirate", "type": "treasure_skin", "icon": "🏴‍☠️", "name": "Pirate Loot", "price": 360, "rarity": "epic", "description": "Піратський стиль карток і жетонів."},
-        {"id": "shop_treasure_skin_dragon", "type": "treasure_skin", "icon": "🐲", "name": "Dragon Hoard", "price": 580, "rarity": "legendary", "description": "Скарбничний стиль із драконячим золотом."},
-        {"id": "shop_dungeon_skin_crypt", "type": "dungeon_skin", "icon": "⚰️", "name": "Crypt Run", "price": 240, "rarity": "rare", "description": "Кам'яний стиль для Данжу."},
-        {"id": "shop_dungeon_skin_arcane", "type": "dungeon_skin", "icon": "🪬", "name": "Arcane Run", "price": 390, "rarity": "epic", "description": "Магічний стиль інтерфейсу Данжу."},
-        {"id": "shop_dungeon_skin_inferno", "type": "dungeon_skin", "icon": "🔥", "name": "Inferno Run", "price": 610, "rarity": "legendary", "description": "Палаючий стиль мінігри Данж."},
-        {"id": "shop_coupon_gift_small", "type": "coupon", "icon": "🎟️", "name": "Купон · Стікерпак", "price": 1200, "rarity": "epic", "description": "Подарунковий купон на стікерпак."},
-        {"id": "shop_coupon_gift_large", "type": "coupon", "icon": "☕", "name": "Купон · Чашка мерч", "price": 2400, "rarity": "legendary", "description": "Подарунковий купон на чашку з мерчем."},
-        {"id": "shop_coupon_gift_royal", "type": "coupon", "icon": "🏆", "name": "Купон · Виграш настолки", "price": 4200, "rarity": "legendary", "description": "Найдорожчий лот магазину — купон на виграш настільної гри."},
+        {
+            "id": "shop_frame_bronze",
+            "type": "frame",
+            "icon": "🟤",
+            "name": "Бронзова рамка",
+            "value": "shop_frame_bronze",
+            "price": 120,
+            "description": "Тепла бронзова рамка у стилі пригодницької гільдії.",
+        },
+        {
+            "id": "shop_frame_frost",
+            "type": "frame",
+            "icon": "❄️",
+            "name": "Крижана рамка",
+            "value": "shop_frame_frost",
+            "price": 220,
+            "description": "Холодне блакитне сяйво навколо аватарки.",
+        },
+        {
+            "id": "shop_frame_arcane",
+            "type": "frame",
+            "icon": "🔮",
+            "name": "Арканна рамка",
+            "value": "shop_frame_arcane",
+            "price": 380,
+            "description": "Фіолетово-золота рамка для справжнього героя.",
+        },
+        {
+            "id": "shop_frame_dragonfire",
+            "type": "frame",
+            "icon": "🐉",
+            "name": "Вогонь дракона",
+            "value": "shop_frame_dragonfire",
+            "price": 560,
+            "description": "Вогняна рамка з теплим червоно-золотим сяйвом.",
+        },
+        {
+            "id": "shop_theme_forest",
+            "type": "theme",
+            "icon": "🌿",
+            "name": "Смарагдовий ліс",
+            "value": "shop_theme_forest",
+            "price": 300,
+            "description": "Темно-зелена тема профілю з м'якими золотими акцентами.",
+        },
+        {
+            "id": "shop_theme_crimson",
+            "type": "theme",
+            "icon": "🔥",
+            "name": "Багряний рейд",
+            "value": "shop_theme_crimson",
+            "price": 450,
+            "description": "Темна червоно-графітова тема у стилі рейдового інтерфейсу.",
+        },
+        {
+            "id": "shop_theme_royal",
+            "type": "theme",
+            "icon": "👑",
+            "name": "Королівська ніч",
+            "value": "shop_theme_royal",
+            "price": 700,
+            "description": "Преміальна фіолетово-золота тема профілю.",
+        },
+        {
+            "id": "shop_theme_starlight",
+            "type": "theme",
+            "icon": "✨",
+            "name": "Зоряне сяйво",
+            "value": "shop_theme_starlight",
+            "price": 950,
+            "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
+        },
     ]
 
 
@@ -2275,13 +2321,19 @@ def set_profile_cosmetics():
 
 
 def _purchase_profile_shop_item_atomic(user_id, item):
-    """Атомарно списує стілси і додає товар у колекцію профілю."""
+    """Атомарно списує золото і додає косметику до профілю без окремого RPC.
+
+    Умова PATCH по поточному балансу не дозволяє двом одночасним натисканням
+    витратити одне й те саме золото двічі. Якщо інший запит уже змінив баланс,
+    ми перечитуємо профіль і повторюємо перевірку один раз.
+    """
     item_id = str(item.get("id") or "")
     item_type = str(item.get("type") or "")
     price = max(0, int(item.get("price") or 0))
-    catalog = {str(x.get("id")): x for x in _profile_shop_catalog()}
-    selected_field = {"frame": "selected_frame_reward", "theme": "selected_theme_reward"}.get(item_type)
-    repeatable = bool(item.get("repeatable"))
+    selected_field = {
+        "frame": "selected_frame_reward",
+        "theme": "selected_theme_reward",
+    }.get(item_type)
 
     for _ in range(2):
         try:
@@ -2311,42 +2363,44 @@ def _purchase_profile_shop_item_atomic(user_id, item):
         gold = max(0, int(raw_gold or 0))
         owned = _owned_shop_items(profile)
 
-        if not repeatable and item_id in owned:
-            return {"status": "already_owned", "item_id": item_id, "gold_balance": gold}, 200
+        if item_id in owned:
+            return {
+                "status": "already_owned",
+                "item_id": item_id,
+                "gold_balance": gold,
+            }, 200
+
         if gold < price:
-            return {"status": "not_enough_gold", "item_id": item_id, "price": price, "gold_balance": gold, "missing_gold": price - gold}, 409
+            return {
+                "status": "not_enough_gold",
+                "item_id": item_id,
+                "price": price,
+                "gold_balance": gold,
+                "missing_gold": price - gold,
+            }, 409
 
-        new_owned = set(owned)
-        response = {"status": "purchased", "item_id": item_id, "item_type": item_type, "price": price, "gold_balance": max(0, gold - price), "equipped": False}
-
-        if item_type == "bundle":
-            grant_ids = [str(x) for x in (item.get("grants") or []) if str(x).strip()]
-            new_owned.add(item_id)
-            new_owned.update(grant_ids)
-            response["granted_items"] = [catalog.get(gid, {"id": gid}) for gid in grant_ids]
-        elif item_type == "mystery":
-            pool = [str(x) for x in (item.get("box_pool") or []) if str(x).strip() and str(x) in catalog]
-            if not pool:
-                return {"error": "shop_box_empty"}, 500
-            unowned_pool = [gid for gid in pool if gid not in owned]
-            chosen_id = random.choice(unowned_pool or pool)
-            new_owned.add(chosen_id)
-            response["granted_item"] = catalog.get(chosen_id, {"id": chosen_id})
-            response["granted_item_id"] = chosen_id
-        else:
-            new_owned.add(item_id)
-            if selected_field:
-                response["equipped"] = True
-
-        patch = {"gold": gold - price, "owned_shop_items": sorted(new_owned), "updated_at": datetime.now(timezone.utc).isoformat()}
-        if selected_field and item_type not in {"bundle", "mystery"}:
+        patch = {
+            "gold": gold - price,
+            "owned_shop_items": sorted(owned | {item_id}),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        # Після покупки одразу застосовуємо рамку/тему — користувач відразу бачить результат.
+        if selected_field:
             patch[selected_field] = item_id
 
-        params = {"telegram_user_id": f"eq.{user_id}", "gold": "is.null" if raw_gold is None else f"eq.{gold}", "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward"}
+        params = {
+            "telegram_user_id": f"eq.{user_id}",
+            "gold": "is.null" if raw_gold is None else f"eq.{gold}",
+            "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
+        }
         try:
             updated = requests.patch(
                 PROFILES_REST,
-                headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+                headers={
+                    **HEADERS,
+                    "Content-Type": "application/json",
+                    "Prefer": "return=representation",
+                },
                 params=params,
                 json=patch,
                 timeout=20,
@@ -2359,8 +2413,17 @@ def _purchase_profile_shop_item_atomic(user_id, item):
             logging.warning("Помилка збереження покупки: %s", updated.text[:500])
             return {"error": "shop_purchase_failed"}, 500
 
-        if updated.json():
-            return response, 200
+        changed = updated.json()
+        if changed:
+            return {
+                "status": "purchased",
+                "item_id": item_id,
+                "item_type": item_type,
+                "price": price,
+                "gold_balance": max(0, gold - price),
+                "equipped": bool(selected_field),
+            }, 200
+        # Баланс змінився між GET і PATCH — ще раз перечитуємо профіль.
 
     return {"error": "shop_purchase_conflict"}, 409
 

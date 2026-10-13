@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8">\n<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Бібліотека настільних ігор</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6091,22 +6091,6 @@ document.addEventListener('click', event => {
   .game-moderation-actions .moderation-reject{border-color:rgba(235,87,87,.35);background:rgba(235,87,87,.10);color:#ffc0c0}
   @media(max-width:480px){.game-moderation-card{grid-template-columns:70px minmax(0,1fr)}.game-moderation-cover{width:70px;height:88px}.game-moderation-actions{grid-template-columns:1fr}.game-moderation-actions button{font-size:11px}}
 
-
-.home-avatar.frame-shop-sakura,.club-member-avatar.frame-shop-sakura,.profile-hero.frame-shop-sakura .profile-avatar,.profile-shop-preview-avatar.frame-shop-sakura{border-color:#f7bfd7 !important;box-shadow:0 0 0 2px rgba(247,191,215,.18),0 0 18px rgba(255,148,196,.32),0 0 30px rgba(255,225,236,.15)}
-/* ===== Магазин deluxe ===== */
-.profile-shop-toolbar{display:flex;gap:8px;overflow:auto;padding:2px 1px 4px;margin:2px 0 12px;scrollbar-width:none}.profile-shop-toolbar::-webkit-scrollbar{display:none}
-.profile-shop-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(227,191,85,.26);background:rgba(255,255,255,.035);color:var(--text);font-size:11px;font-weight:800;white-space:nowrap}
-.profile-shop-chip-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:rgba(227,191,85,.18);color:#f4d56f;font-size:10px;font-weight:900}
-.profile-shop-showcase{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 12px}
-.profile-shop-showcase-card{position:relative;min-height:96px;padding:12px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.025));overflow:hidden;text-align:left}.profile-shop-showcase-card::before{content:'';position:absolute;inset:auto -30px -38px auto;width:94px;height:94px;border-radius:50%;background:radial-gradient(circle, rgba(227,191,85,.26), transparent 68%)}
-.profile-shop-showcase-eyebrow{color:#f3d77f;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.profile-shop-showcase-name{margin-top:5px;color:var(--text);font-size:14px;font-weight:900;line-height:1.15}.profile-shop-showcase-desc{margin-top:5px;color:var(--muted);font-size:11px;line-height:1.35}.profile-shop-showcase-price{margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.22);color:#f4d56f;font-size:11px;font-weight:900}
-.profile-shop-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px}.profile-shop-section-title span{color:var(--muted);font-size:10px;font-weight:700}
-.profile-shop-item.bundle,.profile-shop-item.mystery{position:relative;overflow:hidden}.profile-shop-item.bundle{border-color:rgba(86,157,255,.26);background:radial-gradient(circle at 100% 0%, rgba(86,157,255,.16), transparent 42%),linear-gradient(145deg, rgba(28,46,80,.30), rgba(255,255,255,.025))}.profile-shop-item.mystery{border-color:rgba(178,104,255,.26);background:radial-gradient(circle at 100% 0%, rgba(178,104,255,.18), transparent 42%),linear-gradient(145deg, rgba(40,18,66,.34), rgba(255,255,255,.025))}
-.profile-shop-box-preview,.profile-shop-bundle-preview{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 18px);min-height:48px;border-radius:12px;color:#fff;font-weight:900;letter-spacing:.04em}.profile-shop-box-preview{background:linear-gradient(135deg,#3a1d5a,#101a33);border:1px solid rgba(193,136,255,.32)}.profile-shop-bundle-preview{background:linear-gradient(135deg,#183455,#0f1d31);border:1px solid rgba(86,157,255,.28)}
-.profile-shop-box-spark{font-size:19px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35))}.profile-shop-box-label{font-size:10px;color:#d8c9ff;text-transform:uppercase}.profile-shop-bundle-icons{display:flex;gap:6px;font-size:16px}
-.profile-shop-badge-repeat{display:inline-flex;align-items:center;justify-content:center;margin-top:6px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-@media (max-width:760px){.profile-shop-showcase{grid-template-columns:1fr}.profile-shop-showcase-card{min-height:88px}}
-
 </style>
 </head>
 <body>
@@ -9880,9 +9864,8 @@ function bindHomeGameCards(root) {
 }
 
 function renderHomeProfile(profile) {
-  const homeCosmetics = mergeShopLoadout(profile?.cosmetics || {});
-  applyGlobalProfileTheme(homeCosmetics?.theme_id || '');
-  applyShopExtras(homeCosmetics);
+  applyGlobalProfileTheme(profile?.cosmetics?.theme_id || '');
+  applyShopExtras(profile?.cosmetics || {});
   const name = profile?.display_name || username || 'Гравець';
   const level = Math.max(1, Number(profile?.level) || 1);
   const totalXp = Math.max(0, Number(profile?.xp) || 0);
@@ -11105,7 +11088,6 @@ function cosmeticFrameClass(frameId) {
   if (frameId === 'shop_frame_arcane') return 'frame-shop-arcane';
   if (frameId === 'shop_frame_dragonfire') return 'frame-shop-dragonfire';
   if (frameId === 'shop_frame_lightning') return 'frame-shop-lightning';
-  if (frameId === 'shop_frame_sakura') return 'frame-shop-sakura';
   if (frameId === 'shop_frame_void') return 'frame-shop-void';
   return '';
 }
@@ -11129,22 +11111,6 @@ const PROFILE_THEME_CLASSES = [
   'profile-theme-shop-starlight'
 ];
 
-const SHOP_LOADOUT_STORAGE_KEY = 'styloteka_shop_loadout_v2';
-const SHOP_EXTRA_TYPES = ['background','companion','coin_skin','treasure_skin','dungeon_skin'];
-function loadLocalShopLoadout() {
-  try {
-    const raw = localStorage.getItem(SHOP_LOADOUT_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return {background:String(parsed?.background||''), companion:String(parsed?.companion||''), coin_skin:String(parsed?.coin_skin||''), treasure_skin:String(parsed?.treasure_skin||''), dungeon_skin:String(parsed?.dungeon_skin||'')};
-  } catch (_) {
-    return {background:'', companion:'', coin_skin:'', treasure_skin:'', dungeon_skin:''};
-  }
-}
-let localShopLoadout = loadLocalShopLoadout();
-function saveLocalShopLoadout(){ try { localStorage.setItem(SHOP_LOADOUT_STORAGE_KEY, JSON.stringify(localShopLoadout)); } catch (_) {} }
-function mergeShopLoadout(cosmetics={}) {
-  return {...cosmetics, background_id:String(localShopLoadout.background || cosmetics?.background_id || ''), companion_id:String(localShopLoadout.companion || cosmetics?.companion_id || ''), coin_skin_id:String(localShopLoadout.coin_skin || cosmetics?.coin_skin_id || ''), treasure_skin_id:String(localShopLoadout.treasure_skin || cosmetics?.treasure_skin_id || ''), dungeon_skin_id:String(localShopLoadout.dungeon_skin || cosmetics?.dungeon_skin_id || '')};
-}
 function applyGlobalProfileTheme(themeId) {
   const themeClass = cosmeticThemeClass(themeId || '');
   document.body.classList.remove(...PROFILE_THEME_CLASSES);
@@ -11168,14 +11134,12 @@ function shopExtraClass(id) {
   })[id] || '';
 }
 function applyShopExtras(cosmetics={}) {
-  const resolved = mergeShopLoadout(cosmetics || {});
   document.body.classList.remove(...SHOP_EXTRA_CLASSES);
   ['background_id','companion_id','coin_skin_id','treasure_skin_id','dungeon_skin_id'].forEach(key => {
-    const cls = shopExtraClass(resolved?.[key] || '');
+    const cls = shopExtraClass(cosmetics?.[key] || '');
     if (cls) document.body.classList.add(cls);
   });
 }
-
 
 function rewardTypeLabel(type) {
   return ({
@@ -11188,28 +11152,26 @@ function rewardTypeLabel(type) {
 
 async function equipXpReward(rewardId, rewardType) {
   try {
-    if (SHOP_EXTRA_TYPES.includes(rewardType)) {
-      localShopLoadout[rewardType] = String(rewardId || '');
-      saveLocalShopLoadout();
-      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      applyShopExtras();
-      await Promise.allSettled([loadMyProfile(), loadHomeHub(true)]);
-      if (document.getElementById('profileShopModal')?.classList.contains('open')) await loadProfileShopModal();
+    const payload = {};
+    payload[rewardType] = rewardId;
+    const res = await fetch('/api/profile/cosmetics', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      tg.showAlert(data.error || 'Не вдалося застосувати нагороду.');
       return;
     }
-    const payload = {}; payload[rewardType] = rewardId;
-    const res = await fetch('/api/profile/cosmetics', {method:'POST', headers: telegramAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify(payload)});
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { tg.showAlert(data.error || 'Не вдалося застосувати нагороду.'); return; }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     await loadMyProfile();
-    await loadHomeHub(true);
+    await loadHomeHub();
     if (document.getElementById('profileShopModal')?.classList.contains('open')) await loadProfileShopModal();
   } catch (e) {
     tg.showAlert('Не вдалося застосувати нагороду.');
   }
 }
-
 
 async function resetXpCosmetics() {
   try {
@@ -11234,15 +11196,22 @@ async function resetXpCosmetics() {
 async function resetProfileAppearance() {
   const btn = document.getElementById('profileShopResetBtn');
   const oldText = btn?.textContent || '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Скидаю…'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Скидаю…';
+  }
   try {
-    const res = await fetch('/api/profile/cosmetics', {method:'POST', headers: telegramAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({frame:'', theme:'', background:'', companion:'', coin_skin:'', treasure_skin:'', dungeon_skin:''})});
+    const res = await fetch('/api/profile/cosmetics', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({frame:'', theme:'', background:'', companion:'', coin_skin:'', treasure_skin:'', dungeon_skin:''})
+    });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) { tg.showAlert(data.error || 'Не вдалося скинути оформлення.'); return; }
-    localShopLoadout = {background:'', companion:'', coin_skin:'', treasure_skin:'', dungeon_skin:''};
-    saveLocalShopLoadout();
+    if (!res.ok) {
+      tg.showAlert(data.error || 'Не вдалося скинути оформлення.');
+      return;
+    }
     applyGlobalProfileTheme('');
-    applyShopExtras({});
     dungeonProfileCache = null;
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     await Promise.allSettled([loadMyProfile(), loadHomeHub(true)]);
@@ -11251,10 +11220,12 @@ async function resetProfileAppearance() {
   } catch (e) {
     tg.showAlert('Не вдалося скинути оформлення.');
   } finally {
-    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = oldText || '↺ Скинути оформлення до стандартного'; }
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = oldText || '↺ Скинути оформлення до стандартного';
+    }
   }
 }
-
 
 function xpRewardsHtml(data) {
   const rewards = Array.isArray(data.xp_rewards) ? data.xp_rewards : [];
@@ -11294,23 +11265,21 @@ function shopTypeLabel(type) {
   if (type === 'theme') return 'Тема оформлення';
   if (type === 'background') return 'Фон профілю';
   if (type === 'companion') return 'Компаньйон';
-  if (type === 'coin_skin') return 'Скін Stils Rush';
+  if (type === 'coin_skin') return 'Скін Coin Rush';
   if (type === 'treasure_skin') return 'Скін Скарбниці';
   if (type === 'dungeon_skin') return 'Скін Данжу';
   if (type === 'coupon') return 'Подарунковий купон';
-  if (type === 'bundle') return 'Набір';
-  if (type === 'mystery') return 'Mystery box';
   return 'Оформлення';
 }
 
 function shopPreviewHtml(item) {
-  if (item.type === 'frame') return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${cosmeticFrameClass(item.id || '')}">🎲</div></div>`;
+  if (item.type === 'frame') {
+    return `<div class="profile-shop-preview"><div class="profile-shop-preview-avatar ${cosmeticFrameClass(item.id || '')}">🎲</div></div>`;
+  }
   if (item.type === 'coupon') {
     const label = item.id === 'shop_coupon_gift_royal' ? 'BOARD GAME' : item.id === 'shop_coupon_gift_large' ? 'MERCH MUG' : 'STICKER PACK';
     return `<div class="profile-shop-preview"><div class="profile-shop-coupon-preview">${escapeHtml(item.icon || '🎟️')} ${label}</div></div>`;
   }
-  if (item.type === 'bundle') return `<div class="profile-shop-preview"><div class="profile-shop-bundle-preview"><div class="profile-shop-bundle-icons"><span>🖼️</span><span>🌌</span><span>🐉</span></div><div class="profile-shop-box-label">BUNDLE</div></div></div>`;
-  if (item.type === 'mystery') return `<div class="profile-shop-preview"><div class="profile-shop-box-preview"><span class="profile-shop-box-spark">${escapeHtml(item.icon || '🎲')}</span><span class="profile-shop-box-label">LUCKY DROP</span></div></div>`;
   if (item.type === 'companion') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-avatar">🙂</span><span class="shop-preview-companion">${escapeHtml(item.icon || '✨')}</span></div>`;
   if (item.type === 'coin_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-big">${escapeHtml(item.icon || '⭐')}</span><span>Stils Rush</span></div>`;
   if (item.type === 'treasure_skin') return `<div class="profile-shop-preview profile-shop-special-preview"><span class="shop-preview-cards">✦ ✦</span><span>${escapeHtml(item.icon || '🃏')}</span></div>`;
@@ -11327,21 +11296,34 @@ async function buyProfileShopItem(itemId) {
   shopPurchaseInFlight = itemId;
   const btn = document.querySelector(`[data-shop-buy="${itemId}"]`);
   const previousText = btn?.textContent || '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Купую…'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Купую…';
+  }
   try {
-    const res = await fetch('/api/profile/shop/buy', {method:'POST', headers: telegramAuthHeaders({'Content-Type':'application/json'}), body: JSON.stringify({item_id: itemId})});
+    const res = await fetch('/api/profile/shop/buy', {
+      method: 'POST',
+      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({item_id: itemId})
+    });
     const data = await res.json().catch(() => ({}));
     if (res.status === 409 || data.status === 'not_enough_gold') {
       const missing = Math.max(0, Number(data.missing_gold) || ((Number(data.price) || 0) - (Number(data.gold_balance) || 0)));
-      tg.showAlert(`Не вистачає стілсів${missing ? `. Потрібно ще ${missing} ⭐` : ''}.`); return;
+      tg.showAlert(`Не вистачає стілсів${missing ? `. Потрібно ще ${missing} ⭐` : ''}.`);
+      return;
     }
-    if (!res.ok) { tg.showAlert(data.error || 'Не вдалося купити предмет.'); return; }
+    if (!res.ok) {
+      tg.showAlert(data.error || 'Не вдалося купити предмет.');
+      return;
+    }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    if (data.status === 'already_owned') tg.showAlert('Цей лот уже у твоїй колекції.');
-    else if (data.item_type === 'mystery') tg.showAlert(`Lucky Box відкрито ✨ Тобі випав: ${data?.granted_item?.name || 'випадковий предмет'}.`);
-    else if (data.item_type === 'bundle') tg.showAlert(`Набір придбано 🎁 До колекції додано ${Array.isArray(data.granted_items) ? data.granted_items.length : 'кілька'} предметів.`);
-    else if (data.item_type === 'coupon') tg.showAlert('Подарунковий купон придбано 🎟️ Він збережений у твоїй колекції.');
-    else tg.showAlert(data.equipped ? 'Придбано й одразу застосовано ✨' : 'Предмет успішно придбано ✨');
+    if (data.status === 'already_owned') {
+      tg.showAlert('Цей лот уже у твоїй колекції.');
+    } else if (data.item_type === 'coupon') {
+      tg.showAlert('Подарунковий купон придбано 🎟️ Він збережений у твоїй колекції.');
+    } else {
+      tg.showAlert('Придбано й одразу застосовано ✨');
+    }
     dungeonProfileCache = null;
     const shopOpen = document.getElementById('profileShopModal')?.classList.contains('open');
     await Promise.allSettled([loadMyProfile(), loadHomeHub(true), shopOpen ? loadProfileShopModal() : Promise.resolve()]);
@@ -11349,7 +11331,10 @@ async function buyProfileShopItem(itemId) {
     tg.showAlert('Не вдалося купити предмет.');
   } finally {
     shopPurchaseInFlight = '';
-    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = previousText; }
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = previousText;
+    }
   }
 }
 
@@ -11358,20 +11343,33 @@ let profileShopModalData = null;
 async function loadProfileShopModal() {
   const root = document.getElementById('profileShopModalContent');
   if (!root) return;
-  root.className = 'profile-shop-modal-loading'; root.innerHTML = 'Завантажую магазин…';
+  root.className = 'profile-shop-modal-loading';
+  root.innerHTML = 'Завантажую магазин…';
   try {
     let res = await fetch('/api/profile/summary', { headers: telegramAuthHeaders(), cache:'no-store' });
     let data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'profile_error');
+
+    // Старі/кешовані версії summary могли не містити каталогу магазину.
+    // У такому випадку беремо повний профіль замість показу порожнього вікна.
     if (!Array.isArray(data.shop_items) || !data.shop_items.length) {
       const fullRes = await fetch('/api/profile/me', { headers: telegramAuthHeaders(), cache:'no-store' });
       const fullData = await fullRes.json().catch(() => ({}));
-      if (fullRes.ok && Array.isArray(fullData.shop_items) && fullData.shop_items.length) data = fullData;
+      if (fullRes.ok && Array.isArray(fullData.shop_items) && fullData.shop_items.length) {
+        data = fullData;
+      }
     }
-    profileShopModalData = data; root.className = ''; root.innerHTML = profileShopHtml(data);
-    if (!root.innerHTML.trim()) { root.className = 'profile-shop-modal-loading'; root.innerHTML = 'Магазин тимчасово не отримав каталог товарів. Закрий його та відкрий ще раз.'; }
+
+    profileShopModalData = data;
+    root.className = '';
+    root.innerHTML = profileShopHtml(data);
+    if (!root.innerHTML.trim()) {
+      root.className = 'profile-shop-modal-loading';
+      root.innerHTML = 'Магазин тимчасово не отримав каталог товарів. Закрий його та відкрий ще раз.';
+    }
   } catch (e) {
-    root.className = 'profile-shop-modal-loading'; root.innerHTML = 'Не вдалося завантажити магазин. Спробуй ще раз.';
+    root.className = 'profile-shop-modal-loading';
+    root.innerHTML = 'Не вдалося завантажити магазин. Спробуй ще раз.';
   }
 }
 
@@ -11384,31 +11382,23 @@ async function openProfileShop() {
 }
 
 function shopRarityLabel(rarity) { return ({common:'Звичайний',rare:'Рідкісний',epic:'Епічний',legendary:'Легендарний'})[rarity] || 'Звичайний'; }
-function shopSectionLabel(type) { return ({bundle:'🎁 Набори',mystery:'🎲 Lucky Boxes',frame:'🖼️ Рамки',theme:'🎨 Теми',background:'🌌 Фони профілю',companion:'🐉 Компаньйони',coin_skin:'⭐ Скіни Stils Rush',treasure_skin:'🃏 Скіни Скарбниці',dungeon_skin:'🏰 Скіни Данжу',coupon:'🎟 Подарункові купони'})[type] || '✨ Інше'; }
-function scrollToShopSection(type) { document.getElementById(`shopSection-${type}`)?.scrollIntoView({behavior:'smooth', block:'start'}); }
+function shopSectionLabel(type) { return ({frame:'🖼️ Рамки',theme:'🎨 Теми',background:'🌌 Фони профілю',companion:'🐉 Компаньйони',coin_skin:'⭐ Скіни Stils Rush',treasure_skin:'🃏 Скіни Скарбниці',dungeon_skin:'🏰 Скіни Данжу',coupon:'🎟 Подарункові купони'})[type] || '✨ Інше'; }
 
 function profileShopHtml(data) {
   const items = Array.isArray(data.shop_items) ? data.shop_items : [];
   const gold = Math.max(0, Number(data.gold) || 0);
   if (!items.length) return '';
-  const order = ['bundle','mystery','frame','theme','background','companion','coin_skin','treasure_skin','dungeon_skin','coupon'];
-  const groups = Object.fromEntries(order.map(type => [type, items.filter(x => x.type === type)]));
-  const featured = items.filter(x => ['bundle','mystery','coupon'].includes(x.type)).slice(0,3);
-  const chips = order.filter(type => (groups[type] || []).length).map(type => `<button type="button" class="profile-shop-chip" onclick="scrollToShopSection('${escapeHtml(type)}')">${shopSectionLabel(type)}<span class="profile-shop-chip-count">${groups[type].length}</span></button>`).join('');
-  const showcase = featured.length ? `<div class="profile-shop-showcase">${featured.map(item => `<div class="profile-shop-showcase-card"><div class="profile-shop-showcase-eyebrow">${escapeHtml(shopTypeLabel(item.type))}</div><div class="profile-shop-showcase-name">${escapeHtml(item.name || '')}</div><div class="profile-shop-showcase-desc">${escapeHtml(item.description || '')}</div><div class="profile-shop-showcase-price">⭐ ${Math.max(0, Number(item.price) || 0)}</div></div>`).join('')}</div>` : '';
+  const order = ['frame','theme','background','companion','coin_skin','treasure_skin','dungeon_skin','coupon'];
   const renderItem = (item) => {
-    const owned = Boolean(item.owned); const localActive = SHOP_EXTRA_TYPES.includes(item.type) && localShopLoadout[item.type] === item.id; const active = Boolean(item.active) || localActive;
-    const price = Math.max(0, Number(item.price) || 0); const missing = Math.max(0, price - gold); const canBuy = missing === 0; const repeatable = Boolean(item.repeatable); let action = '';
-    if (item.type === 'coupon') action = owned ? `<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>` : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
-    else if (item.type === 'mystery') action = `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Відкрити · ⭐ ${price}</button>${repeatable?`<div class="profile-shop-badge-repeat">Можна купувати багато разів</div>`:''}${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
-    else if (item.type === 'bundle') action = owned ? `<button type="button" class="profile-shop-action" disabled>✓ Набір у колекції</button>` : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити набір · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
-    else action = active ? `<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>` : owned ? `<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>` : `<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
-    return `<div class="profile-shop-item ${escapeHtml(item.type)} rarity-${escapeHtml(item.rarity||'common')} ${item.type==='coupon'?'coupon':''} ${owned?'owned':''} ${active?'active':''}">${shopPreviewHtml(item)}<div class="profile-shop-rarity">${shopRarityLabel(item.rarity)}</div><div class="profile-shop-icon">${escapeHtml(item.icon||'🎁')}</div><div class="profile-shop-name">${escapeHtml(item.name||'')}</div><div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div><div class="profile-shop-desc">${escapeHtml(item.description||'')}</div>${action}</div>`;
+    const owned=Boolean(item.owned), active=Boolean(item.active), price=Math.max(0,Number(item.price)||0), missing=Math.max(0,price-gold), canBuy=missing===0;
+    let action='';
+    if (item.type==='coupon') action=owned?`<button type="button" class="profile-shop-action" disabled>✓ Купон придбано</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
+    else action=active?`<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>`:owned?`<button type="button" class="profile-shop-action" onclick="equipXpReward('${escapeHtml(item.id)}','${escapeHtml(item.type)}')">Використати</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${escapeHtml(item.id)}" onclick="buyProfileShopItem('${escapeHtml(item.id)}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>${canBuy?'':`<span class="profile-shop-missing">Не вистачає ${missing} ⭐</span>`}`;
+    return `<div class="profile-shop-item rarity-${escapeHtml(item.rarity||'common')} ${item.type==='coupon'?'coupon':''} ${owned?'owned':''} ${active?'active':''}">${shopPreviewHtml(item)}<div class="profile-shop-rarity">${shopRarityLabel(item.rarity)}</div><div class="profile-shop-icon">${escapeHtml(item.icon||'🎁')}</div><div class="profile-shop-name">${escapeHtml(item.name||'')}</div><div class="profile-shop-type">${escapeHtml(shopTypeLabel(item.type))}</div><div class="profile-shop-desc">${escapeHtml(item.description||'')}</div>${action}</div>`;
   };
-  const sections = order.map(type => { const group = groups[type] || []; return group.length ? `<div class="profile-shop-section-title" id="shopSection-${escapeHtml(type)}">${shopSectionLabel(type)}<span>${group.length} лот${group.length===1?'':'и'}</span></div>${group.map(renderItem).join('')}` : ''; }).join('');
-  return `<div class="profile-shop-panel"><div class="profile-shop-head"><div class="profile-shop-title">🛍 Магазин</div><div class="profile-shop-balance">⭐ ${gold}</div></div><div class="profile-shop-subtitle">Колекційні рамки, фони, компаньйони, скіни для мініігор, купони та містичні бокси. Куплене залишається у твоїй колекції.</div>${showcase}<div class="profile-shop-toolbar">${chips}</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button><div class="profile-shop-grid">${sections}</div></div>`;
+  const sections=order.map(type=>{const group=items.filter(x=>x.type===type);return group.length?`<div class="profile-shop-section-title">${shopSectionLabel(type)}</div>${group.map(renderItem).join('')}`:'';}).join('');
+  return `<div class="profile-shop-panel"><div class="profile-shop-head"><div class="profile-shop-title">🛍 Магазин</div><div class="profile-shop-balance">⭐ ${gold}</div></div><div class="profile-shop-subtitle">Рамки, теми, фони, компаньйони, скіни мініігор і подарункові купони. Куплене залишається у колекції назавжди.</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення до стандартного</button><div class="profile-shop-grid">${sections}</div></div>`;
 }
-
 
 function renderMyProfile(data) {
   const root = document.getElementById('profileContent');
@@ -11425,7 +11415,7 @@ function renderMyProfile(data) {
   const progress = Math.max(0, Math.min(100, Number(data.level_progress_percent) || 0));
   const userLabel = data.username ? `@${escapeHtml(data.username)}` : 'Telegram-профіль';
   const fav = stats.favorite_game || '—';
-  const cosmetics = mergeShopLoadout(data.cosmetics || {});
+  const cosmetics = data.cosmetics || {};
   const frameClass = cosmeticFrameClass(cosmetics.frame_id || '');
   const themeClass = cosmeticThemeClass(cosmetics.theme_id || '');
   applyGlobalProfileTheme(cosmetics.theme_id || '');
