@@ -79,7 +79,7 @@ function coinRushHud(timeMs = COIN_RUSH_DURATION_MS) {
   const progress = document.getElementById('coinCatcherProgressBar');
   if (timeEl) timeEl.textContent = String(seconds);
   if (scoreEl) scoreEl.textContent = String(Math.max(0, coinRush.score));
-  if (goldEl) goldEl.textContent = `${Math.max(0, Number(coinRush.gold) || 0)} 🪙`;
+  if (goldEl) goldEl.textContent = `${Math.max(0, Number(coinRush.gold) || 0)} ⭐`;
   if (progress) progress.style.width = `${Math.max(0, Math.min(100, timeMs / COIN_RUSH_DURATION_MS * 100))}%`;
 }
 
@@ -6307,11 +6307,11 @@ document.addEventListener('click', event => {
 
     <div class="counters-mode" id="mode-flip7">
       <div class="flip7-topbar">
-        <button class="flip7-icon-btn" onclick="resetFlip7Game()" title="Скинути гру">
+        <button class="flip7-icon-btn" onclick="resetFlip7Game()" title="Скинути гру" aria-label="Скинути гру">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 4v6h6"/></svg>
         </button>
         <div class="flip7-round-title" id="flip7RoundTitle">Раунд 1</div>
-        <button class="flip7-icon-btn" onclick="addFlip7Player()" title="Додати гравця">
+        <button class="flip7-icon-btn" onclick="addFlip7Player()" title="Додати гравця" aria-label="Додати гравця">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         </button>
       </div>
@@ -6322,10 +6322,10 @@ document.addEventListener('click', event => {
 
       <div class="flip7-bottombar">
         <button class="flip7-newround-link" id="flip7RoundBtn" onclick="finishFlip7Round()">Завершити раунд</button>
-        <button class="flip7-history-btn" id="flip7UndoBtn" onclick="undoFlip7()" title="Скасувати">
+        <button class="flip7-history-btn" id="flip7UndoBtn" onclick="undoFlip7()" title="Скасувати" aria-label="Скасувати останню дію">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-1"/></svg>
         </button>
-        <button class="flip7-history-btn" id="flip7RedoBtn" onclick="redoFlip7()" title="Повторити">
+        <button class="flip7-history-btn" id="flip7RedoBtn" onclick="redoFlip7()" title="Повторити" aria-label="Повторити скасовану дію">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h1"/></svg>
         </button>
         <button class="flip7-continue-btn" id="flip7ContinueBtn" onclick="continueFlip7Flow()">
@@ -6357,7 +6357,7 @@ document.addEventListener('click', event => {
 <div class="view" id="view-games">
   <header>Ігри</header>
   <div class="games-hub-wrap">
-    <div class="games-hub-intro">Обирай мінігру. Стілси з ігор зараховується у твій загальний баланс профілю та може використовуватися в магазині.</div>
+    <div class="games-hub-intro">Обирай мінігру. Стілси з ігор зараховуються у твій загальний баланс профілю та може використовуватися в магазині.</div>
 
     <div class="games-hub-grid">
       <article class="mini-game-card dungeon-game">
@@ -6383,7 +6383,7 @@ document.addEventListener('click', event => {
         <div class="mini-game-tag">Пам’ять · швидкість</div>
         <h2 class="mini-game-title">Скарбниця</h2>
         <p class="mini-game-desc">Відкривай карти по дві, запам’ятовуй символи та знайди всі 8 пар до завершення часу.</p>
-        <div class="mini-game-meta"><span>16 карт</span><span>40 секунд</span><span>до 5 🪙</span></div>
+        <div class="mini-game-meta"><span>16 карт</span><span>40 секунд</span><span>до 5 ⭐</span></div>
         <button type="button" class="mini-game-launch" onclick="openMiniGame('view-treasure')">Грати</button>
       </article>
     </div>
@@ -6491,7 +6491,7 @@ document.addEventListener('click', event => {
       <div class="treasure-stat"><strong id="treasurePairs">0/8</strong><span>пари</span></div>
       <div class="treasure-stat"><strong id="treasureMoves">0</strong><span>ходи</span></div>
       <div class="treasure-stat"><strong id="treasureStreak">0</strong><span>серія</span></div>
-      <div class="treasure-stat" role="button" tabindex="0" onclick="openProfileShop()"><strong id="treasureGold">0 ⭐</strong><span>стілс</span></div>
+      <div class="treasure-stat" role="button" tabindex="0" onclick="openProfileShop()"><strong id="treasureGold">0 ⭐</strong><span>стілси</span></div>
     </div>
 
     <div class="treasure-board" id="treasureBoard" aria-label="Поле гри Скарбниця"></div>
@@ -6512,6 +6512,296 @@ document.addEventListener('click', event => {
 
 <style>
 .admin-users-entry{margin:0 0 14px}.admin-users-open-btn{width:100%;border:1px solid rgba(212,175,55,.35);background:linear-gradient(135deg,rgba(212,175,55,.13),rgba(102,76,180,.12));color:var(--text,#f3f4f6);border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;font:inherit;font-weight:800;cursor:pointer}.admin-users-open-arrow{font-size:20px;opacity:.8}.admin-users-wrap{padding:16px 14px 110px;max-width:900px;margin:0 auto}.admin-users-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:12px 0 14px}.admin-users-title-row h2{margin:0 0 4px;font-size:22px}.admin-users-title-row p{margin:0;color:var(--text-muted,#94a3b8);font-size:13px}.admin-users-refresh{width:42px;height:42px;border-radius:13px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:inherit;font-size:21px;cursor:pointer}.admin-users-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:14px}.admin-user-stat{padding:12px 8px;border-radius:14px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.07);text-align:center}.admin-user-stat strong{display:block;font-size:21px;line-height:1.1}.admin-user-stat span{display:block;font-size:10px;color:var(--text-muted,#94a3b8);margin-top:5px}.admin-users-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:9px;margin-bottom:12px;align-items:center}.admin-users-showing{font-size:12px;color:var(--text-muted,#94a3b8);padding:0 2px}.admin-users-sort{min-width:0;border:1px solid rgba(255,255,255,.1);background:rgba(10,18,32,.75);color:inherit;border-radius:13px;padding:11px 12px;font:inherit}.admin-users-list{display:grid;gap:10px}.admin-user-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:16px;background:rgba(255,255,255,.052);border:1px solid rgba(255,255,255,.075)}.admin-user-avatar{width:52px;height:52px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-weight:900}.admin-user-avatar img{width:100%;height:100%;object-fit:cover}.admin-user-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-user-handle{font-size:12px;color:var(--text-muted,#94a3b8);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-user-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.admin-user-chip{font-size:10px;padding:4px 6px;border-radius:999px;background:rgba(255,255,255,.065);color:#cbd5e1}.admin-user-activity{text-align:right;font-size:11px;color:var(--text-muted,#94a3b8);white-space:nowrap}.admin-user-activity strong{display:block;color:#e5e7eb;font-size:12px;margin-bottom:4px}.admin-users-empty{padding:28px;text-align:center;color:var(--text-muted,#94a3b8)}.admin-user-card{cursor:pointer;transition:transform .15s ease,border-color .15s ease}.admin-user-card:active{transform:scale(.99)}.admin-user-card.blocked{border-color:rgba(239,68,68,.42);background:rgba(127,29,29,.14)}.admin-user-blocked-badge{display:inline-flex;padding:3px 7px;border-radius:999px;background:rgba(239,68,68,.16);color:#fecaca;font-size:10px;font-weight:800}.admin-user-detail-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:10050;display:none;align-items:flex-end;justify-content:center}.admin-user-detail-modal.open{display:flex}.admin-user-detail-sheet{width:min(760px,100%);max-height:91vh;overflow:auto;border-radius:24px 24px 0 0;background:linear-gradient(180deg,#111c2e,#091321);border:1px solid rgba(255,255,255,.1);padding:18px 16px 34px}.admin-user-detail-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.admin-user-detail-close{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#fff;font-size:23px}.admin-user-profile-top{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:center;padding:14px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.07)}.admin-user-profile-avatar{width:76px;height:76px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900}.admin-user-profile-avatar img{width:100%;height:100%;object-fit:cover}.admin-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.admin-detail-tile{padding:11px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);text-align:center}.admin-detail-tile strong{display:block;font-size:18px}.admin-detail-tile span{display:block;font-size:10px;color:#94a3b8;margin-top:4px}.admin-detail-section{margin-top:15px}.admin-detail-section h3{margin:0 0 8px;font-size:15px}.admin-action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.admin-action-btn{border:1px solid rgba(212,175,55,.3);background:rgba(212,175,55,.12);color:#fff;border-radius:14px;padding:12px;font:inherit;font-weight:800}.admin-action-btn.danger{border-color:rgba(239,68,68,.35);background:rgba(127,29,29,.18);color:#fecaca}.admin-action-btn.safe{border-color:rgba(34,197,94,.35);background:rgba(20,83,45,.2);color:#bbf7d0}.admin-owned-list{display:flex;flex-wrap:wrap;gap:7px}.admin-owned-item{padding:7px 9px;border-radius:11px;background:rgba(255,255,255,.055);font-size:12px}.admin-action-log{display:grid;gap:7px}.admin-action-log-item{padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.045);font-size:12px}.admin-action-log-item small{display:block;color:#94a3b8;margin-top:3px}.admin-user-detail-status{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:#cbd5e1;font-size:12px;margin-top:10px}@media(max-width:560px){.admin-users-stats{grid-template-columns:repeat(2,1fr)}.admin-users-toolbar{grid-template-columns:1fr}.admin-user-card{grid-template-columns:46px minmax(0,1fr)}.admin-user-avatar{width:46px;height:46px}.admin-user-activity{grid-column:2;text-align:left;margin-top:-5px}.admin-detail-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<style id="ui-geometry-polish">
+/* ==================== UI GEOMETRY POLISH ====================
+   Final override layer: consistent spacing, icon geometry, mobile readability.
+   Keeps existing visual identity and functionality intact. */
+:root{
+  --ui-content-max: 780px;
+  --ui-page-pad: clamp(12px, 3.8vw, 18px);
+  --ui-nav-h: 72px;
+  --ui-control-h: 44px;
+  --ui-radius-sm: 11px;
+  --ui-radius-md: 15px;
+  --ui-radius-lg: 20px;
+}
+html{overflow-x:hidden;scroll-padding-bottom:calc(var(--ui-nav-h) + env(safe-area-inset-bottom,0px) + 16px)}
+body{
+  overflow-x:hidden;
+  padding-bottom:calc(var(--ui-nav-h) + env(safe-area-inset-bottom,0px) + 14px);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+.view{width:100%;min-width:0}
+.view.active{min-height:calc(100dvh - var(--ui-nav-h) - env(safe-area-inset-bottom,0px))}
+
+/* Page titles: same optical center and rhythm everywhere */
+.view > header,
+.steam-view > header{
+  width:min(100%,var(--ui-content-max));
+  margin:0 auto;
+  padding:clamp(17px,4vw,22px) var(--ui-page-pad) 20px;
+  font-size:clamp(18px,5vw,22px);
+  line-height:1.2;
+  text-wrap:balance;
+}
+.view > header::after,
+.steam-view > header::after{width:min(150px,44vw);margin-top:10px}
+
+/* Shared content alignment */
+.steam-view,.profile-wrap,.community-wrap,.events-list,.stats-wrap,
+.games-hub-wrap,.dungeon-wrap,.coin-catcher-wrap,.treasure-wrap,
+.admin-users-wrap,.wishlist-list,.history-list{
+  width:100%;
+  max-width:var(--ui-content-max);
+  margin-left:auto;
+  margin-right:auto;
+}
+.steam-view,.profile-wrap,.community-wrap,.games-hub-wrap,.admin-users-wrap{
+  padding-left:var(--ui-page-pad);
+  padding-right:var(--ui-page-pad);
+}
+
+/* Library tabs and filters */
+.lib-subtabs{
+  width:min(calc(100% - (var(--ui-page-pad) * 2)),var(--ui-content-max));
+  margin:0 auto 12px;
+  padding:0;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  overflow:visible;
+}
+.lib-subtab-btn{
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  padding:9px 5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-size:clamp(11px,3.05vw,13px);
+  line-height:1.12;
+  border-radius:13px;
+  white-space:nowrap;
+}
+.lib-search-row{
+  width:min(calc(100% - (var(--ui-page-pad) * 2)),var(--ui-content-max));
+  margin:0 auto 10px;
+  padding:0;
+}
+.lib-search-input{width:100%;min-height:46px;padding:11px 13px;font-size:16px;border-radius:13px}
+.lib-genre-row{
+  width:min(calc(100% - (var(--ui-page-pad) * 2)),var(--ui-content-max));
+  margin:0 auto 10px;
+  padding:2px 0 5px;
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  scrollbar-width:none;
+}
+.lib-genre-row::-webkit-scrollbar{display:none}
+.lib-genre-chip{flex:0 0 auto;min-height:38px;padding:8px 13px;white-space:nowrap}
+.game-moderation-row{width:min(calc(100% - (var(--ui-page-pad) * 2)),var(--ui-content-max));margin:8px auto 12px}
+.grid{width:min(100%,var(--ui-content-max));padding:8px var(--ui-page-pad) calc(94px + env(safe-area-inset-bottom,0px));gap:12px}
+.card{min-width:0;height:100%;border-radius:16px}
+.card img,.card .placeholder{display:block}
+.card-title{min-height:52px;padding:10px 12px;font-size:14px;line-height:1.28}
+.card-tags{padding-left:12px;padding-right:12px;padding-bottom:11px;font-size:11px;line-height:1.35}
+.fav-star{width:40px!important;height:40px!important;display:grid!important;place-items:center!important;padding:0!important;line-height:1!important}
+
+/* Tool tabs / compact action rows */
+.tools-tabs,.counters-subtabs,.events-subtabs{
+  width:min(calc(100% - (var(--ui-page-pad) * 2)),var(--ui-content-max));
+  margin-left:auto;
+  margin-right:auto;
+}
+.tools-tabs{padding:8px 0 12px;gap:8px}
+.tool-tab-btn{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  line-height:1.15;
+}
+.tool-tab-btn svg{width:19px;height:19px;flex:0 0 19px}
+.tools-return,.mini-game-back{min-height:40px;display:inline-flex;align-items:center;justify-content:center;line-height:1.2}
+
+/* Buttons + inline SVGs */
+button,.btn{font-family:inherit}
+.icon-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.icon-inline svg,.btn svg,button svg{vertical-align:middle;flex-shrink:0}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;padding:10px 14px;border-radius:13px;line-height:1.2}
+.close-btn,.profile-shop-close,.admin-user-detail-close,.flip7-icon-btn,.flip7-history-btn,.admin-users-refresh{
+  flex:0 0 auto;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  line-height:1!important;
+}
+.close-btn,.profile-shop-close,.admin-user-detail-close,.admin-users-refresh{width:42px!important;height:42px!important;min-height:42px!important}
+.flip7-icon-btn,.flip7-history-btn{width:42px!important;height:42px!important;min-height:42px!important}
+.flip7-icon-btn svg,.flip7-history-btn svg{width:19px!important;height:19px!important}
+
+/* Forms: no odd widths or clipped controls */
+.sheet input[type=text],.sheet input[type=url],.sheet input[type=number],.sheet input[type=date],.sheet input[type=time],
+.sheet textarea,.sheet select,.tool-profile-select{
+  width:100%;max-width:100%;min-height:46px;padding:10px 12px;border-radius:12px;font-size:16px;line-height:1.3
+}
+.sheet textarea{min-height:96px}
+.sheet input[type=file]{width:100%;max-width:100%;min-height:46px}
+.sheet label{display:block;line-height:1.3}
+
+/* Modal geometry */
+.modal,.admin-user-detail-modal{
+  padding:0;
+  align-items:flex-end;
+  justify-content:center;
+}
+.sheet,.profile-shop-sheet,.admin-user-detail-sheet{
+  width:min(100%,660px)!important;
+  max-width:660px!important;
+  max-height:min(91dvh,860px)!important;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border-radius:24px 24px 0 0!important;
+  padding-left:var(--ui-page-pad)!important;
+  padding-right:var(--ui-page-pad)!important;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))!important;
+}
+.sheet h2{padding-right:46px;margin-right:0;line-height:1.24;text-wrap:balance}
+
+/* Bottom navigation: fixed optical geometry for six items */
+.bottom-nav{
+  height:calc(var(--ui-nav-h) + env(safe-area-inset-bottom,0px));
+  min-height:calc(var(--ui-nav-h) + env(safe-area-inset-bottom,0px));
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  align-items:start;
+  padding:4px max(3px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px) max(3px,env(safe-area-inset-right,0px));
+  box-shadow:0 -8px 30px rgba(0,0,0,.18);
+}
+.bottom-nav button{
+  width:100%;height:68px;min-height:68px!important;min-width:0;
+  padding:6px 1px 5px;
+  display:grid;
+  grid-template-rows:30px 18px;
+  align-content:center;
+  justify-items:center;
+  gap:2px;
+  border-radius:12px;
+  line-height:1;
+  overflow:hidden;
+}
+.bottom-nav button .icon{width:30px;height:30px;display:grid;place-items:center;line-height:1}
+.bottom-nav button .icon svg{width:23px!important;height:23px!important;display:block}
+.bottom-nav button span:last-child{
+  width:100%;max-width:100%;
+  display:block;
+  overflow:hidden;
+  text-overflow:clip;
+  white-space:nowrap;
+  text-align:center;
+  font-size:clamp(9px,2.45vw,11px)!important;
+  line-height:18px!important;
+  letter-spacing:0!important;
+}
+.bottom-nav button.active{color:var(--accent);background:linear-gradient(180deg,rgba(212,175,55,.09),transparent 72%)}
+
+/* Floating action button */
+.fab{
+  width:54px!important;height:54px!important;min-height:54px!important;
+  right:max(var(--ui-page-pad),env(safe-area-inset-right,0px));
+  bottom:calc(var(--ui-nav-h) + env(safe-area-inset-bottom,0px) + 14px);
+  display:grid!important;place-items:center!important;padding:0!important;border-radius:50%!important
+}
+.fab svg{width:24px!important;height:24px!important}
+
+/* Games hub */
+.games-hub-wrap{padding:4px var(--ui-page-pad) calc(96px + env(safe-area-inset-bottom,0px))}
+.games-hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
+.games-hub-intro{max-width:680px;margin:0 auto 14px;line-height:1.48}
+.mini-game-card{min-width:0;height:100%;padding:17px;border-radius:20px}
+.mini-game-icon{width:58px;height:58px;border-radius:17px;font-size:31px;display:grid;place-items:center;line-height:1;margin-bottom:12px}
+.mini-game-tag{min-height:24px;align-items:center;line-height:1.15;margin-bottom:8px}
+.mini-game-title{font-size:20px;line-height:1.18}
+.mini-game-desc{font-size:13px;line-height:1.45;margin:8px 0 13px}
+.mini-game-meta{gap:6px;margin-top:auto;margin-bottom:13px}
+.mini-game-meta span{display:inline-flex;align-items:center;min-height:28px;line-height:1.15}
+.mini-game-launch{min-height:46px;border-radius:13px}
+
+/* Mini-game HUDs */
+.dungeon-wrap,.coin-catcher-wrap,.treasure-wrap{padding-left:var(--ui-page-pad)!important;padding-right:var(--ui-page-pad)!important}
+.treasure-top{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.treasure-stat{min-width:0;padding:8px 3px;border-radius:12px}
+.treasure-stat strong{font-size:clamp(13px,4vw,17px);white-space:nowrap}
+.treasure-stat span{font-size:9px;line-height:1.15}
+
+/* Shop cards */
+.profile-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.profile-shop-item{display:flex;flex-direction:column;min-width:0;padding:11px;border-radius:15px}
+.profile-shop-preview{flex:0 0 auto}
+.profile-shop-name{font-size:13px;line-height:1.25;overflow-wrap:anywhere}
+.profile-shop-desc{min-height:0;flex:1;font-size:11px;line-height:1.36}
+.profile-shop-action{margin-top:10px;min-height:42px}
+
+/* Admin users: balanced card anatomy */
+.admin-users-wrap{padding-top:8px;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.admin-users-title-row{align-items:center}
+.admin-users-refresh{font-size:20px}
+.admin-users-stats{gap:9px}
+.admin-user-stat{min-height:78px;display:flex;flex-direction:column;justify-content:center}
+.admin-users-toolbar{align-items:stretch}
+.admin-users-sort{min-height:44px;padding:10px 12px}
+.admin-user-card{min-width:0;gap:11px;padding:12px;border-radius:16px}
+.admin-user-main{min-width:0}
+.admin-user-meta{row-gap:5px}
+.admin-user-chip{line-height:1.15}
+.admin-user-detail-sheet{padding-top:18px!important}
+.admin-action-btn{min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2}
+
+/* Moderation cards */
+.game-moderation-card{align-items:start}
+.game-moderation-cover img{object-fit:cover}
+.game-moderation-actions button{min-height:40px;display:flex;align-items:center;justify-content:center;line-height:1.2}
+
+@media (min-width:700px){
+  .modal,.admin-user-detail-modal{align-items:center;padding:24px}
+  .sheet,.profile-shop-sheet,.admin-user-detail-sheet{border-radius:24px!important;border-bottom:1px solid var(--border)!important}
+  .games-hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .games-hub-grid{grid-template-columns:1fr}
+  .mini-game-card{min-height:0}
+  .admin-users-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .admin-user-card{grid-template-columns:48px minmax(0,1fr)!important}
+  .admin-user-avatar{width:48px!important;height:48px!important}
+  .admin-user-activity{grid-column:2!important;text-align:left!important;margin-top:-4px!important;white-space:normal!important}
+  .admin-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .game-moderation-card{grid-template-columns:72px minmax(0,1fr);gap:10px}
+  .game-moderation-cover{width:72px;height:92px}
+}
+@media (max-width:390px){
+  :root{--ui-page-pad:11px}
+  .lib-subtabs{gap:6px}
+  .lib-subtab-btn{font-size:10.5px;padding-left:2px;padding-right:2px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px}
+  .bottom-nav button span:last-child{font-size:9px!important}
+  .profile-shop-grid{grid-template-columns:1fr 1fr}
+  .treasure-top{gap:4px}
+  .treasure-stat{padding-left:2px;padding-right:2px}
+}
+@media (max-width:335px){
+  .grid{grid-template-columns:1fr}
+  .lib-subtabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bottom-nav button span:last-child{font-size:8.5px!important}
+  .profile-shop-grid{grid-template-columns:1fr}
+}
 </style>
 
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
@@ -6558,7 +6848,7 @@ document.addEventListener('click', event => {
         <h2>🛡️ Адмін-панель</h2>
         <p>Хто користується ботом і коли був активний.</p>
       </div>
-      <button type="button" class="admin-users-refresh" onclick="loadAdminUsers(true)">↻</button>
+      <button type="button" class="admin-users-refresh" onclick="loadAdminUsers(true)" aria-label="Оновити список користувачів" title="Оновити">↻</button>
     </div>
     <div class="admin-users-stats" id="adminUsersStats">
       <div class="admin-user-stat"><strong>—</strong><span>всього</span></div>
