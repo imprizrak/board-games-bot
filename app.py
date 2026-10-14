@@ -1847,6 +1847,17 @@ def _profile_shop_catalog():
             "price": 950,
             "description": "Глибока синьо-фіолетова тема із холодним зоряним акцентом.",
         },
+        {'id': 'shop_companion_owl', 'type': 'companion', 'icon': '🦉', 'name': 'Сова-хранитель', 'value': 'shop_companion_owl', 'price': 210, 'rarity': 'common', 'description': 'Мудра сова біля твоєї аватарки.'},
+        {'id': 'shop_companion_ghost', 'type': 'companion', 'icon': '👻', 'name': 'Примарний супутник', 'value': 'shop_companion_ghost', 'price': 520, 'rarity': 'epic', 'description': 'Маленький магічний дух супроводжує тебе у профілі.'},
+        {'id': 'shop_background_tavern', 'type': 'background', 'icon': '🏮', 'name': 'Таверна пригод', 'value': 'shop_background_tavern', 'price': 260, 'rarity': 'rare', 'description': 'Теплий фон із золотим світлом таверни.'},
+        {'id': 'shop_background_cosmos', 'type': 'background', 'icon': '🌌', 'name': 'Зоряна безодня', 'value': 'shop_background_cosmos', 'price': 520, 'rarity': 'epic', 'description': 'Синьо-фіолетовий фон зі зірками.'},
+        {'id': 'shop_coin_skin_crystal', 'type': 'coin_skin', 'icon': '💠', 'name': 'Кришталеві стілси', 'value': 'shop_coin_skin_crystal', 'price': 260, 'rarity': 'rare', 'description': 'Блакитне кришталеве оформлення Stils Rush.'},
+        {'id': 'shop_treasure_skin_neon', 'type': 'treasure_skin', 'icon': '💜', 'name': 'Неонова скарбниця', 'value': 'shop_treasure_skin_neon', 'price': 340, 'rarity': 'rare', 'description': 'Фіолетове сяйво на картках Скарбниці.'},
+        {'id': 'shop_dungeon_skin_arcane', 'type': 'dungeon_skin', 'icon': '🔮', 'name': 'Арканний данж', 'value': 'shop_dungeon_skin_arcane', 'price': 390, 'rarity': 'epic', 'description': 'Фіолетові магічні акценти в Данжі.'},
+        {'id': 'shop_bundle_guild', 'type': 'bundle', 'icon': '🎁', 'name': 'Набір гільдії', 'price': 650, 'rarity': 'rare', 'description': '4 предмети: бронзова рамка, лісова тема, таверна та сова. Економія 240 стілсів.', 'grants': ['shop_frame_bronze', 'shop_theme_forest', 'shop_background_tavern', 'shop_companion_owl']},
+        {'id': 'shop_bundle_arcane', 'type': 'bundle', 'icon': '💎', 'name': 'Скарби арканіста', 'price': 1680, 'rarity': 'legendary', 'description': '4 преміальні предмети: арканна рамка, зоряна тема, космос і примара. Економія 690 стілсів.', 'grants': ['shop_frame_arcane', 'shop_theme_starlight', 'shop_background_cosmos', 'shop_companion_ghost']},
+        {'id': 'shop_box_lucky', 'type': 'mystery', 'icon': '🎲', 'name': 'Lucky Box', 'price': 240, 'rarity': 'rare', 'repeatable': True, 'description': 'Один випадковий ще не зібраний предмет зі звичайної колекції. Без дублікатів.', 'pool': ['shop_frame_bronze', 'shop_frame_frost', 'shop_theme_forest', 'shop_companion_owl', 'shop_background_tavern', 'shop_coin_skin_crystal']},
+        {'id': 'shop_box_arcane', 'type': 'mystery', 'icon': '🌠', 'name': 'Arcane Box', 'price': 590, 'rarity': 'epic', 'repeatable': True, 'description': 'Один випадковий ще не зібраний рідкісний або епічний предмет. Без дублікатів.', 'pool': ['shop_frame_arcane', 'shop_frame_dragonfire', 'shop_theme_crimson', 'shop_theme_royal', 'shop_background_cosmos', 'shop_companion_ghost', 'shop_treasure_skin_neon', 'shop_dungeon_skin_arcane']},
     ]
 
 
@@ -1870,10 +1881,13 @@ def _profile_shop_state(profile, cosmetics=None):
     selected_by_type = {
         "frame": str(cosmetics.get("frame_id") or ""),
         "theme": str(cosmetics.get("theme_id") or ""),
+        **{kind: str(cosmetics.get(f"{kind}_id") or "") for kind in
+           ("background", "companion", "coin_skin", "treasure_skin", "dungeon_skin")},
     }
     result = []
     for item in _profile_shop_catalog():
         row = dict(item)
+        row["rarity"] = row.get("rarity") or "common"
         row["owned"] = row["id"] in owned
         row["active"] = selected_by_type.get(row["type"]) == row["id"]
         result.append(row)
@@ -1907,6 +1921,15 @@ def _resolve_profile_cosmetics(level, profile=None):
         if not reward or reward.get("type") != kind:
             selected[kind] = ""
 
+    extra_loadout = profile.get("selected_shop_loadout") or {}
+    if not isinstance(extra_loadout, dict):
+        extra_loadout = {}
+    extras = {}
+    for kind in ("background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"):
+        rid = str(extra_loadout.get(kind) or "")
+        reward = available.get(rid)
+        extras[f"{kind}_id"] = rid if reward and reward.get("type") == kind else ""
+
     title_reward = available.get(selected["title"])
     badge_reward = available.get(selected["badge"])
 
@@ -1917,6 +1940,7 @@ def _resolve_profile_cosmetics(level, profile=None):
         "theme_id": selected["theme"],
         "title_label": title_reward.get("value") if title_reward else "",
         "badge_label": badge_reward.get("value") if badge_reward else "",
+        **extras,
     }
 
     for reward in rewards:
@@ -1962,7 +1986,7 @@ def get_my_profile():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items",
+                "select": "telegram_user_id,photo_url,earned_achievements,achievements_initialized,achievement_catalog_version,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,xp,gold,owned_shop_items,selected_shop_loadout",
                 "limit": 1,
             },
             timeout=20,
@@ -2098,7 +2122,7 @@ def get_profile_summary():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,gold,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,selected_shop_loadout",
                 "limit": 1,
             },
             timeout=10,
@@ -2253,7 +2277,7 @@ def set_profile_cosmetics():
             headers=HEADERS,
             params={
                 "telegram_user_id": f"eq.{user_id}",
-                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward",
+                "select": "telegram_user_id,xp,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,selected_shop_loadout",
                 "limit": 1,
             },
             timeout=20,
@@ -2285,6 +2309,23 @@ def set_profile_cosmetics():
     }
 
     patch = {}
+    shop_loadout = profile.get("selected_shop_loadout") or {}
+    if not isinstance(shop_loadout, dict):
+        shop_loadout = {}
+    changed_extras = False
+    for kind in ("background", "companion", "coin_skin", "treasure_skin", "dungeon_skin"):
+        if kind not in data:
+            continue
+        reward_id = str(data.get(kind) or "").strip()
+        if reward_id:
+            reward = available.get(reward_id)
+            if not reward or reward.get("type") != kind:
+                return jsonify({"error": "reward_not_unlocked", "reward_id": reward_id}), 403
+        shop_loadout[kind] = reward_id
+        changed_extras = True
+    if changed_extras:
+        patch["selected_shop_loadout"] = shop_loadout
+
     for kind, field in field_map.items():
         if kind not in data:
             continue
@@ -2320,112 +2361,35 @@ def set_profile_cosmetics():
 
 
 
-def _purchase_profile_shop_item_atomic(user_id, item):
-    """Атомарно списує золото і додає косметику до профілю без окремого RPC.
-
-    Умова PATCH по поточному балансу не дозволяє двом одночасним натисканням
-    витратити одне й те саме золото двічі. Якщо інший запит уже змінив баланс,
-    ми перечитуємо профіль і повторюємо перевірку один раз.
-    """
-    item_id = str(item.get("id") or "")
-    item_type = str(item.get("type") or "")
-    price = max(0, int(item.get("price") or 0))
-    selected_field = {
-        "frame": "selected_frame_reward",
-        "theme": "selected_theme_reward",
-    }.get(item_type)
-
-    for _ in range(2):
-        try:
-            current = requests.get(
-                PROFILES_REST,
-                headers=HEADERS,
-                params={
-                    "telegram_user_id": f"eq.{user_id}",
-                    "select": "telegram_user_id,gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
-                    "limit": 1,
-                },
-                timeout=20,
-            )
-        except Exception:
-            logging.exception("Не вдалося прочитати профіль перед покупкою")
-            return {"error": "shop_profile_lookup_failed"}, 503
-
-        if not current.ok:
-            logging.warning("Помилка читання профілю перед покупкою: %s", current.text[:500])
-            return {"error": "shop_profile_lookup_failed"}, 503
-        rows = current.json()
-        if not rows:
-            return {"error": "profile_not_found"}, 404
-
-        profile = rows[0]
-        raw_gold = profile.get("gold")
-        gold = max(0, int(raw_gold or 0))
-        owned = _owned_shop_items(profile)
-
-        if item_id in owned:
-            return {
-                "status": "already_owned",
-                "item_id": item_id,
-                "gold_balance": gold,
-            }, 200
-
-        if gold < price:
-            return {
-                "status": "not_enough_gold",
-                "item_id": item_id,
-                "price": price,
-                "gold_balance": gold,
-                "missing_gold": price - gold,
-            }, 409
-
-        patch = {
-            "gold": gold - price,
-            "owned_shop_items": sorted(owned | {item_id}),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        # Після покупки одразу застосовуємо рамку/тему — користувач відразу бачить результат.
-        if selected_field:
-            patch[selected_field] = item_id
-
-        params = {
-            "telegram_user_id": f"eq.{user_id}",
-            "gold": "is.null" if raw_gold is None else f"eq.{gold}",
-            "select": "gold,owned_shop_items,selected_frame_reward,selected_theme_reward",
-        }
-        try:
-            updated = requests.patch(
-                PROFILES_REST,
-                headers={
-                    **HEADERS,
-                    "Content-Type": "application/json",
-                    "Prefer": "return=representation",
-                },
-                params=params,
-                json=patch,
-                timeout=20,
-            )
-        except Exception:
-            logging.exception("Не вдалося списати золото за покупку")
-            return {"error": "shop_purchase_failed"}, 503
-
-        if not updated.ok:
-            logging.warning("Помилка збереження покупки: %s", updated.text[:500])
-            return {"error": "shop_purchase_failed"}, 500
-
-        changed = updated.json()
-        if changed:
-            return {
-                "status": "purchased",
-                "item_id": item_id,
-                "item_type": item_type,
-                "price": price,
-                "gold_balance": max(0, gold - price),
-                "equipped": bool(selected_field),
-            }, 200
-        # Баланс змінився між GET і PATCH — ще раз перечитуємо профіль.
-
-    return {"error": "shop_purchase_conflict"}, 409
+def _run_shop_transaction(user_id, item_id, recipient_id=None, request_id=None):
+    """Call server-only, transactional Supabase function; client cannot pass prices."""
+    try:
+        tx_id = str(uuid.UUID(str(request_id))) if request_id else str(uuid.uuid4())
+    except (ValueError, AttributeError, TypeError):
+        return {"error": "invalid_request_id"}, 400
+    try:
+        response = requests.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/styloteka_shop_transaction",
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={"p_user_id": int(user_id), "p_item_id": str(item_id),
+                  "p_recipient_id": recipient_id, "p_request_id": tx_id},
+            timeout=25,
+        )
+        if not response.ok:
+            logging.warning("Shop RPC failed: %s %s", response.status_code, response.text[:500])
+            return {"error": "shop_transaction_failed"}, 503
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return {"error": "shop_transaction_failed"}, 503
+        status = 200
+        if payload.get("status") in ("not_enough_gold", "already_owned", "box_complete", "bundle_complete"):
+            status = 409
+        if payload.get("status") in ("invalid_item", "recipient_not_found", "gift_not_allowed", "self_gift", "profile_not_found", "request_conflict"):
+            status = 400
+        return payload, status
+    except Exception:
+        logging.exception("Shop RPC request failed")
+        return {"error": "shop_transaction_failed"}, 503
 
 
 @app.route("/api/profile/shop/buy", methods=["POST"])
@@ -2433,16 +2397,74 @@ def buy_profile_shop_item():
     user = _request_telegram_user()
     if not user:
         return jsonify({"error": "telegram_auth_required"}), 401
-
     data = request.get_json(silent=True) or {}
     item_id = str(data.get("item_id") or "").strip()
-    catalog = {item["id"]: item for item in _profile_shop_catalog()}
-    item = catalog.get(item_id)
-    if not item:
+    if item_id not in {x["id"] for x in _profile_shop_catalog()}:
         return jsonify({"error": "shop_item_not_found"}), 404
-
-    payload, status = _purchase_profile_shop_item_atomic(int(user.get("id")), item)
+    payload, status = _run_shop_transaction(user["id"], item_id, request_id=data.get("request_id"))
     return jsonify(payload), status
+
+
+@app.route("/api/profile/shop/gift", methods=["POST"])
+def send_profile_shop_gift():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    data = request.get_json(silent=True) or {}
+    item_id = str(data.get("item_id") or "").strip()
+    catalog = {x["id"]: x for x in _profile_shop_catalog()}
+    item = catalog.get(item_id)
+    if not item or item["type"] in ("bundle", "mystery", "coupon"):
+        return jsonify({"error": "gift_not_allowed"}), 400
+    try:
+        recipient_id = int(data.get("recipient_id"))
+        if recipient_id <= 0 or recipient_id == int(user["id"]):
+            return jsonify({"error": "invalid_recipient"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "invalid_recipient"}), 400
+    payload, status = _run_shop_transaction(user["id"], item_id, recipient_id, data.get("request_id"))
+    return jsonify(payload), status
+
+
+@app.route("/api/profile/shop/recipients", methods=["GET"])
+def list_profile_shop_recipients():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    search = re.sub(r"[^\w\s@А-Яа-яІіЇїЄєҐґ-]", "", str(request.args.get("q") or ""))[:40].strip().lstrip("@")
+    params = {"select": "telegram_user_id,username,display_name", "telegram_user_id": f"neq.{int(user['id'])}", "order": "display_name.asc", "limit": 30}
+    if search:
+        safe_term = search.replace(",", "").replace("%", "").replace("*", "")
+        params["or"] = f"(display_name.ilike.*{safe_term}*,username.ilike.*{safe_term}*)"
+    try:
+        res = requests.get(PROFILES_REST, headers=HEADERS, params=params, timeout=15)
+        if not res.ok:
+            logging.warning("Shop recipients HTTP %s: %s", res.status_code, res.text[:300])
+            return jsonify({"error": "recipients_load_failed"}), 503
+        return jsonify([{"id": int(r["telegram_user_id"]), "name": str(r.get("display_name") or r.get("username") or "Гравець")[:70], "username": str(r.get("username") or "")[:80]} for r in res.json()])
+    except Exception:
+        logging.exception("Shop recipients loading failed")
+        return jsonify({"error": "recipients_load_failed"}), 503
+
+
+@app.route("/api/profile/shop/gifts", methods=["GET"])
+def list_profile_shop_gifts():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    try:
+        res = requests.get(
+            f"{SUPABASE_URL}/rest/v1/styloteka_shop_gifts",
+            headers=HEADERS,
+            params={"recipient_id": f"eq.{int(user['id'])}", "select": "id,item_id,sender_name,created_at", "order": "created_at.desc", "limit": 25},
+            timeout=15,
+        )
+        if not res.ok:
+            return jsonify({"error": "gift_inbox_failed"}), 503
+        return jsonify(res.json())
+    except Exception:
+        logging.exception("Shop gifts loading failed")
+        return jsonify({"error": "gift_inbox_failed"}), 503
 
 
 @app.route("/api/minigames/coin-rush/claim-v2", methods=["POST"])
@@ -2893,7 +2915,7 @@ def get_public_profiles():
             PROFILES_REST,
             headers=HEADERS,
             params={
-                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,updated_at",
+                "select": "telegram_user_id,username,display_name,photo_url,xp,earned_achievements,owned_shop_items,selected_title_reward,selected_frame_reward,selected_badge_reward,selected_theme_reward,selected_shop_loadout,updated_at",
                 "order": "xp.desc,updated_at.desc",
                 "limit": 100,
             },
