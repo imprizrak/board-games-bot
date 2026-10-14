@@ -625,7 +625,7 @@ def add_game():
     if description:
         notify_text += f"\n\n{description}"
     notify_subscribers_async(notify_text, photo_url=cover_url)
-    notify_game_groups_async(name, description=description, cover_url=cover_url)
+    pass  # Вимкнено: нові ігри не анонсуються у Telegram-групі.
     log_activity(
         "game_added",
         f"У бібліотеці з’явилась нова гра: {name}",
@@ -1141,7 +1141,7 @@ def admin_approve_game_submission(submission_id):
     if description:
         notify_text += f"\n\n{description}"
     notify_subscribers_async(notify_text, photo_url=game_payload.get("cover_url"))
-    notify_game_groups_async(name, description=description, cover_url=game_payload.get("cover_url"))
+    pass  # Вимкнено: нові ігри не анонсуються у Telegram-групі.
     log_activity("game_added", f"У бібліотеці з’явилась нова гра: {name}", description,
                  actor_name=game_payload.get("added_by"), image_url=game_payload.get("cover_url"),
                  metadata={"game_name": name, "moderated": True})
@@ -2080,7 +2080,7 @@ def get_my_profile():
                     image_url=photo_url or None,
                     metadata={"achievement_id": achievement_id, "level": level, "xp": xp},
                 )
-                notify_achievement_groups_async(display_name, achievement, level, xp)
+                pass  # Вимкнено: досягнення, XP і нагороди не публікуються у Telegram-групі.
 
     return jsonify({
         "telegram_user_id": user_id,
@@ -2771,7 +2771,7 @@ def _refresh_profile_achievements_by_id(telegram_user_id, announce=True):
                     image_url=_profile_avatar_url(profile.get("telegram_user_id")) or None,
                     metadata={"achievement_id": aid, "level": level, "xp": history_xp},
                 )
-                notify_achievement_groups_async(display_name, achievement, level, history_xp)
+                pass  # Вимкнено: досягнення, XP і нагороди не публікуються у Telegram-групі.
             except Exception:
                 logging.exception("Не вдалося опублікувати нове досягнення")
 
@@ -3492,7 +3492,7 @@ def _refresh_existing_profile_after_event(rsvp):
         for achievement_id in sorted(newly_earned):
             achievement = by_id.get(achievement_id)
             if achievement:
-                notify_achievement_groups_async(display_name, achievement, level, xp)
+                pass  # Вимкнено: досягнення, XP і нагороди не публікуються у Telegram-групі.
 
 
 def _complete_event(event):
@@ -4756,12 +4756,8 @@ def notify_game_groups_sync(name, description="", cover_url=None):
 
 
 def notify_game_groups_async(name, description="", cover_url=None):
-    """Запускає груповий анонс нової гри у фоні."""
-    Thread(
-        target=notify_game_groups_sync,
-        args=(name, description, cover_url),
-        daemon=True,
-    ).start()
+    """Вимкнено: в Telegram-групу надсилаються лише події й нагадування."""
+    return None
 
 
 
@@ -4822,11 +4818,8 @@ def notify_achievement_groups_sync(display_name, achievement, level, xp):
 
 
 def notify_achievement_groups_async(display_name, achievement, level, xp):
-    Thread(
-        target=notify_achievement_groups_sync,
-        args=(display_name, achievement, level, xp),
-        daemon=True,
-    ).start()
+    """Вимкнено: в Telegram-групу надсилаються лише події й нагадування."""
+    return None
 
 
 def notify_groups_sync(event_id, photo_url=None):
