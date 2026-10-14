@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">\n<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Бібліотека настільних ігор</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6109,6 +6110,23 @@ document.addEventListener('click', event => {
 @media(max-width:380px){.shop-hero{padding:11px;min-height:100px}.shop-hero-wallet{min-width:76px}.shop-products{gap:7px!important}.shop-card{padding:8px!important}.shop-card .profile-shop-name{font-size:12px}.shop-feature-item{min-height:104px;padding:9px}}@media(max-width:335px){.shop-products{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.shop-overlay *{animation:none!important;transition:none!important}}
 
+
+/* Styloteka v3.1 — Search / Collection / Wishlist */
+.shop-search-wrap{display:grid;grid-template-columns:minmax(0,1fr) 144px;gap:8px;margin:11px 0 7px;align-items:center}
+.shop-search-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.shop-search-input,.shop-sort-select{box-sizing:border-box;width:100%;min-width:0;min-height:43px;padding:10px 11px;border:1px solid rgba(172,187,223,.30);border-radius:11px;background:#111a30;color:#eaf1ff;font:inherit;font-size:12px;outline:none}
+.shop-search-input:focus,.shop-sort-select:focus{border-color:#dfb960;box-shadow:0 0 0 2px rgba(223,185,96,.12)}
+.shop-collection-tools{display:flex;align-items:center;gap:7px;margin:7px 0 12px;flex-wrap:wrap}
+.shop-collection-btn{min-height:35px;padding:6px 11px;border:1px solid rgba(164,183,232,.24);border-radius:999px;background:#16223b;color:#bfcee7;font-weight:800;font-size:11px}
+.shop-collection-btn.on{background:rgba(226,178,82,.17);border-color:rgba(240,204,129,.5);color:#fce6b0}
+.shop-results-count{color:#a7b6d1;font-size:11px;margin-left:auto}
+.shop-card{position:relative}
+.shop-wish-toggle{position:absolute;right:10px;top:10px;z-index:2;display:grid;place-items:center;width:37px;height:37px;border:1px solid rgba(208,217,238,.24);border-radius:50%;background:rgba(10,15,31,.78);color:#d7deeb;font-size:23px;line-height:1;cursor:pointer}
+.shop-wish-toggle.saved{border-color:rgba(250,141,173,.55);background:rgba(96,27,66,.82);color:#ff8eb1}
+.shop-wish-toggle:focus-visible{outline:2px solid #f3ca78;outline-offset:2px}
+.shop-empty-results{grid-column:1/-1;min-height:100px;display:grid;place-items:center}
+@media(max-width:480px){.shop-search-wrap{grid-template-columns:1fr}.shop-results-count{width:100%;margin-left:2px}.shop-card .profile-shop-name{font-size:12px}}
+
 </style>
 </head>
 <body>
@@ -6820,6 +6838,26 @@ button,.btn{font-family:inherit}
   .bottom-nav button span:last-child{font-size:8.5px!important}
   .profile-shop-grid{grid-template-columns:1fr}
 }
+
+/* Styloteka v3.2: Shop item guide, transparency, and purchase safety */
+.shop-progress-card{position:relative;display:grid;gap:9px;margin:0 0 12px;padding:12px 13px;border-radius:15px;border:1px solid rgba(228,192,116,.24);background:linear-gradient(120deg,rgba(33,46,78,.86),rgba(26,29,62,.8));color:#f0edfb}
+.shop-progress-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.shop-progress-head strong{font-size:12px}.shop-progress-head small{font-size:10px;color:#d7c188;white-space:nowrap}
+.shop-progress-bar,.shop-goal-bar{height:7px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.11)}.shop-progress-fill,.shop-goal-fill{display:block;height:100%;max-width:100%;border-radius:inherit;background:linear-gradient(90deg,#b28be7,#edd07b);transition:width .3s ease}
+.shop-progress-meta{display:flex;justify-content:space-between;gap:8px;align-items:center;color:#c9d2e9;font-size:10px}.shop-progress-meta button{min-height:28px;border:1px solid rgba(245,214,147,.35);border-radius:8px;background:rgba(238,200,107,.1);color:#ffdfa2;font:inherit;font-weight:800;padding:3px 10px}
+.shop-goal-card{display:grid;gap:8px;margin-bottom:12px;padding:11px 13px;border:1px solid rgba(150,177,235,.21);border-radius:14px;background:radial-gradient(circle at 100% 0%,rgba(129,117,231,.14),transparent 50%),#121e36}.shop-goal-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.shop-goal-top span{color:#f2d88d;font-size:10px;font-weight:900}.shop-goal-top button{border:0;background:transparent;color:#b9c8e7;font-size:11px;padding:5px}
+.shop-goal-link{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;text-align:left;color:#fff}.shop-goal-icon{flex:0 0 38px;display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(255,255,255,.11);border-radius:10px;background:#263554;font-size:22px}.shop-goal-info{display:grid;gap:3px;min-width:0}.shop-goal-info strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.shop-goal-info small{font-size:10px;color:#bfcee6}.shop-goal-ready{color:#a9ebbb!important}
+.shop-filter-line{display:flex;align-items:center;gap:8px;margin:7px 0 8px}.shop-filter-line label{flex:0 0 auto;color:#bac9e6;font-size:11px;font-weight:800}.shop-rarity-select{flex:1;min-width:0;min-height:39px;padding:8px 10px;border:1px solid rgba(172,187,223,.3);border-radius:10px;background:#101b32;color:#fff;font:inherit;font-size:11px}.shop-filter-line button{min-height:39px;padding:8px 11px;border:1px solid rgba(172,187,223,.21);border-radius:10px;background:#1a2542;color:#d1ddf4;font-weight:850;font-size:11px}
+.shop-card-view{display:flex;align-items:center;justify-content:center;min-height:32px;margin:0 0 7px;width:100%;border-radius:9px;border:1px solid rgba(229,196,121,.22);background:rgba(212,176,87,.07);color:#f6dfa9;font-size:10.5px;font-weight:850;cursor:pointer}.shop-card-view:focus-visible,.shop-progress-meta button:focus-visible,.shop-goal-link:focus-visible{outline:2px solid #f9d995;outline-offset:2px}
+.shop-detail-overlay{position:fixed;z-index:110100;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(14px + env(safe-area-inset-top,0px)) 12px calc(14px + env(safe-area-inset-bottom,0px));background:rgba(3,7,19,.88);backdrop-filter:blur(8px)}
+.shop-detail-dialog{box-sizing:border-box;width:min(100%,430px);max-height:min(88dvh,730px);overflow-y:auto;overscroll-behavior:contain;border:1px solid rgba(238,200,117,.38);border-radius:21px;background:radial-gradient(circle at 90% 0%,rgba(162,116,243,.16),transparent 40%),linear-gradient(155deg,#202b47,#10192e);color:#edf1ff;padding:16px;box-shadow:0 25px 70px rgba(0,0,0,.48)}
+.shop-detail-header{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#f8dc9b;font-size:13px;font-weight:900}.shop-detail-close{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:11px;border:1px solid rgba(237,213,173,.22);background:rgba(255,255,255,.055);color:#f9e9c2;font-size:24px;line-height:1}
+.shop-detail-feature{display:flex;align-items:center;gap:14px;min-width:0;margin:13px 0;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}.shop-detail-feature .profile-shop-preview{width:94px;min-width:94px;height:90px;min-height:90px;margin:0}.shop-detail-feature .profile-shop-preview-avatar{transform:scale(1.04)}.shop-detail-meta{flex:1;min-width:0}.shop-detail-name{font-size:16px;font-weight:950;line-height:1.23}.shop-detail-meta small{display:block;margin-top:6px;color:#d7c59d;font-size:11px}.shop-detail-price{display:inline-block;margin-top:9px;padding:5px 10px;border-radius:999px;background:rgba(235,198,103,.12);color:#ffe09a;font-weight:900;font-size:12px}
+.shop-detail-description{margin:10px 0 13px;color:#c9d4eb;font-size:12px;line-height:1.52}.shop-detail-subtitle{margin:12px 0 7px;color:#f6dfa5;font-weight:900;font-size:11px}.shop-detail-note{font-size:10.5px;color:#bfcde8;line-height:1.45;margin:7px 0}.shop-detail-line{display:flex;align-items:center;gap:9px;min-height:40px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.065)}.shop-detail-line-icon{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:rgba(255,255,255,.075);font-size:19px}.shop-detail-line-name{min-width:0;flex:1;color:#edf1ff;font-size:11px;font-weight:800;overflow-wrap:anywhere}.shop-detail-line-end{font-size:10px;color:#d7bb80;white-space:nowrap}.shop-detail-line-end.owned{color:#a4dfb1}
+.shop-detail-chance{padding:9px 11px;margin:10px 0 0;border-radius:10px;border:1px solid rgba(165,183,232,.16);background:rgba(126,154,229,.06);font-size:10.5px;color:#d0dcf2;line-height:1.45}
+.shop-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.shop-detail-actions button,.shop-confirm-actions button{min-height:42px;border-radius:11px;border:1px solid rgba(223,194,120,.4);font-size:11px;font-weight:900;padding:8px 9px}.shop-detail-actions .primary,.shop-confirm-actions .primary{border-color:transparent;background:linear-gradient(120deg,#f0d184,#d6a65a);color:#20253b}.shop-detail-actions .secondary,.shop-confirm-actions .secondary{background:rgba(255,255,255,.06);color:#e6eaf5}.shop-detail-actions button:disabled,.shop-confirm-actions button:disabled{opacity:.48}.shop-detail-confirm{text-align:center}.shop-detail-confirm .shop-confirm-icon{font-size:43px;margin:12px 0}.shop-confirm-title{font-size:17px;font-weight:900;color:#ffe4aa}.shop-confirm-copy{font-size:12px;color:#cbd6ed;line-height:1.5;margin:10px 0 4px}.shop-confirm-balance{display:flex;justify-content:space-between;gap:10px;padding:12px;background:#101b31;border-radius:11px;color:#c7d4ed;font-size:12px;margin-top:12px}.shop-confirm-balance strong{color:#f7db98}.shop-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}
+@media(max-width:350px){.shop-detail-dialog{padding:11px}.shop-detail-feature{gap:9px;padding:9px}.shop-detail-feature .profile-shop-preview{min-width:76px;width:76px}.shop-detail-name{font-size:14px}.shop-detail-actions{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.shop-progress-fill,.shop-goal-fill{transition:none}}
+
 </style>
 
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
@@ -11317,6 +11355,79 @@ let shopGiftRecipient = null;
 let shopGiftItemId = '';
 let shopGiftLookupSeq = 0;
 let shopCurrentSection = 'all';
+/* Shop v3.1: collection search & wishlist. Does not change purchase or gift logic. */
+const SHOP_WISHLIST_KEY = 'styloteka_shop_wishlist_v1';
+let shopSearchText = '';
+let shopSortMode = 'default';
+let shopOwnedOnly = false;
+let shopFavoriteOnly = false;
+let shopRarityFilter = 'all';
+const SHOP_GOAL_KEY = 'styloteka_shop_goal_v1';
+function shopReadGoal() {
+  try { const v=localStorage.getItem(SHOP_GOAL_KEY)||''; return /^shop_[a-z0-9_]+$/.test(v)?v:''; }
+  catch (_) { return ''; }
+}
+let shopGoalId = shopReadGoal();
+function shopSetGoal(id) {
+  const normalized=typeof id==='string'&&/^shop_[a-z0-9_]+$/.test(id)?id:'';
+  shopGoalId = shopGoalId===normalized ? '' : normalized;
+  try { if(shopGoalId)localStorage.setItem(SHOP_GOAL_KEY,shopGoalId);else localStorage.removeItem(SHOP_GOAL_KEY); }catch(_){ }
+  shopDetailClose();
+  shopRenderCatalog();
+}
+function shopSetRarity(value) {
+  shopRarityFilter = ['all','common','rare','epic','legendary'].includes(value)?value:'all';
+  shopRenderCatalog();
+}
+function shopResetFilters() {
+  shopCurrentSection='all'; shopSearchText='';shopSortMode='default';
+  shopOwnedOnly=false;shopFavoriteOnly=false;shopRarityFilter='all';
+  shopRenderCatalog();
+}
+
+function shopReadWishIds() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SHOP_WISHLIST_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed.filter(x=>typeof x==='string'&&/^shop_[a-z0-9_]+$/.test(x)).slice(0,120) : []);
+  } catch (_) { return new Set(); }
+}
+let shopWishIds = shopReadWishIds();
+function shopRenderCatalog() {
+  const root = document.getElementById('profileShopModalContent');
+  if (!root || !profileShopModalData) return;
+  const y = root.scrollTop;
+  root.innerHTML = profileShopHtml(profileShopModalData);
+  root.scrollTop = y;
+}
+function shopToggleWish(id) {
+  if (typeof id !== 'string' || !/^shop_[a-z0-9_]+$/.test(id)) return;
+  if (shopWishIds.has(id)) shopWishIds.delete(id); else shopWishIds.add(id);
+  try { localStorage.setItem(SHOP_WISHLIST_KEY, JSON.stringify([...shopWishIds])); } catch (_) {}
+  shopRenderCatalog();
+  if (window.Telegram?.WebApp?.HapticFeedback?.selectionChanged) Telegram.WebApp.HapticFeedback.selectionChanged();
+}
+function shopSetQuery(value) {
+  shopSearchText = String(value || '').slice(0,80);
+  if (!profileShopModalData) return;
+  const holder=document.createElement('div');
+  holder.innerHTML=profileShopHtml(profileShopModalData);
+  const oldGrid=document.getElementById('shopProducts');
+  const nextGrid=holder.querySelector('#shopProducts');
+  if (oldGrid && nextGrid) oldGrid.innerHTML=nextGrid.innerHTML;
+  const count=document.getElementById('shopResultsCount');
+  const nextCount=holder.querySelector('#shopResultsCount');
+  if(count && nextCount) count.textContent=nextCount.textContent;
+}
+function shopSetSort(value) {
+  shopSortMode = ['default','price_low','price_high','rarity'].includes(value) ? value : 'default';
+  shopRenderCatalog();
+}
+function shopToggleFilter(which) {
+  if (which==='owned') shopOwnedOnly = !shopOwnedOnly;
+  if (which==='wishlist') shopFavoriteOnly = !shopFavoriteOnly;
+  shopRenderCatalog();
+}
+
 let shopInbox = [];
 let profileShopModalData = null;
 const shopRetryRequestIds = new Map();
@@ -11327,7 +11438,13 @@ function shopRequestIdFor(key){
 
 
 function shopNewRequestId(){
-  return (window.crypto && typeof window.crypto.randomUUID === 'function') ? window.crypto.randomUUID() : null;
+  if(window.crypto && typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID();
+  const bytes=new Uint8Array(16);
+  if(window.crypto && typeof window.crypto.getRandomValues==='function')window.crypto.getRandomValues(bytes);
+  else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+  bytes[6]=(bytes[6]&15)|64; bytes[8]=(bytes[8]&63)|128;
+  const hex=Array.from(bytes,v=>v.toString(16).padStart(2,'0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 function shopRarityLabel(rarity){ return ({common:'Звичайний',rare:'Рідкісний',epic:'Епічний',legendary:'Легендарний'})[rarity] || 'Звичайний'; }
 function shopSectionLabel(type){ return ({bundle:'Набори',mystery:'Mystery Box',frame:'Рамки',theme:'Теми',background:'Фони',companion:'Компаньйони',coin_skin:'Stils Rush',treasure_skin:'Скарбниця',dungeon_skin:'Данж',coupon:'Купони'})[type] || 'Оформлення'; }
@@ -11335,10 +11452,7 @@ function shopCategoryIcon(type){ return ({bundle:'🎁',mystery:'🎲',frame:'�
 function shopItems(data){return Array.isArray(data?.shop_items)?data.shop_items:[];}
 function shopFilter(type){
   shopCurrentSection = type;
-  if (profileShopModalData) {
-    const modalRoot = document.getElementById('profileShopModalContent');
-    if (modalRoot) modalRoot.innerHTML = profileShopHtml(profileShopModalData);
-  }
+  shopRenderCatalog();
 }
 function shopGiftDialogClose(){document.getElementById('shopGiftOverlay')?.remove();shopGiftRecipient=null;shopGiftItemId='';}
 
@@ -11403,7 +11517,68 @@ function showShopDrop(data){
   el.innerHTML=`<div class="shop-drop-dialog" role="dialog" aria-modal="true" aria-label="Нагорода з коробки"><div class="shop-drop-sparkles">✧ · ✦ · ✧</div><div class="shop-drop-icon">${escapeHtml(item?.icon||'🎁')}</div><div class="shop-drop-heading">Тобі випало!</div><div class="shop-drop-name">${escapeHtml(item?.name||'Новий предмет')}</div><div class="shop-drop-rarity">${escapeHtml(shopRarityLabel(item?.rarity))}</div><p>Предмет додано до твоєї колекції.</p><button type="button" onclick="this.closest('.shop-overlay').remove()">Чудово!</button></div>`;
   el.addEventListener('click',e=>{if(e.target===el)el.remove();});document.body.appendChild(el);
 }
-async function buyProfileShopItem(itemId){
+function shopDetailClose(){document.getElementById('shopDetailOverlay')?.remove();}
+function shopConfirmationClose(){document.getElementById('shopConfirmOverlay')?.remove();}
+function shopHtmlForLine(row, label='', end=''){
+  return `<div class="shop-detail-line"><span class="shop-detail-line-icon">${escapeHtml(row?.icon || '✨')}</span><span class="shop-detail-line-name">${escapeHtml(row?.name || label || 'Предмет')}</span><span class="shop-detail-line-end ${row?.owned?'owned':''}">${escapeHtml(end || (row?.owned?'✓ Є':('⭐ '+Math.max(0,Number(row?.price)||0))))}</span></div>`;
+}
+function shopDetailOpen(itemId){
+  const items=shopItems(profileShopModalData), item=items.find(x=>x.id===itemId);
+  if(!item)return;
+  shopDetailClose();
+  const itemMap=new Map(items.map(x=>[x.id,x]));
+  const price=Math.max(0,Number(item.price)||0),gold=Math.max(0,Number(profileShopModalData?.gold)||0);
+  const hasGold=gold>=price;
+  let inventory='';
+  if(item.type==='bundle'){
+    const parts=(Array.isArray(item.grants)?item.grants:[]).map(id=>itemMap.get(id)||{id,name:id});
+    const fullPrice=parts.reduce((total,row)=>total+Math.max(0,Number(row.price)||0),0);
+    const saved=Math.max(0,fullPrice-price);
+    inventory=`<div class="shop-detail-subtitle">Вміст набору · ${parts.length} предмети</div>${parts.map(row=>shopHtmlForLine(row)).join('')}<div class="shop-detail-chance">Окремо: ⭐ ${fullPrice} · набір: ⭐ ${price}${saved?` · економія ⭐ ${saved}`:''}. Повторно отримані предмети не зникають із твоєї колекції.</div>`;
+  }
+  if(item.type==='mystery'){
+    const pool=(Array.isArray(item.pool)?item.pool:[]).map(id=>itemMap.get(id)||{id,name:id});
+    const left=pool.filter(x=>!x.owned);
+    const chance=left.length?(100/left.length):0;
+    inventory=`<div class="shop-detail-subtitle">Можливі нагороди · ${left.length} ще не зібрано з ${pool.length}</div>${pool.map(row=>shopHtmlForLine(row,'',row.owned?'✓ Уже є':`${chance ? (row.owned?'':`${chance.toLocaleString('uk-UA',{maximumFractionDigits:1})}%`) : '—'}`)).join('')}<div class="shop-detail-chance">${left.length?`Кожен ще не отриманий предмет має однаковий шанс: ${chance.toLocaleString('uk-UA',{maximumFractionDigits:1})}%. Результат випадковий, але без повторів.`:'Усі можливі нагороди вже є в колекції. Коробка не списуватиме стілси.'}</div>`;
+  }
+  const isComplete=(item.type==='mystery' && !(Array.isArray(item.pool)?item.pool:[]).some(id=>!itemMap.get(id)?.owned)) || item.type==='bundle'&&item.owned;
+  const buyDisabled=!hasGold || Boolean(item.owned&&item.type!=='mystery') || isComplete;
+  const btnText=item.owned&&item.type!=='mystery'?'✓ Вже придбано':isComplete?'✓ Колекцію зібрано':!hasGold?`Бракує ${price-gold} ⭐`:item.type==='mystery'?`Відкрити за ⭐ ${price}`:`Купити за ⭐ ${price}`;
+  const overlay=document.createElement('div');overlay.className='shop-detail-overlay';overlay.id='shopDetailOverlay';
+  overlay.innerHTML=`<section class="shop-detail-dialog" role="dialog" aria-modal="true" aria-label="Інформація про товар"><div class="shop-detail-header"><span>✦ ДЕТАЛІ ТОВАРУ</span><button type="button" class="shop-detail-close" onclick="shopDetailClose()" aria-label="Закрити">×</button></div><div class="shop-detail-feature">${shopPreviewHtml(item)}<div class="shop-detail-meta"><div class="shop-detail-name">${escapeHtml(item.name||'Предмет')}</div><small>${escapeHtml(shopTypeLabel(item.type))} · ${escapeHtml(shopRarityLabel(item.rarity))}</small><span class="shop-detail-price">⭐ ${price}</span></div></div><div class="shop-detail-description">${escapeHtml(item.description||'')}</div>${inventory}<div class="shop-detail-actions"><button type="button" class="secondary" onclick="shopSetGoal('${escapeHtml(item.id)}')">${shopGoalId===item.id?'✓ Ціль обрана':'🎯 Збирати на це'}</button><button type="button" class="primary" onclick="shopDetailClose();buyProfileShopItem('${escapeHtml(item.id)}')" ${buyDisabled?'disabled':''}>${btnText}</button></div></section>`;
+  overlay.addEventListener('click', e=>{if(e.target===overlay)shopDetailClose();});
+  document.body.appendChild(overlay);
+  overlay.querySelector('.shop-detail-close')?.focus({preventScroll:true});
+}
+function buyProfileShopItem(itemId){
+  if(shopPurchaseInFlight)return;
+  const item=shopItems(profileShopModalData).find(x=>x.id===itemId);
+  if(!item)return;
+  const gold=Math.max(0,Number(profileShopModalData?.gold)||0);
+  const price=Math.max(0,Number(item.price)||0);
+  if(gold<price){tg.showAlert(`Не вистачає ${price-gold} ⭐ для покупки.`);return;}
+  if(item.owned&&item.type!=='mystery'){tg.showAlert('Предмет уже в колекції.');return;}
+  shopConfirmationClose();
+  const el=document.createElement('div');el.id='shopConfirmOverlay';el.className='shop-detail-overlay';
+  el.innerHTML=`<section class="shop-detail-dialog shop-detail-confirm" role="dialog" aria-modal="true" aria-label="Підтвердження покупки"><div class="shop-detail-header"><span>ПЕРЕВІРКА ПОКУПКИ</span><button type="button" class="shop-detail-close" onclick="shopConfirmationClose()" aria-label="Закрити">×</button></div><div class="shop-confirm-icon">${escapeHtml(item.icon||'🎁')}</div><div class="shop-confirm-title">${escapeHtml(item.name||'Предмет')}</div><p class="shop-confirm-copy">${item.type==='mystery'?'Після підтвердження коробка відкриється та видасть випадковий новий предмет.':'Підтверди покупку. Стілси буде списано лише після успішної транзакції.'}</p><div class="shop-confirm-balance"><span>Баланс: ⭐ ${gold}<br>Вартість: − ⭐ ${price}</span><strong>Залишиться: ⭐ ${gold-price}</strong></div><div class="shop-confirm-actions"><button type="button" class="secondary" onclick="shopConfirmationClose()">Скасувати</button><button type="button" class="primary" id="shopConfirmBuyBtn" onclick="shopConfirmBuy('${escapeHtml(item.id)}')">Підтвердити · ⭐ ${price}</button></div></section>`;
+  el.addEventListener('click',e=>{if(e.target===el)shopConfirmationClose();});document.body.appendChild(el);
+  el.querySelector('#shopConfirmBuyBtn')?.focus({preventScroll:true});
+}
+async function shopConfirmBuy(itemId){
+  const btn=document.getElementById('shopConfirmBuyBtn');
+  if(!btn || btn.disabled || shopPurchaseInFlight)return;
+  btn.disabled=true;btn.textContent='Зачекай…';
+  try{await shopFinalizePurchase(itemId);}
+  finally{shopConfirmationClose();}
+}
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  if(document.getElementById('shopConfirmOverlay'))shopConfirmationClose();
+  else if(document.getElementById('shopDetailOverlay'))shopDetailClose();
+});
+
+async function shopFinalizePurchase(itemId){
   if(shopPurchaseInFlight)return;
   const purchaseRetryKey=`buy:${itemId}`;
   shopPurchaseInFlight=itemId;
@@ -11465,11 +11640,31 @@ function shopOpenInbox(){
 function profileShopHtml(data){
   const items=shopItems(data),gold=Math.max(0,Number(data.gold)||0);
   if(!items.length)return '';
-  const ownedCount=items.filter(x=>x.owned&&x.type!=='bundle').length;
+  const collectibles=items.filter(x=>x.type!=='bundle' && x.type!=='mystery');
+  const ownedCount=collectibles.filter(x=>x.owned).length;
+  const completePct=collectibles.length?Math.round((ownedCount/collectibles.length)*100):0;
+  const collectionProgress=`<div class="shop-progress-card"><div class="shop-progress-head"><strong>🏆 Твоя колекція</strong><small>${ownedCount} із ${collectibles.length} · ${completePct}%</small></div><div class="shop-progress-bar" role="progressbar" aria-label="Зібрано предметів" aria-valuenow="${ownedCount}" aria-valuemin="0" aria-valuemax="${collectibles.length}"><span class="shop-progress-fill" style="width:${completePct}%"></span></div><div class="shop-progress-meta"><span>Збирай оформлення, відкривай коробки й даруй друзям.</span><button type="button" onclick="shopToggleFilter('owned')">Колекція →</button></div></div>`;
+  const goalItem=items.find(x=>x.id===shopGoalId);
+  const goalPrice=Math.max(0,Number(goalItem?.price)||0);
+  const goalPct=goalPrice?Math.min(100,Math.round(gold/goalPrice*100)):100;
+  const goalHtml=goalItem ? `<div class="shop-goal-card"><div class="shop-goal-top"><span>🎯 МОЯ ЦІЛЬ</span><button type="button" onclick="shopSetGoal('')">Прибрати ціль ×</button></div><button type="button" class="shop-goal-link" onclick="shopDetailOpen('${escapeHtml(goalItem.id)}')"><span class="shop-goal-icon">${escapeHtml(goalItem.icon||'🎁')}</span><span class="shop-goal-info"><strong>${escapeHtml(goalItem.name||'Моя ціль')}</strong><small class="${goalItem.owned?'shop-goal-ready':''}">${goalItem.owned?'✓ Уже у колекції':gold>=goalPrice?'⭐ Вистачає на покупку':`Залишилося зібрати ⭐ ${goalPrice-gold}`}</small></span></button><div class="shop-goal-bar" role="progressbar" aria-label="Накопичення стілсів" aria-valuenow="${Math.min(gold,goalPrice)}" aria-valuemin="0" aria-valuemax="${goalPrice}"><span class="shop-goal-fill" style="width:${goalPct}%"></span></div></div>` : '';
+
   const featured=items.filter(x=>x.type==='bundle'||x.type==='mystery');
   const order=['all','bundle','mystery','frame','theme','background','companion','coin_skin','treasure_skin','dungeon_skin'];
   const chipHtml=order.map(type=>`<button type="button" class="shop-chip ${shopCurrentSection===type?'on':''}" onclick="shopFilter('${type}')">${type==='all'?'✨ Всі':shopCategoryIcon(type)+' '+shopSectionLabel(type)}</button>`).join('');
-  const chosen=shopCurrentSection==='all'?items:items.filter(x=>x.type===shopCurrentSection);
+  let chosen=(shopCurrentSection==='all'?items:items.filter(x=>x.type===shopCurrentSection)).filter(x => {
+    if (shopRarityFilter !== 'all' && String(x.rarity||'common') !== shopRarityFilter) return false;
+    if (shopOwnedOnly && !x.owned) return false;
+    if (shopFavoriteOnly && !shopWishIds.has(x.id)) return false;
+    if (shopSearchText.trim()) {
+      const haystack=[x.name,x.type,x.description].map(t=>String(t||'').toLocaleLowerCase('uk-UA')).join(' ');
+      if (!haystack.includes(shopSearchText.trim().toLocaleLowerCase('uk-UA'))) return false;
+    }
+    return true;
+  });
+  if (shopSortMode==='price_low') chosen.sort((a,b)=>(Number(a.price)||0)-(Number(b.price)||0));
+  if (shopSortMode==='price_high') chosen.sort((a,b)=>(Number(b.price)||0)-(Number(a.price)||0));
+  if (shopSortMode==='rarity') chosen.sort((a,b)=>({legendary:4,epic:3,rare:2,common:1}[b.rarity]||1)-({legendary:4,epic:3,rare:2,common:1}[a.rarity]||1));
   const renderItem=item=>{
     const id=escapeHtml(item.id||''),price=Math.max(0,Number(item.price)||0),owned=Boolean(item.owned),active=Boolean(item.active),missing=Math.max(0,price-gold);
     const rare=escapeHtml(item.rarity||'common'),type=escapeHtml(item.type||'');
@@ -11480,10 +11675,10 @@ function profileShopHtml(data){
     else main=active?'<button type="button" class="profile-shop-action" disabled>✓ Використовується</button>':owned?`<button type="button" class="profile-shop-action" onclick="equipXpReward('${id}','${type}')">Використати</button>`:`<button type="button" class="profile-shop-action" data-shop-buy="${id}" onclick="buyProfileShopItem('${id}')" ${canBuy?'':'disabled'}>Купити · ⭐ ${price}</button>`;
     const gift=!['mystery','bundle','coupon'].includes(item.type)?`<button type="button" class="shop-gift-action" onclick="showShopGiftPicker('${id}')">🎁 Подарувати</button>`:'';
     const sub=item.type==='bundle'?`${item.grants?.length||0} предмети зі знижкою`:item.type==='mystery'?'Випадкова нагорода без дублікатів':shopTypeLabel(item.type);
-    return `<article class="profile-shop-item shop-card rarity-${rare} ${owned?'owned':''} ${active?'active':''} ${type}">${shopPreviewHtml(item)}<div class="shop-card-meta"><span class="profile-shop-rarity">${shopRarityLabel(item.rarity)}</span>${owned?'<span class="shop-owned-badge">✓ Є</span>':''}</div><div class="profile-shop-name">${escapeHtml(item.name||'')}</div><div class="profile-shop-type">${escapeHtml(sub)}</div><p class="profile-shop-desc">${escapeHtml(item.description||'')}</p><div class="shop-card-actions">${main}${gift}${!canBuy&&!owned?`<span class="shop-missing-note">Ще ${missing} ⭐</span>`:''}</div></article>`;
+    return `<article class="profile-shop-item shop-card rarity-${rare} ${owned?'owned':''} ${active?'active':''} ${type}"><button type="button" class="shop-wish-toggle ${shopWishIds.has(item.id)?'saved':''}" onclick="shopToggleWish('${id}')" aria-label="${shopWishIds.has(item.id)?'Прибрати з бажаного':'Додати до бажаного'}" title="До бажаного">${shopWishIds.has(item.id)?'♥':'♡'}</button>${shopPreviewHtml(item)}<div class="shop-card-meta"><span class="profile-shop-rarity">${shopRarityLabel(item.rarity)}</span>${owned?'<span class="shop-owned-badge">✓ Є</span>':''}</div><div class="profile-shop-name">${escapeHtml(item.name||'')}</div><div class="profile-shop-type">${escapeHtml(sub)}</div><p class="profile-shop-desc">${escapeHtml(item.description||'')}</p><button type="button" class="shop-card-view" onclick="shopDetailOpen('${id}')">🔎 Деталі та вміст →</button><div class="shop-card-actions">${main}${gift}${!canBuy&&!owned?`<span class="shop-missing-note">Ще ${missing} ⭐</span>`:''}</div></article>`;
   };
-  const catalog=chosen.map(renderItem).join('')||'<div class="shop-gift-empty">У цій категорії поки нічого немає.</div>';
-  return `<section class="profile-shop-panel shop-deluxe"><div class="shop-hero"><div><span class="shop-eyebrow">✦ КРАМНИЦЯ КЛУБУ</span><div class="shop-hero-title">Магазин дивовиж</div><p>Твій стиль. Твої трофеї. Твоя колекція.</p></div><div class="shop-hero-wallet"><small>Твої стілси</small><strong>⭐ ${gold}</strong></div></div><div class="shop-quick-stats"><span>🏆 Колекція <strong>${ownedCount}</strong></span><button type="button" onclick="shopOpenInbox()">🎁 Отримані подарунки <span aria-hidden="true">→</span></button></div><div class="shop-inbox-panel" id="shopInboxModal"><div class="shop-inbox-title">Твої подарунки <button onclick="shopOpenInbox()" aria-label="Закрити">×</button></div><div id="shopInboxList"></div></div>${shopCurrentSection==='all'?`<div class="shop-section-label">Особливі пропозиції</div><div class="shop-featured">${featured.map(x=>`<button type="button" class="shop-feature-item ${x.type}" onclick="shopFilter('${x.type}')"><span class="shop-feature-icon">${escapeHtml(x.icon||'🎁')}</span><strong>${escapeHtml(x.name||'')}</strong><small>⭐ ${x.price} · ${x.type==='bundle'?'4 предмети':'Випадкова нагорода'}</small></button>`).join('')}</div>`:''}<div class="shop-section-label">Каталог</div><div class="shop-chips">${chipHtml}</div><div class="profile-shop-grid shop-products">${catalog}</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення профілю</button></section>`;
+  const catalog=chosen.map(renderItem).join('')||'<div class="shop-gift-empty shop-empty-results">Нічого не знайдено. Спробуй інший фільтр або запит.</div>';
+  return `<section class="profile-shop-panel shop-deluxe"><div class="shop-hero"><div><span class="shop-eyebrow">✦ КРАМНИЦЯ КЛУБУ</span><div class="shop-hero-title">Магазин дивовиж</div><p>Твій стиль. Твої трофеї. Твоя колекція.</p></div><div class="shop-hero-wallet"><small>Твої стілси</small><strong>⭐ ${gold}</strong></div></div><div class="shop-quick-stats"><span>🏆 Колекція <strong>${ownedCount}</strong></span><button type="button" onclick="shopOpenInbox()">🎁 Отримані подарунки <span aria-hidden="true">→</span></button></div>${collectionProgress}${goalHtml}<div class="shop-inbox-panel" id="shopInboxModal"><div class="shop-inbox-title">Твої подарунки <button onclick="shopOpenInbox()" aria-label="Закрити">×</button></div><div id="shopInboxList"></div></div>${shopCurrentSection==='all'?`<div class="shop-section-label">Особливі пропозиції</div><div class="shop-featured">${featured.map(x=>`<button type="button" class="shop-feature-item ${x.type}" onclick="shopFilter('${x.type}')"><span class="shop-feature-icon">${escapeHtml(x.icon||'🎁')}</span><strong>${escapeHtml(x.name||'')}</strong><small>⭐ ${x.price} · ${x.type==='bundle'?`${(x.grants||[]).length} предмети`:'Випадкова нагорода'}</small></button>`).join('')}</div>`:''}<div class="shop-section-label">Каталог</div><div class="shop-chips">${chipHtml}</div><div class="shop-search-wrap"><label for="shopSearchInput" class="shop-search-label">Пошук у крамниці</label><input type="search" id="shopSearchInput" class="shop-search-input" placeholder="🔎 Назва або опис предмета" value="${escapeHtml(shopSearchText)}" oninput="shopSetQuery(this.value)" autocomplete="off" maxlength="80"><select class="shop-sort-select" aria-label="Сортувати товари" onchange="shopSetSort(this.value)"><option value="default" ${shopSortMode==='default'?'selected':''}>За замовчуванням</option><option value="price_low" ${shopSortMode==='price_low'?'selected':''}>Спочатку дешевші</option><option value="price_high" ${shopSortMode==='price_high'?'selected':''}>Спочатку дорожчі</option><option value="rarity" ${shopSortMode==='rarity'?'selected':''}>За рідкістю</option></select></div><div class="shop-filter-line"><label for="shopRaritySelect">Рідкість</label><select id="shopRaritySelect" class="shop-rarity-select" aria-label="Фільтр за рідкістю" onchange="shopSetRarity(this.value)"><option value="all" ${shopRarityFilter==='all'?'selected':''}>Усі рівні рідкості</option><option value="common" ${shopRarityFilter==='common'?'selected':''}>Звичайні</option><option value="rare" ${shopRarityFilter==='rare'?'selected':''}>Рідкісні</option><option value="epic" ${shopRarityFilter==='epic'?'selected':''}>Епічні</option><option value="legendary" ${shopRarityFilter==='legendary'?'selected':''}>Легендарні</option></select><button type="button" onclick="shopResetFilters()" aria-label="Скинути всі фільтри">Очистити ✕</button></div><div class="shop-collection-tools"><button type="button" class="shop-collection-btn ${shopFavoriteOnly?'on':''}" aria-pressed="${shopFavoriteOnly}" onclick="shopToggleFilter('wishlist')">♥ Бажане · ${shopWishIds.size}</button><button type="button" class="shop-collection-btn ${shopOwnedOnly?'on':''}" aria-pressed="${shopOwnedOnly}" onclick="shopToggleFilter('owned')">✓ Придбане · ${ownedCount}</button><span class="shop-results-count" id="shopResultsCount">${chosen.length} товарів</span></div><div id="shopProducts" class="profile-shop-grid shop-products">${catalog}</div><button type="button" class="profile-shop-reset" id="profileShopResetBtn" onclick="resetProfileAppearance()">↺ Скинути оформлення профілю</button></section>`;
 }
 
 function renderMyProfile(data) {
