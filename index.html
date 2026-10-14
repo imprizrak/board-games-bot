@@ -6140,6 +6140,41 @@ document.addEventListener('click', event => {
 @media(max-width:345px){.library-discovery-tiles{grid-template-columns:1fr}.library-discovery-tile{min-height:64px}.library-discovery-emoji{width:33px;height:33px;flex-basis:33px}.library-discovery-head{flex-wrap:wrap}.library-results{max-width:100%}.library-pick-actions{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.library-discovery-tile{transition:none}}
 
+
+/* ===== ВИБІР НАСТІЛЬНИХ ІГОР У ПОДІЇ ===== */
+#eventPicksModal{background:rgba(2,8,19,.81);z-index:500}
+#eventPicksModal .event-pick-sheet{background:#111f33 !important;border-top:2px solid #d9b75c;color:#f0eee9;box-shadow:0 -18px 54px rgba(0,0,0,.65)}
+#eventPicksSearch{background:#182c43 !important;border:1px solid rgba(201,178,121,.25);color:#f7f4ef !important;box-sizing:border-box;outline:none;padding:10px 12px;font-size:15px;line-height:1.3}
+#eventPicksSearch::placeholder{color:#bac2ce}
+#eventPicksSearch:focus{border-color:#d9b75c;box-shadow:0 0 0 2px rgba(217,183,92,.15)}
+
+.event-games-open{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin:10px 0 12px;padding:10px 14px;border-radius:13px;border:1px solid rgba(226,191,96,.34);background:linear-gradient(120deg,rgba(226,191,96,.14),rgba(92,75,157,.13));color:#f3d78b;font-size:13px;font-weight:850;cursor:pointer}
+.event-games-open:active{transform:scale(.99)}
+.event-game-pick-summary{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px}
+.event-game-pick-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:5px 9px;border-radius:999px;border:1px solid rgba(155,179,211,.17);background:rgba(135,154,193,.08);font-size:11px;font-weight:750;color:var(--text)}
+.event-game-pick-chip b{font-size:10px;color:#eed084}
+.event-pick-sheet{width:min(100%,540px);max-height:88dvh;overflow:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.event-pick-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#e3c27d;font-weight:850}
+.event-pick-title{font-size:21px;line-height:1.2;font-weight:900;margin:7px 34px 7px 0;color:var(--text)}
+.event-pick-subtitle{margin:0 0 15px;color:var(--muted);font-size:12px;line-height:1.5}
+.event-pick-block{margin:14px 0;padding:13px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.025)}
+.event-pick-section{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:9px;font-size:13px;font-weight:850;color:var(--text)}
+.event-pick-count{font-size:11px;color:#e3c27d;font-weight:800}
+.event-pick-row{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.065)}
+.event-pick-row:last-child{border-bottom:0}
+.event-pick-cover{display:grid;place-items:center;width:43px;height:52px;flex:0 0 43px;border-radius:7px;object-fit:cover;background:linear-gradient(140deg,#293758,#151f32);font-size:20px}
+.event-pick-row-main{min-width:0;flex:1}
+.event-pick-row-title{font-size:12px;font-weight:850;line-height:1.4;overflow-wrap:anywhere;color:var(--text)}
+.event-pick-row-meta{margin-top:4px;color:var(--muted);font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.event-pick-btn{flex:0 0 auto;min-width:85px;min-height:36px;padding:7px 9px;border:1px solid rgba(226,191,96,.35);border-radius:10px;background:rgba(226,191,96,.10);color:#f1d481;font-size:11px;font-weight:850;cursor:pointer}
+.event-pick-btn.selected{border-color:rgba(89,177,123,.3);background:rgba(89,177,123,.10);color:#a5ddb6}
+.event-pick-btn:disabled{opacity:.48;cursor:default}
+#eventPicksSearch{width:100%;min-height:43px;margin:4px 0 10px;border-radius:10px}
+.event-pick-muted{font-size:12px;line-height:1.5;color:var(--muted)}
+.event-pick-error{font-size:12px;color:#ffb7b0;margin:10px 0}
+.event-pick-loading{padding:22px 6px;color:var(--muted);text-align:center}
+@media(max-width:360px){.event-pick-row{gap:7px}.event-pick-btn{min-width:75px;padding:7px 6px}.event-pick-sheet{padding-left:12px;padding-right:12px}}
+
 </style>
 </head>
 <body>
@@ -7327,6 +7362,18 @@ button,.btn{font-family:inherit}
     <input type="text" id="participantName" placeholder="Ім'я учасника">
 
     <button class="btn" onclick="submitManualParticipant()">Додати</button>
+  </div>
+</div>
+
+
+<!-- Спільний вибір настільних ігор учасниками події -->
+<div class="modal" id="eventPicksModal" role="dialog" aria-modal="true" aria-labelledby="eventPicksTitle">
+  <div class="sheet event-pick-sheet">
+    <button type="button" class="close-btn" aria-label="Закрити вибір ігор" onclick="closeModal('eventPicksModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div class="event-pick-kicker">🎲 Ігрова програма</div>
+    <div class="event-pick-title" id="eventPicksTitle">Ігри на заході</div>
+    <p class="event-pick-subtitle">Учасники пропонують ігри з бібліотеки. Кожен може обрати до трьох, а інші бачать пропозиції.</p>
+    <div id="eventPicksContent" class="event-pick-loading">Завантаження…</div>
   </div>
 </div>
 
@@ -10884,6 +10931,126 @@ async function checkAdminStatus() {
   renderEvents(lastEventsData); loadMasterclassBookings();
 }
 
+
+
+// ===== ІГРИ НА ПОДІЇ: СПІЛЬНІ ПРОПОЗИЦІЇ УЧАСНИКІВ =====
+let eventPicksActiveEvent = null;
+let eventPicksActiveState = null;
+let eventPicksSearchTerm = '';
+let eventPicksPending = false;
+
+function eventMemberGamesSummary(ev) {
+  const picks = Array.isArray(ev?.member_game_picks) ? ev.member_game_picks : [];
+  if (!picks.length) return '';
+  const grouped = new Map();
+  for (const pick of picks) {
+    const id = Number(pick.game_id);
+    if (!grouped.has(id)) grouped.set(id,{name:String(pick.game_name || 'Гра'),count:0});
+    grouped.get(id).count++;
+  }
+  return `<div class="event-game-pick-summary">${Array.from(grouped.values()).sort((a,b)=>b.count-a.count).slice(0,5).map(g=>`<span class="event-game-pick-chip">🎲 ${escapeHtml(g.name)} <b>${g.count}</b></span>`).join('')}${grouped.size>5?`<span class="event-game-pick-chip">+${grouped.size-5}</span>`:''}</div>`;
+}
+
+async function openEventGamesForMembers(event) {
+  eventPicksActiveEvent = event;
+  eventPicksActiveState = null;
+  eventPicksSearchTerm = '';
+  document.getElementById('eventPicksTitle').textContent = event.title || 'Ігри на заході';
+  const box = document.getElementById('eventPicksContent');
+  box.innerHTML = '<div class="event-pick-loading">Завантажую настолки та пропозиції…</div>';
+  document.getElementById('eventPicksModal').classList.add('open');
+  await refreshEventMemberGames();
+}
+
+async function refreshEventMemberGames() {
+  if (!eventPicksActiveEvent) return;
+  const id = eventPicksActiveEvent.id;
+  try {
+    const [res] = await Promise.all([
+      fetch(`/api/events/${id}/member-games`, {headers:telegramAuthHeaders(),cache:'no-store'}),
+      loadGames()
+    ]);
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(data.error || 'Помилка завантаження');
+    if (!eventPicksActiveEvent || String(eventPicksActiveEvent.id)!==String(id)) return;
+    eventPicksActiveState = data;
+    renderEventMemberGamePicker();
+  } catch (error) {
+    const content = document.getElementById('eventPicksContent');
+    if (content) content.innerHTML = `<div class="event-pick-error">Не вдалося завантажити список. Спробуй відкрити подію ще раз.</div>`;
+  }
+}
+
+function renderEventMemberGamePicker() {
+  const root = document.getElementById('eventPicksContent');
+  const s = eventPicksActiveState;
+  if (!root || !s) return;
+  const votes = Array.isArray(s.picks) ? s.picks : [];
+  const mine = new Set((s.my_game_ids || []).map(Number));
+  const canPick=Boolean(s.can_pick);
+  const gameMap = new Map((allGames||[]).map(g=>[Number(g.id),g]));
+  const grouped = new Map();
+  for(const p of votes){
+    const id=Number(p.game_id);
+    if(!grouped.has(id)) grouped.set(id,{id,name:String(p.game_name||gameMap.get(id)?.name||'Гра'),users:[]});
+    grouped.get(id).users.push(String(p.display_name||'Учасник'));
+  }
+  const rank=Array.from(grouped.values()).sort((a,b)=>b.users.length-a.users.length||a.name.localeCompare(b.name,'uk'));
+  const names = eventGameNames(eventPicksActiveEvent||{});
+  const suggestNote=canPick ? `Твої пропозиції: ${mine.size} із ${Number(s.max_per_user)||3}. Натисни «Додати» біля гри.` : s.event?.status==='completed' ? 'Захід завершено: список доступний для перегляду.' : 'Щоб додавати ігри, спочатку натисни «Записатись» у картці події.';
+  const picture=(game)=>game?.cover_url?`<img class="event-pick-cover" src="${escapeHtml(game.cover_url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'event-pick-cover',textContent:'🎲'}))">`:`<span class="event-pick-cover">🎲</span>`;
+  const proposed=rank.length?rank.map(g=>{
+    const game=gameMap.get(g.id);
+    const chosen=mine.has(g.id);
+    return `<div class="event-pick-row">${picture(game)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name)}</div><div class="event-pick-row-meta">${g.users.length} ${g.users.length===1?'вибір':'виборів'} · ${escapeHtml(g.users.join(', '))}</div></div>${canPick?`<button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${g.id}" ${!chosen&&mine.size>=3?'disabled':''}>${chosen?'✓ Моє · прибрати':'Підтримати'}</button>`:''}</div>`;
+  }).join(''):`<div class="event-pick-muted">Поки жодної пропозиції. Стань першим!</div>`;
+  const all=(allGames||[]).filter(g=>Number.isFinite(Number(g.id))&&Number(g.id)>0).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'uk'));
+  const q=eventPicksSearchTerm.toLowerCase();
+  const visible=all.filter(g=>!q||String(g.name||'').toLowerCase().includes(q)).slice(0,40);
+  const options=visible.length?visible.map(g=>{
+    const id=Number(g.id), chosen=mine.has(id);
+    return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick||(!chosen&&mine.size>=3)?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
+  }).join(''):`<div class="event-pick-muted">За пошуком нічого не знайдено.</div>`;
+  root.innerHTML = `
+    ${names.length?`<div class="event-pick-block"><div class="event-pick-section">📋 Ігри організатора</div><div class="event-pick-muted">${names.map(escapeHtml).join(' · ')}</div></div>`:''}
+    <div class="event-pick-block"><div class="event-pick-section">🙌 Пропозиції учасників <span class="event-pick-count">${rank.length} ігор</span></div>${proposed}</div>
+    <div class="event-pick-block"><div class="event-pick-section">➕ Обрати настолку <span class="event-pick-count">${mine.size}/3</span></div><div class="event-pick-muted">${suggestNote}</div>${s.event?.status==='scheduled'?`<input id="eventPicksSearch" type="search" placeholder="🔎 Знайти гру в бібліотеці" value="${escapeHtml(eventPicksSearchTerm)}" autocomplete="off"><div id="eventPicksOptions">${options}</div>`:''}</div>
+  `;
+  const search=root.querySelector('#eventPicksSearch');
+  search?.addEventListener('input',e=>{
+    eventPicksSearchTerm=e.target.value||'';
+    const place=document.getElementById('eventPicksOptions');
+    if(!place) return;
+    const qq=eventPicksSearchTerm.toLowerCase();
+    const filtered=all.filter(g=>String(g.name||'').toLowerCase().includes(qq)).slice(0,40);
+    place.innerHTML=filtered.length?filtered.map(g=>{
+      const id=Number(g.id), chosen=mine.has(id);
+      return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick||(!chosen&&mine.size>=3)?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
+    }).join(''):'<div class="event-pick-muted">Нічого не знайдено.</div>';
+  });
+  root.onclick=async(e)=>{
+    const button=e.target.closest('[data-pick-game]');
+    if(!button||eventPicksPending||!canPick) return;
+    const gameId=Number(button.dataset.pickGame);
+    if(!gameId) return;
+    eventPicksPending=true;
+    root.querySelectorAll('[data-pick-game]').forEach(b=>b.disabled=true);
+    try {
+      const chosen=mine.has(gameId);
+      const res=await fetch(`/api/events/${eventPicksActiveEvent.id}/member-games${chosen?'/'+gameId:''}`,
+        {method:chosen?'DELETE':'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:chosen?undefined:JSON.stringify({game_id:gameId})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok) {
+        const messages={rsvp_required:'Спочатку запишись на подію.',pick_limit:'Можна обрати не більше трьох ігор.',event_closed:'Захід уже завершено.',game_not_found:'Цієї гри вже немає в бібліотеці.',telegram_auth_required:'Відкрий Styloteka через Telegram.'};
+        throw new Error(messages[data.error]||'Не вдалося зберегти вибір.');
+      }
+      await Promise.all([refreshEventMemberGames(), loadEvents()]);
+      if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    }catch(err){tg.showAlert(err.message||'Не вдалося зберегти вибір.');renderEventMemberGamePicker();}
+    finally{eventPicksPending=false;}
+  };
+}
+
 function renderEvents(events) {
   const list = document.getElementById('eventsList');
   list.innerHTML = '';
@@ -10969,6 +11136,7 @@ function renderEvents(events) {
           <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</div>
           <div class="ev-title">${escapeHtml(ev.title || '')}</div>
           ${eventGamesHtml(ev)}
+          ${eventMemberGamesSummary(ev)}
           ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
           ${eventLocationHtml(ev)}
           ${cover}
@@ -10990,6 +11158,7 @@ function renderEvents(events) {
           : ''}
       </div>
 
+      <button type="button" class="event-games-open" aria-label="Переглянути і вибрати настільні ігри на подію">🎲 ${historyMode ? 'Переглянути ігри заходу' : 'Обрати ігри для заходу'} <span aria-hidden="true">→</span></button>
       <div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div>
       <div class="ev-participants">${participantHtml}</div>
 
@@ -11002,6 +11171,8 @@ function renderEvents(events) {
         ${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}
       ` : ''}
     `;
+
+    card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
 
     if (!historyMode) {
       if (!mine) {

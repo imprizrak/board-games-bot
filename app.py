@@ -48,6 +48,7 @@ HISTORY_REST = f"{SUPABASE_URL}/rest/v1/game_history"
 WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
 EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
+EVENT_GAME_PICKS_REST = f"{SUPABASE_URL}/rest/v1/event_game_picks"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
 TELEGRAM_GROUPS_REST = f"{SUPABASE_URL}/rest/v1/telegram_groups"
@@ -4072,10 +4073,171 @@ def get_events():
         for row in rr.json():
             rsvps_by_event.setdefault(row["event_id"], []).append(row)
 
+    picks_by_event = {}
+    if ids:
+        try:
+            picks_resp = requests.get(
+                EVENT_GAME_PICKS_REST,
+                headers=HEADERS,
+                params={"select": "id,event_id,game_id,game_name,telegram_user_id,display_name,created_at", "event_id": f"in.({','.join(ids)})", "order": "created_at.asc"},
+                timeout=20,
+            )
+            picks_resp.raise_for_status()
+            for pick in picks_resp.json():
+                picks_by_event.setdefault(int(pick["event_id"]), []).append(pick)
+        except Exception:
+            logging.exception("Не вдалось завантажити пропозиції ігор для подій")
     for e in events:
         e["rsvps"] = rsvps_by_event.get(e["id"], [])
+        e["member_game_picks"] = picks_by_event.get(int(e["id"]), [])
 
     return jsonify(events)
+
+
+
+
+# ==================== ІГРИ В ПОДІЯХ: ПРОПОЗИЦІЇ УЧАСНИКІВ ====================
+def _event_for_member_games(event_id):
+    resp = requests.get(
+        EVENTS_REST,
+        headers=HEADERS,
+        params={"id": f"eq.{int(event_id)}", "select": "id,title,status", "limit": 1},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    rows = resp.json()
+    return rows[0] if rows else None
+
+
+def _get_event_game_picks(event_id):
+    response = requests.get(
+        EVENT_GAME_PICKS_REST,
+        headers=HEADERS,
+        params={
+            "event_id": f"eq.{int(event_id)}",
+            "select": "id,event_id,game_id,game_name,telegram_user_id,display_name,created_at",
+            "order": "created_at.asc",
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def _event_games_membership(event_id, user):
+    """Права звичайних учасників базуються на RSVP, а не на статусі адміна."""
+    if not user:
+        return False
+    user_id = int(user["id"])
+    username = (user.get("username") or "").strip().lstrip("@").lower()
+    vote = get_event_rsvp_response(event_id, username, user_id)
+    if not vote:
+        return False
+    return (vote.get("status") or "going") in {"going", "waitlist"}
+
+
+@app.route("/api/events/<int:event_id>/member-games", methods=["GET"])
+def member_event_games_get(event_id):
+    try:
+        event = _event_for_member_games(event_id)
+        if not event:
+            return jsonify({"error": "event_not_found"}), 404
+        picks = _get_event_game_picks(event_id)
+        user = _request_telegram_user()
+        return jsonify({
+            "event": event,
+            "picks": picks,
+            "can_pick": event.get("status") == "scheduled" and _event_games_membership(event_id, user),
+            "my_game_ids": [int(p["game_id"]) for p in picks if user and int(p["telegram_user_id"]) == int(user["id"])],
+            "max_per_user": 3,
+        })
+    except requests.RequestException:
+        logging.exception("Помилка отримання ігор учасників події %s", event_id)
+        return jsonify({"error": "event_games_unavailable"}), 503
+
+
+@app.route("/api/events/<int:event_id>/member-games", methods=["POST"])
+def member_event_games_add(event_id):
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    data = request.get_json(silent=True) or {}
+    try:
+        game_id = int(data.get("game_id") or 0)
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid_game"}), 400
+    if game_id <= 0:
+        return jsonify({"error": "invalid_game"}), 400
+    try:
+        event = _event_for_member_games(event_id)
+        if not event:
+            return jsonify({"error": "event_not_found"}), 404
+        if event.get("status") != "scheduled":
+            return jsonify({"error": "event_closed"}), 409
+        if not _event_games_membership(event_id, user):
+            return jsonify({"error": "rsvp_required"}), 403
+        user_id = int(user["id"])
+        my_response = requests.get(
+            EVENT_GAME_PICKS_REST,
+            headers=HEADERS,
+            params={"event_id": f"eq.{event_id}", "telegram_user_id": f"eq.{user_id}", "select": "game_id"},
+            timeout=20,
+        )
+        my_response.raise_for_status()
+        my_games = {int(p["game_id"]) for p in my_response.json()}
+        if game_id in my_games:
+            return jsonify({"status": "already_selected"}), 200
+        if len(my_games) >= 3:
+            return jsonify({"error": "pick_limit"}), 409
+        game_response = requests.get(
+            REST,
+            headers=HEADERS,
+            params={"id": f"eq.{game_id}", "select": "id,name", "limit": 1},
+            timeout=20,
+        )
+        game_response.raise_for_status()
+        games = game_response.json()
+        if not games:
+            return jsonify({"error": "game_not_found"}), 404
+        name = " ".join(str(v) for v in (user.get("first_name"), user.get("last_name")) if v).strip()
+        name = name or str(user.get("username") or "Гравець")
+        created = requests.post(
+            EVENT_GAME_PICKS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "resolution=ignore-duplicates,return=representation"},
+            params={"on_conflict": "event_id,game_id,telegram_user_id"},
+            json={"event_id": event_id, "game_id": game_id, "game_name": games[0]["name"], "telegram_user_id": user_id, "display_name": name[:100]},
+            timeout=20,
+        )
+        created.raise_for_status()
+        return jsonify({"status": "selected", "picks": _get_event_game_picks(event_id)})
+    except requests.RequestException:
+        logging.exception("Помилка додавання гри учасником до події %s", event_id)
+        return jsonify({"error": "event_games_unavailable"}), 503
+
+
+@app.route("/api/events/<int:event_id>/member-games/<int:game_id>", methods=["DELETE"])
+def member_event_games_remove(event_id, game_id):
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    try:
+        event = _event_for_member_games(event_id)
+        if not event:
+            return jsonify({"error": "event_not_found"}), 404
+        if event.get("status") != "scheduled":
+            return jsonify({"error": "event_closed"}), 409
+        # Видалити можна тільки власну пропозицію. RSVP уже може бути скасований адміном.
+        response = requests.delete(
+            EVENT_GAME_PICKS_REST,
+            headers=HEADERS,
+            params={"event_id": f"eq.{event_id}", "game_id": f"eq.{game_id}", "telegram_user_id": f"eq.{int(user['id'])}"},
+            timeout=20,
+        )
+        response.raise_for_status()
+        return jsonify({"status": "removed", "picks": _get_event_game_picks(event_id)})
+    except requests.RequestException:
+        logging.exception("Помилка видалення власної гри в події %s", event_id)
+        return jsonify({"error": "event_games_unavailable"}), 503
 
 
 @app.route("/api/events", methods=["POST"])
