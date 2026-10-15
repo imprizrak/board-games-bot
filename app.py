@@ -8,6 +8,7 @@ import hmac
 import json
 import time
 import re
+from decimal import Decimal, InvalidOperation
 from threading import Thread
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -38,6 +39,8 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 BUCKET = "files"
 EVENT_TIMEZONE = os.environ.get("EVENT_TIMEZONE", "Europe/Berlin")
+MONOBANK_ACQUIRING_TOKEN = os.environ.get("MONOBANK_ACQUIRING_TOKEN", "").strip()
+MONOBANK_BASE_URL = "https://api.monobank.ua/api/merchant/invoice"
 
 HEADERS = {"apikey": SUPABASE_KEY}
 # Старі ключі (JWT) потребують ще й заголовка Authorization
@@ -49,6 +52,9 @@ HISTORY_REST = f"{SUPABASE_URL}/rest/v1/game_history"
 WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
 EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
+MONOBANK_EVENT_PAYMENTS_REST = f"{SUPABASE_URL}/rest/v1/event_monobank_payments"
+MONOBANK_CONFIRM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/confirm_event_monobank_payment"
+MONOBANK_RESERVE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/reserve_event_monobank_payment"
 EVENT_GAME_PICKS_REST = f"{SUPABASE_URL}/rest/v1/event_game_picks"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
@@ -3730,10 +3736,292 @@ def auto_send_event_day_reminders():
 def event_completion_worker():
     # Невелика затримка після запуску, щоб застосунок встиг ініціалізуватися.
     time.sleep(5)
+    step=0
     while True:
-        auto_send_event_day_reminders()
-        auto_complete_due_events()
+        try:
+            auto_send_event_day_reminders()
+            auto_complete_due_events()
+            # Webhook залишається основним механізмом; рідкісна перевірка
+            # допомагає відновити пропущені відповіді банку.
+            if step % 5 == 0:
+                _reconcile_recent_event_payments()
+        except Exception:
+            logging.exception('Помилка робітника подій; наступна спроба за хвилину')
+        step+=1
         time.sleep(60)
+
+
+# ==================== ОПЛАТА ПОДІЙ / MONOBANK ACQUIRING ====================
+def _event_price_kop(data):
+    """Ціна у гривнях, зберігаємо тільки ціле число копійок."""
+    mode = str(data.get("price_mode") or "").strip().lower()
+    if mode == "free":
+        return 0
+    raw = str(data.get("price_uah") or "0").strip().replace(",", ".")
+    try:
+        value = Decimal(raw)
+    except (InvalidOperation, TypeError):
+        raise ValueError("invalid_event_price")
+    if not value.is_finite() or value < 0 or value > Decimal('1000000'):
+        raise ValueError("invalid_event_price")
+    kop = value * 100
+    if kop != kop.to_integral_value():
+        raise ValueError("invalid_event_price")
+    if mode == "paid" and kop < 100:
+        raise ValueError("minimum_price_1_uah")
+    return int(kop)
+
+
+def _mono_headers():
+    return {"X-Token": MONOBANK_ACQUIRING_TOKEN, "Content-Type": "application/json"}
+
+
+def _mono_invoice_status(invoice_id):
+    """Лише відповідь API банку може підтвердити оплату; фронтенду не довіряємо."""
+    if not MONOBANK_ACQUIRING_TOKEN:
+        raise RuntimeError('monobank_not_configured')
+    r = requests.get(MONOBANK_BASE_URL + "/status", headers=_mono_headers(),
+                     params={"invoiceId": str(invoice_id)}, timeout=18)
+    r.raise_for_status()
+    return r.json()
+
+
+def _payment_update(row_id, values):
+    r=requests.patch(MONOBANK_EVENT_PAYMENTS_REST,
+        headers={**HEADERS,"Content-Type":"application/json","Prefer":"return=representation"},
+        params={"id":f"eq.{int(row_id)}","select":"id,status,invoice_id,page_url"}, json=values, timeout=20)
+    r.raise_for_status()
+    return r.json()
+
+
+def _payment_identity(user):
+    uid=int(user['id'])
+    username=(user.get('username') or '').strip().lstrip('@').lower() or f'tg_{uid}'
+    name=' '.join(v for v in [user.get('first_name'), user.get('last_name')] if v).strip()
+    return uid,username,name or username
+
+
+def _sync_paid_event_member_profile(user_id, username, display_name):
+    """Створює/оновлює профіль за перевіреним Telegram ID, не змінюючи RSVP."""
+    try:
+        result = requests.post(
+            PROFILES_REST,
+            headers={**HEADERS, 'Content-Type': 'application/json',
+                     'Prefer': 'resolution=merge-duplicates,return=minimal'},
+            params={'on_conflict': 'telegram_user_id'},
+            json={'telegram_user_id': int(user_id), 'username': str(username),
+                  'display_name': str(display_name),
+                  'updated_at': datetime.now(timezone.utc).isoformat()},
+            timeout=12,
+        )
+        if not result.ok:
+            logging.warning('Профіль учасника перед оплатою не оновлено (%s)', result.status_code)
+    except requests.RequestException:
+        logging.exception('Помилка синхронізації Telegram-профілю перед оплатою')
+
+
+def _lookup_payment(event_id, user_id):
+    r=requests.get(MONOBANK_EVENT_PAYMENTS_REST,headers=HEADERS,params={
+        'event_id':f'eq.{int(event_id)}','telegram_user_id':f'eq.{int(user_id)}',
+        'select':'*','order':'created_at.desc','limit':8},timeout=20)
+    r.raise_for_status()
+    return r.json()
+
+
+def _sync_monobank_payment(row):
+    """Викликається після webhook або перевірки самим користувачем.
+
+    Ідемпотентне завершення — транзакційна SQL-функція, ні вебхук, ні клієнт
+    не можуть безпосередньо створити paid/going.
+    """
+    if row.get('status') == 'paid':
+        return {'status':'paid','rsvp_status':row.get('rsvp_status') or 'going'}
+    if not row.get('invoice_id'):
+        return {'status':'pending'}
+    state = _mono_invoice_status(row['invoice_id'])
+    if str(state.get('invoiceId') or '') != str(row['invoice_id']):
+        raise ValueError('invoice_id_mismatch')
+    if str(state.get('reference') or '').replace('-','').lower() != str(row['reference']).replace('-','').lower():
+        raise ValueError('invoice_reference_mismatch')
+    if str(state.get('status')) == 'success':
+        # Не підтверджуємо випадковий invoice зі зміненою сумою.
+        if int(state.get('amount') or 0)!=int(row['amount_kop']) or int(state.get('ccy') or 0)!=980:
+            raise ValueError('invoice_amount_mismatch')
+        r=requests.post(MONOBANK_CONFIRM_RPC,headers={**HEADERS,'Content-Type':'application/json'},json={
+            'p_invoice_id':row['invoice_id'], 'p_reference':row['reference'],
+            'p_amount_kop':int(row['amount_kop']),'p_ccy':980},timeout=20)
+        r.raise_for_status()
+        result=r.json() or {}
+        if result.get('status')!='paid':
+            raise ValueError('payment_confirmation_'+str(result.get('error') or 'failed'))
+        return result
+    status=str(state.get('status') or 'created')
+    if status in {'expired','failure','reversed'}:
+        _payment_update(row['id'],{'status':'expired' if status=='expired' else 'failed',
+                                   'modified_at':datetime.now(timezone.utc).isoformat()})
+        return {'status':'expired' if status=='expired' else 'failed'}
+    return {'status':'pending','payment_status':status}
+
+
+def _reconcile_recent_event_payments():
+    if not MONOBANK_ACQUIRING_TOKEN:
+        return
+    try:
+        cutoff=(datetime.now(timezone.utc)-timedelta(minutes=35)).isoformat()
+        r=requests.get(MONOBANK_EVENT_PAYMENTS_REST,headers=HEADERS,
+            params={'status':'eq.pending','created_at':f'gte.{cutoff}',
+                    'select':'*','order':'created_at.asc','limit':20},timeout=20)
+        r.raise_for_status()
+        for row in r.json():
+            if row.get('invoice_id'):
+                try:
+                    _sync_monobank_payment(row)
+                except Exception:
+                    logging.exception('Не вдалось звірити рахунок події %s',row.get('event_id'))
+    except Exception:
+        logging.exception('Звірка платежів monobank недоступна')
+
+
+def _lookup_invoice_by_id(invoice_id):
+    r=requests.get(MONOBANK_EVENT_PAYMENTS_REST,headers=HEADERS,
+        params={'invoice_id':f'eq.{invoice_id}','select':'*','limit':1},timeout=20)
+    r.raise_for_status()
+    return (r.json() or [None])[0]
+
+
+@app.route('/api/events/<int:event_id>/payment/start',methods=['POST'])
+def start_event_payment(event_id):
+    user=_request_telegram_user()
+    if not user: return jsonify({'error':'telegram_auth_required'}),401
+    if not MONOBANK_ACQUIRING_TOKEN: return jsonify({'error':'monobank_not_configured'}),503
+    uid,username,display_name=_payment_identity(user)
+    _sync_paid_event_member_profile(uid,username,display_name)
+    try:
+        event=get_event_snapshot(event_id)
+        if not event: return jsonify({'error':'event_not_found'}),404
+        if str(event.get('status') or 'scheduled')!='scheduled':
+            return jsonify({'error':'event_closed'}),409
+        price=int(event.get('price_kop') or 0)
+        if price<=0: return jsonify({'error':'free_event'}),409
+        existing=get_event_rsvp_response(event_id,username,uid)
+        if existing and existing.get('status') in ('going','waitlist'):
+            return jsonify({'status':'already_registered','rsvp_status':existing.get('status')}),200
+        previous=_lookup_payment(event_id,uid)
+        for row in previous:
+            if row.get('status')=='paid':
+                return jsonify({'status':'paid','rsvp_status':row.get('rsvp_status')}),200
+            if row.get('status') in ('creating','pending'):
+                if row.get('invoice_id'):
+                    checked=_sync_monobank_payment(row)
+                    if checked['status']=='paid': return jsonify(checked),200
+                    if checked['status']=='pending' and row.get('page_url'):
+                        return jsonify({'status':'pending','page_url':row['page_url']}),200
+                else:
+                    # Забули/не встигли створити invoice: не створюємо дубль під час
+                    # паралельного запиту, але відпускаємо завислий через 2 хвилини.
+                    created=str(row.get('created_at') or '')
+                    try:
+                        dt=datetime.fromisoformat(created.replace('Z','+00:00'))
+                        if (datetime.now(timezone.utc)-dt).total_seconds()<120:
+                            return jsonify({'status':'creating'}),202
+                    except Exception: pass
+                    _payment_update(row['id'],{'status':'failed'})
+        reference=uuid.uuid4().hex
+        reserved=requests.post(MONOBANK_RESERVE_RPC,
+            headers={**HEADERS,'Content-Type':'application/json'},json={
+                'p_event_id':event_id,'p_user_id':uid,
+                'p_username':username,'p_display_name':display_name,
+                'p_amount_kop':price,'p_reference':reference},timeout=20)
+        reserved.raise_for_status()
+        booking=reserved.json() or {}
+        if booking.get('status')!='reserved':
+            status=booking.get('status') or 'reservation_failed'
+            return jsonify({'error':status}),409
+        record={'id':booking['id']}
+        try:
+            # Не довіряємо Host заголовку від клієнта; адреса береться з
+            # перевірених змінних середовища або фіксованого Render домену.
+            public_url = (os.environ.get('MONOBANK_PUBLIC_URL','').strip() or
+                          os.environ.get('WEBAPP_URL','').strip() or
+                          os.environ.get('RENDER_EXTERNAL_URL','').strip() or
+                          'https://board-games-bot-hkfp.onrender.com')
+            parsed=urlparse(public_url)
+            if parsed.scheme!='https' or not parsed.hostname:
+                raise RuntimeError('https_origin_required')
+            origin=f'https://{parsed.netloc}'
+            payload={
+                'amount':price,'ccy':980,
+                'merchantPaymInfo':{'reference':reference,'destination':f'Styloteka · {str(event.get("title") or "Подія")[:100]}',
+                                    'comment':f'Участь у події №{event_id}'},
+                'redirectUrl':_event_mini_app_link(event_id) or origin,
+                'webHookUrl':origin+'/api/payments/monobank/webhook',
+                'validity':1800,'paymentType':'debit'
+            }
+            resp=requests.post(MONOBANK_BASE_URL+'/create',headers=_mono_headers(),json=payload,timeout=22)
+            resp.raise_for_status()
+            inv=resp.json()
+            invoice=str(inv.get('invoiceId') or '')
+            page=str(inv.get('pageUrl') or '')
+            payment_host=(urlparse(page).hostname or '').lower()
+            if not invoice or not page.startswith('https://') or not (
+                payment_host=='pay.mbnk.biz' or payment_host=='monobank.ua'
+                or payment_host.endswith('.monobank.ua')
+            ):
+                raise ValueError('monobank_invalid_invoice_response')
+            _payment_update(record['id'],{'invoice_id':invoice,'page_url':page,'status':'pending',
+                                          'modified_at':datetime.now(timezone.utc).isoformat()})
+            return jsonify({'status':'pending','page_url':page,'invoice_id':invoice}),200
+        except Exception:
+            logging.exception('Не вдалося сформувати рахунок Monobank для події %s',event_id)
+            try:_payment_update(record['id'],{'status':'failed'})
+            except Exception:logging.exception('Не вдалося скасувати створення рахунку')
+            return jsonify({'error':'monobank_invoice_unavailable'}),502
+    except requests.RequestException:
+        logging.exception('Помилка платіжної операції події %s',event_id)
+        return jsonify({'error':'payment_service_unavailable'}),503
+    except Exception:
+        logging.exception('Неочікувана помилка створення платежу події %s',event_id)
+        return jsonify({'error':'payment_service_unavailable'}),503
+
+
+@app.route('/api/events/<int:event_id>/payment/status',methods=['GET'])
+def event_payment_status(event_id):
+    user=_request_telegram_user()
+    if not user:return jsonify({'error':'telegram_auth_required'}),401
+    uid,username,_=_payment_identity(user)
+    try:
+        payments=_lookup_payment(event_id,uid)
+        if payments:
+            row=payments[0]
+            result=_sync_monobank_payment(row)
+            return jsonify(result)
+        event=get_event_snapshot(event_id)
+        if not event:return jsonify({'error':'event_not_found'}),404
+        if int(event.get('price_kop') or 0)==0:return jsonify({'status':'free'})
+        return jsonify({'status':'not_started'})
+    except (ValueError,requests.RequestException):
+        logging.exception('Помилка перевірки оплати події %s',event_id)
+        return jsonify({'error':'payment_status_unavailable'}),503
+
+
+@app.route('/api/payments/monobank/webhook',methods=['POST'])
+def event_monobank_webhook():
+    payload=request.get_json(silent=True) or {}
+    invoice=str(payload.get('invoiceId') or '')
+    if not invoice or len(invoice)>140:
+        return jsonify({'error':'invalid_invoice'}),400
+    try:
+        row=_lookup_invoice_by_id(invoice)
+        if not row:
+            return jsonify({'status':'ignored'}),200
+        if str(payload.get('status'))=='success':
+            # Ніякого trust-on-first-use: перепитуємо банківський API незалежно від тіла вебхука.
+            result=_sync_monobank_payment(row)
+            return jsonify(result)
+        return jsonify({'status':'received'}),200
+    except Exception:
+        logging.exception('Помилка вебхука монобанку')
+        return jsonify({'error':'temporary_unavailable'}),503
 
 
 # ==================== ДОПОМІЖНА ЛОГІКА ПОДІЙ ====================
@@ -4255,7 +4543,13 @@ def add_event():
 
     location = _normalize_event_location(data.get("location_text"))
 
+    try:
+        price_kop = _event_price_kop(data)
+    except ValueError as exc:
+        return jsonify({"error":str(exc)}),400
+
     payload = {
+        "price_kop":price_kop,
         "title": data.get("title", ""),
         "event_date": data.get("event_date"),
         "event_time": data.get("event_time", ""),
@@ -4327,6 +4621,7 @@ def add_event():
         date_time += f" о {data.get('event_time')}"
     if date_time:
         notify_lines.append(date_time)
+    notify_lines.append(f"💳 Вартість: {price_kop/100:.2f} грн" if price_kop else "🆓 Безкоштовно")
     if game_names:
         notify_lines.append(f"🎲 Ігри: {', '.join(game_names)}")
     location_text = location.get("location_text") or ""
@@ -4430,7 +4725,40 @@ def edit_event(event_id):
         cover_url = old_cover_url
 
     new_event_time = str(data.get("event_time") or "").strip()
+    if "price_mode" not in data and "price_uah" not in data:
+        # Старі клієнти та закешовані форми не повинні скидати платну подію в безкоштовну.
+        price_kop = int(current_event.get("price_kop") or 0)
+    else:
+        try:
+            price_kop = _event_price_kop(data)
+        except ValueError as exc:
+            return jsonify({"error":str(exc)}),400
+    old_capacity=int(current_event.get('max_participants') or 0)
+    if price_kop>0 and max_participants>0 and (old_capacity<=0 or max_participants<old_capacity):
+        try:
+            reserved_checks=requests.get(MONOBANK_EVENT_PAYMENTS_REST,headers=HEADERS,params={
+                "event_id":f"eq.{event_id}","status":"in.(creating,pending,paid)",
+                "select":"id","limit":1},timeout=20)
+            reserved_checks.raise_for_status()
+            if reserved_checks.json():
+                return jsonify({"error":"event_capacity_locked_after_invoice"}),409
+        except requests.RequestException:
+            return jsonify({"error":"payment_check_unavailable"}),503
+    if price_kop != int(current_event.get("price_kop") or 0):
+        try:
+            rsvp_checks=requests.get(RSVPS_REST,headers=HEADERS,params={
+                "event_id":f"eq.{event_id}","status":"in.(going,waitlist)",
+                "select":"id","limit":1},timeout=20)
+            rsvp_checks.raise_for_status()
+            if rsvp_checks.json():return jsonify({"error":"event_price_locked_after_registration"}),409
+            paid_checks=requests.get(MONOBANK_EVENT_PAYMENTS_REST,headers=HEADERS,params={
+                "event_id":f"eq.{event_id}","select":"id","limit":1},timeout=20)
+            paid_checks.raise_for_status()
+            if paid_checks.json():return jsonify({"error":"event_price_locked_after_invoice"}),409
+        except requests.RequestException:
+            return jsonify({"error":"payment_check_unavailable"}),503
     payload = {
+        "price_kop":price_kop,
         "title": title,
         "event_date": event_date,
         "event_time": new_event_time,
@@ -4519,6 +4847,16 @@ def delete_event(event_id):
     denied = _admin_required_response()
     if denied:
         return denied
+    # Оплачувану подію з рахунками не видаляємо — інакше банк може
+    # підтвердити платіж після каскадного видалення замовлення.
+    try:
+        linked = requests.get(MONOBANK_EVENT_PAYMENTS_REST,headers=HEADERS,
+            params={'event_id':f'eq.{event_id}','select':'id','limit':1},timeout=20)
+        linked.raise_for_status()
+        if linked.json():
+            return jsonify({'error':'event_has_payment_history'}),409
+    except requests.RequestException:
+        return jsonify({'error':'payment_check_unavailable'}),503
     try:
         current = requests.get(
             EVENTS_REST,
@@ -4543,6 +4881,13 @@ def rsvp_event(event_id):
         return jsonify({"error": "telegram_auth_required"}), 401
 
     user_id = int(user.get("id"))
+    try:
+        event=get_event_snapshot(event_id)
+        if not event:return jsonify({"error":"event_not_found"}),404
+        if int(event.get("price_kop") or 0)>0:
+            return jsonify({"status":"payment_required","error":"payment_required"}),402
+    except requests.RequestException:
+        return jsonify({"error":"event_lookup_failed"}),503
     username = (user.get("username") or "").lstrip("@").lower() or f"tg_{user_id}"
     display_name = " ".join(
         x for x in [user.get("first_name"), user.get("last_name")] if x
@@ -4767,7 +5112,7 @@ def telegram_api_post(method, payload):
         return False, str(exc)
 
 
-def _event_mini_app_link(event_id):
+def _event_mini_app_link(event_id, payment=False):
     """Відкриває подію всередині Telegram, щоб initData містив Telegram ID.
 
     Для named Mini App задається TELEGRAM_APP_SHORT_NAME; інакше потрібна
@@ -4779,14 +5124,22 @@ def _event_mini_app_link(event_id):
     base = f"https://t.me/{bot_name}"
     if TELEGRAM_APP_SHORT_NAME:
         base += f"/{TELEGRAM_APP_SHORT_NAME}"
-    return f"{base}?startapp=event_{int(event_id)}"
+    start=f"pay_{int(event_id)}" if payment else f"event_{int(event_id)}"
+    return f"{base}?startapp={start}"
 
 
 def telegram_keyboard_payload(event_id, map_url=""):
-    rows = [[
-        {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
-        {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
-    ]]
+    event = get_event_snapshot(event_id)
+    price = int((event or {}).get('price_kop') or 0)
+    if price > 0:
+        pay_link=_event_mini_app_link(event_id, payment=True)
+        rows=[[{'text':f'💳 Я йду · {price/100:.2f} грн', 'url':pay_link}]] if pay_link else []
+        rows.append([{'text':'❌ Не йду', 'callback_data':f'ev_no:{event_id}'}])
+    else:
+        rows = [[
+            {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
+            {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
+        ]]
     map_url = str(map_url or "").strip()
     if map_url:
         rows.append([{
@@ -5093,10 +5446,17 @@ def notify_subscribers_async(text, photo_url=None):
 
 
 def event_group_keyboard(event_id, map_url=""):
-    rows = [[
-        InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
-        InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
-    ]]
+    event = get_event_snapshot(event_id)
+    price = int((event or {}).get('price_kop') or 0)
+    if price > 0:
+        url=_event_mini_app_link(event_id,payment=True)
+        rows=[[InlineKeyboardButton(text=f'💳 Я йду · {price/100:.2f} грн',url=url)]] if url else []
+        rows.append([InlineKeyboardButton(text='❌ Не йду',callback_data=f'ev_no:{event_id}')])
+    else:
+        rows = [[
+            InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
+            InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
+        ]]
     map_url = str(map_url or "").strip()
     if map_url:
         rows.append([
@@ -5119,6 +5479,8 @@ def format_group_event(event):
         dt += f" · {str(event.get('event_time'))[:5]}"
     if dt:
         lines.append(f"🗓 {dt}")
+    price=int(event.get("price_kop") or 0)
+    lines.append(f"💳 Вартість: {price/100:.2f} грн" if price else "🆓 Вартість: безкоштовно")
 
     game_names = event.get("game_names") or []
     if not isinstance(game_names, list):
@@ -5398,6 +5760,13 @@ async def cmd_app(message: Message):
 async def callback_event_go(callback: CallbackQuery):
     try:
         event_id = int(callback.data.split(":", 1)[1])
+        event = await asyncio.to_thread(get_event_snapshot, event_id)
+        if not event:
+            await callback.answer("Подію не знайдено.", show_alert=True)
+            return
+        if int(event.get('price_kop') or 0)>0:
+            await callback.answer("Ця подія платна. Натисни «💳 Я йду — оплатити» у новому пості та оплати через monobank.",show_alert=True)
+            return
         username, display_name = telegram_rsvp_identity(callback.from_user)
 
         existing = get_event_rsvp_response(

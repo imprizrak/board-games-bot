@@ -6222,6 +6222,14 @@ document.addEventListener('click', event => {
   overflow-wrap:anywhere;
 }
 
+
+/* Вартість участі та перевірка оплати */
+.ev-price{margin-top:8px;font-size:12px;font-weight:800;color:#ebc980;line-height:1.5}
+.ev-payment-check{border:1px solid rgba(226,193,103,.35);background:rgba(226,193,103,.08);color:#efd898;min-height:42px;padding:8px 12px;border-radius:12px;font:inherit;font-size:12px;font-weight:800}
+.ev-payment-check:active{transform:scale(.99)}
+#eventPriceMode{display:block;width:100%;min-height:44px;border-radius:12px}
+#eventPriceAmountRow input{width:100%;box-sizing:border-box}
+
 </style>
 </head>
 <body>
@@ -7474,6 +7482,17 @@ button,.btn{font-family:inherit}
     <label>Настільні ігри (можна обрати декілька)</label>
     <div class="event-game-choice-list" id="eventGameChoices"></div>
     <div class="event-form-hint">Познач одну або кілька ігор, у які плануєте грати.</div>
+
+    <label for="eventPriceMode">Вартість участі</label>
+    <select id="eventPriceMode" onchange="setEventPriceMode(this.value)">
+      <option value="free">🆓 Безкоштовно</option>
+      <option value="paid">💳 Платна подія (monobank)</option>
+    </select>
+    <div id="eventPriceAmountRow" style="display:none;">
+      <label for="eventPriceUah">Сума за одного учасника, грн</label>
+      <input type="number" id="eventPriceUah" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="Наприклад, 150.00">
+      <div class="event-form-hint">Запис тільки після підтвердження платежу банком. Для платних подій потрібен еквайринг monobank.</div>
+    </div>
 
     <label>Максимум учасників (0 = без ліміту)</label>
     <input type="number" id="eventCapacity" min="0" max="99" value="0" inputmode="numeric">
@@ -11140,7 +11159,8 @@ function renderEvents(events) {
       </span>`
     ).join('') || `<div class="ev-no-participants">${historyMode ? 'Учасників не було' : 'Поки ніхто не записався'}</div>`;
 
-    let voteLabel = cap && going.length >= cap ? 'Стати в чергу' : 'Записатись';
+    const isPaid=(Number(ev.price_kop)||0)>0;
+    let voteLabel = isPaid ? '💳 Я йду — оплатити' : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись');
     let voteClass = '';
     let voteNote = '';
 
@@ -11182,6 +11202,7 @@ function renderEvents(events) {
         <div>
           <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</div>
           <div class="ev-title">${escapeHtml(ev.title || '')}</div>
+          <div class="ev-price">${eventPriceLabel(ev)}${isPaid?' · запис лише після оплати':''}</div>
           ${eventGamesHtml(ev)}
           ${eventMemberGamesSummary(ev)}
           ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
@@ -11212,6 +11233,7 @@ function renderEvents(events) {
       ${!historyMode ? `
         <div class="ev-buttons">
           <button class="ev-rsvp-btn ${voteClass}" data-id="${ev.id}" ${mine ? 'disabled' : ''}>${voteLabel}</button>
+          ${isPaid && !mine ? `<button class="ev-payment-check" type="button">↻ Перевірити оплату</button>` : ''}
           ${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}
         </div>
         ${voteNote ? `<div class="ev-my-vote">${voteNote}</div>` : ''}
@@ -11220,10 +11242,11 @@ function renderEvents(events) {
     `;
 
     card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
+    card.querySelector('.ev-payment-check')?.addEventListener('click',()=>checkMonobankEventPayment(ev.id));
 
     if (!historyMode) {
       if (!mine) {
-        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => toggleRsvp(ev.id));
+        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => isPaid?startMonobankEventPayment(ev.id):toggleRsvp(ev.id));
       }
 
       card.querySelector('.ev-admin-edit')?.addEventListener('click', () => openEditEventModal(ev));
@@ -11231,11 +11254,18 @@ function renderEvents(events) {
       card.querySelector('.ev-admin-del')?.addEventListener('click', () =>
         tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => {
           if (!ok) return;
-          await fetch(`/api/events/${ev.id}`, {
+          const response=await fetch(`/api/events/${ev.id}`, {
             method:'DELETE',
             headers:telegramAuthHeaders({'Content-Type':'application/json'}),
             body:JSON.stringify({_tg_init_data:telegramInitData})
           });
+          const reply=await response.json().catch(()=>({}));
+          if(!response.ok){
+            const message=reply.error==='event_has_payment_history'
+              ? 'Подію з платіжною історією не можна видалити автоматично. Спочатку врегулюй оплати та повернення.'
+              : 'Не вдалося видалити подію. Спробуй пізніше.';
+            tg.showAlert(message);return;
+          }
           loadEvents();
         })
       );
@@ -11318,6 +11348,18 @@ function removeCurrentEventCover() {
   if (removeBtn) removeBtn.style.display = 'none';
 }
 
+function setEventPriceMode(mode){
+  const row=document.getElementById('eventPriceAmountRow');
+  const field=document.getElementById('eventPriceUah');
+  if(row)row.style.display=mode==='paid'?'block':'none';
+  if(field)field.required=mode==='paid';
+}
+
+function eventPriceLabel(ev){
+  const price=Number(ev?.price_kop)||0;
+  return price>0 ? `💳 ${Number(price/100).toFixed(2)} грн` : '🆓 Безкоштовно';
+}
+
 function openEditEventModal(ev) {
   if (!isAdmin || !ev?.id) return;
 
@@ -11332,6 +11374,10 @@ function openEditEventModal(ev) {
   if (locationInput) locationInput.value = ev.location_text || '';
 
   document.getElementById('eventDescription').value = ev.description || '';
+  const paid=(Number(ev.price_kop)||0)>0;
+  document.getElementById('eventPriceMode').value=paid?'paid':'free';
+  document.getElementById('eventPriceUah').value=paid?(Number(ev.price_kop)/100).toFixed(2):'';
+  setEventPriceMode(paid?'paid':'free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = String(Number(ev.max_participants) || 0);
 
@@ -11357,6 +11403,9 @@ function openEventModal() {
   const locationInput = document.getElementById('eventLocation');
   if (locationInput) locationInput.value = '';
   document.getElementById('eventDescription').value = '';
+  document.getElementById('eventPriceMode').value='free';
+  document.getElementById('eventPriceUah').value='';
+  setEventPriceMode('free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = '0';
   renderEventGameChoices();
@@ -11377,6 +11426,9 @@ async function submitEvent() {
   }
 
   const selectedGames = getSelectedEventGames();
+  const priceMode=document.getElementById('eventPriceMode').value;
+  const priceUah=document.getElementById('eventPriceUah').value;
+  if(priceMode==='paid'&&!(Number(priceUah)>=1)) {tg.showAlert('Введи вартість події (щонайменше 1 грн).');return;}
   const formData = new FormData();
   formData.append('_tg_init_data', telegramInitData);
   formData.append('title', title);
@@ -11385,6 +11437,8 @@ async function submitEvent() {
   formData.append('location_text', document.getElementById('eventLocation')?.value.trim() || '');
   formData.append('game_name', selectedGames[0] || '');
   formData.append('game_names_json', JSON.stringify(selectedGames));
+  formData.append('price_mode',priceMode);
+  formData.append('price_uah',priceMode==='paid'?priceUah:'0');
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
   formData.append(isEditing ? 'updated_by' : 'created_by', username);
@@ -11422,7 +11476,8 @@ async function submitEvent() {
       return;
     }
     if (!res.ok) {
-      tg.showAlert(data.error || (isEditing ? 'Не вдалося зберегти зміни.' : 'Не вдалося створити подію.'));
+      const errors={event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
+      tg.showAlert(errors[data.error] || data.error || (isEditing ? 'Не вдалося зберегти зміни.' : 'Не вдалося створити подію.'));
       return;
     }
 
@@ -11434,6 +11489,46 @@ async function submitEvent() {
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
+}
+
+async function startMonobankEventPayment(eventId){
+  if(!telegramUserId||!telegramInitData){tg.showAlert('Відкрий подію в Telegram Mini App.');return;}
+  const btn=document.querySelector(`.event-card[data-event-id="${eventId}"] .ev-rsvp-btn`);
+  if(btn)btn.disabled=true;
+  try{
+    const res=await fetch(`/api/events/${eventId}/payment/start`,{
+      method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({})});
+    const data=await res.json().catch(()=>({}));
+    if(data.status==='paid'||data.status==='already_registered'){
+      tg.showAlert('Оплату підтверджено, місце збережено ✅');await loadEvents();return;
+    }
+    if(data.status==='creating'){
+      tg.showAlert('Створюємо рахунок, спробуй ще раз за декілька секунд.');return;
+    }
+    if(!res.ok||!data.page_url){
+      const errorMap={monobank_not_configured:'Оплату ще не підключено. Попроси організатора налаштувати monobank.',event_full:'Усі платні місця вже зайняті або зарезервовані під оплату. Спробуй пізніше.',monobank_invoice_unavailable:'Банк тимчасово не створив рахунок. Спробуй пізніше.',payment_service_unavailable:'Платіжний сервіс зараз недоступний.'};
+      tg.showAlert(errorMap[data.error]||data.error||'Не вдалося сформувати оплату.');return;
+    }
+    try{localStorage.setItem(`styloteka_payment_pending_${eventId}`,'1');}catch(_){}
+    if(typeof tg.openLink==='function')tg.openLink(data.page_url,{try_instant_view:false});
+    else window.open(data.page_url,'_blank','noopener');
+    tg.showAlert('Оплати рахунок у monobank, потім повернись до події. Запис відбудеться автоматично після підтвердження банком.');
+  }catch(e){tg.showAlert('Помилка з’єднання з платіжним сервісом.');}
+  finally{if(btn&&btn.isConnected)btn.disabled=false;}
+}
+
+async function checkMonobankEventPayment(eventId,quiet=false){
+  if(!telegramInitData)return;
+  try{
+    const res=await fetch(`/api/events/${eventId}/payment/status`,{headers:telegramAuthHeaders(),cache:'no-store'});
+    const data=await res.json().catch(()=>({}));
+    if(data.status==='paid'){
+      try{localStorage.removeItem(`styloteka_payment_pending_${eventId}`);}catch(_){}
+      if(!quiet)tg.showAlert('Оплату підтверджено, ти зареєстрований на захід ✅');
+      await loadEvents();
+    }else if(data.status==='pending'&&!quiet){tg.showAlert('Банк ще не підтвердив оплату. Натисни перевірку пізніше.');}
+    else if(['expired','failed'].includes(data.status)&&!quiet){tg.showAlert('Платіж не завершено. Можеш спробувати ще раз.');}
+  }catch(_){}
 }
 
 async function toggleRsvp(eventId) {
@@ -12246,7 +12341,8 @@ async function applyInitialDeepLink() {
     const telegramStartParam = String(
       tg.initDataUnsafe?.start_param || params.get('tgWebAppStartParam') || ''
     );
-    const eventMatch = telegramStartParam.match(/^event_(\d+)$/);
+    const eventMatch = telegramStartParam.match(/^(?:event|pay)_(\d+)$/);
+    const paymentDeepLink=/^pay_\d+$/.test(telegramStartParam);
     const requestedView = eventMatch ? 'events' : params.get('view');
     if (requestedView === 'profile') {
       showMainView('view-profile');
@@ -12257,6 +12353,10 @@ async function applyInitialDeepLink() {
     window.__deepLinkedEventId = eventMatch ? eventMatch[1] : (params.get('event') || '');
     showMainView('view-events');
     await loadEvents();
+    if(window.__deepLinkedEventId){
+      if(paymentDeepLink)await startMonobankEventPayment(window.__deepLinkedEventId);
+      else checkMonobankEventPayment(window.__deepLinkedEventId,true);
+    }
     requestAnimationFrame(() => {
       const target = window.__deepLinkedEventId
         ? document.querySelector(`.event-card[data-event-id="${CSS.escape(String(window.__deepLinkedEventId))}"]`)
