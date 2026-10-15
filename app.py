@@ -33,6 +33,7 @@ logging.basicConfig(level=logging.INFO)
 API_TOKEN = os.environ.get("BOT_TOKEN", "")
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
 TELEGRAM_APP_SHORT_NAME = os.environ.get("TELEGRAM_APP_SHORT_NAME", "").strip().strip("/")
+TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "Stylogames_bot").strip().lstrip("@")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 BUCKET = "files"
@@ -3627,27 +3628,14 @@ def notify_event_reminder_groups_sync(event):
         photo_url = (fresh_event.get("cover_url") or "").strip()
         sent_any = False
         for chat_id in group_ids:
-            if photo_url:
-                ok, err = telegram_api_post("sendPhoto", {
-                    "chat_id": chat_id,
-                    "photo": photo_url,
-                    "caption": text[:1024],
-                    "reply_markup": keyboard,
-                })
-            else:
-                ok, err = telegram_api_post("sendMessage", {
-                    "chat_id": chat_id,
-                    "text": text[:4096],
-                    "reply_markup": keyboard,
-                })
-
+            ok = _send_group_event_text_sync(chat_id, text, keyboard, photo_url=photo_url)
             if ok:
                 sent_any = True
                 logging.info("Нагадування про подію %s надіслано в групу %s", event_id, chat_id)
             else:
                 logging.error(
-                    "Не вдалось надіслати нагадування про подію %s в групу %s: %s",
-                    event_id, chat_id, err
+                    "Не вдалось надіслати нагадування про подію %s в групу %s",
+                    event_id, chat_id
                 )
         return sent_any
     except Exception:
@@ -4149,7 +4137,6 @@ def member_event_games_get(event_id):
             "picks": picks,
             "can_pick": event.get("status") == "scheduled" and _event_games_membership(event_id, user),
             "my_game_ids": [int(p["game_id"]) for p in picks if user and int(p["telegram_user_id"]) == int(user["id"])],
-            "max_per_user": 3,
         })
     except requests.RequestException:
         logging.exception("Помилка отримання ігор учасників події %s", event_id)
@@ -4177,18 +4164,8 @@ def member_event_games_add(event_id):
         if not _event_games_membership(event_id, user):
             return jsonify({"error": "rsvp_required"}), 403
         user_id = int(user["id"])
-        my_response = requests.get(
-            EVENT_GAME_PICKS_REST,
-            headers=HEADERS,
-            params={"event_id": f"eq.{event_id}", "telegram_user_id": f"eq.{user_id}", "select": "game_id"},
-            timeout=20,
-        )
-        my_response.raise_for_status()
-        my_games = {int(p["game_id"]) for p in my_response.json()}
-        if game_id in my_games:
-            return jsonify({"status": "already_selected"}), 200
-        if len(my_games) >= 3:
-            return jsonify({"error": "pick_limit"}), 409
+        # Жодного ліміту на кількість ігор від одного учасника. Унікальність
+        # (event_id,game_id,telegram_user_id) забезпечує сама база даних.
         game_response = requests.get(
             REST,
             headers=HEADERS,
@@ -4790,6 +4767,21 @@ def telegram_api_post(method, payload):
         return False, str(exc)
 
 
+def _event_mini_app_link(event_id):
+    """Відкриває подію всередині Telegram, щоб initData містив Telegram ID.
+
+    Для named Mini App задається TELEGRAM_APP_SHORT_NAME; інакше потрібна
+    налаштована Main Mini App в BotFather.
+    """
+    bot_name = TELEGRAM_BOT_USERNAME
+    if not bot_name:
+        return ""
+    base = f"https://t.me/{bot_name}"
+    if TELEGRAM_APP_SHORT_NAME:
+        base += f"/{TELEGRAM_APP_SHORT_NAME}"
+    return f"{base}?startapp=event_{int(event_id)}"
+
+
 def telegram_keyboard_payload(event_id, map_url=""):
     rows = [[
         {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
@@ -4801,12 +4793,9 @@ def telegram_keyboard_payload(event_id, map_url=""):
             "text": "📍 Google Maps",
             "url": map_url,
         }])
-    if WEBAPP_URL:
-        sep = "&" if "?" in WEBAPP_URL else "?"
-        rows.append([{
-            "text": "📅 Відкрити подію",
-            "url": f"{WEBAPP_URL}{sep}view=events&event={event_id}",
-        }])
+    app_link = _event_mini_app_link(event_id)
+    if app_link:
+        rows.append([{"text": "📅 Відкрити подію в Styloteka", "url": app_link}])
     return {"inline_keyboard": rows}
 
 
@@ -4984,6 +4973,56 @@ def notify_achievement_groups_async(display_name, achievement, level, xp):
     return None
 
 
+def _split_telegram_event_text(text, max_chars=3600):
+    """Надсилає увесь опис серією постів, зважаючи на UTF-16 ліміт Telegram.
+
+    Emoji можуть займати дві одиниці UTF-16, тому рахуємо їх окремо.
+    """
+    text = str(text or "")
+    if not text:
+        return [""]
+    chunks = []
+    while text:
+        units = 0
+        end = 0
+        for character in text:
+            weight = 2 if ord(character) > 0xFFFF else 1
+            if units + weight > max_chars:
+                break
+            units += weight
+            end += 1
+        if end == len(text):
+            chunks.append(text)
+            break
+        # Краще розбивати на межі абзацу/слова, але не губити роздільник.
+        break_at = text.rfind("\n", 0, end)
+        if break_at < end // 2:
+            break_at = text.rfind(" ", 0, end)
+        if break_at >= end // 2:
+            end = break_at + 1
+        chunks.append(text[:end])
+        text = text[end:]
+    return chunks
+
+
+def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None):
+    """Надсилає фото окремо й увесь текст поста частинами; кнопки на останній."""
+    if photo_url:
+        ok, err = telegram_api_post("sendPhoto", {"chat_id": chat_id, "photo": photo_url})
+        if not ok:
+            logging.warning("Фото події не надіслано в групу %s: %s", chat_id, err)
+    chunks = _split_telegram_event_text(text)
+    for index, part in enumerate(chunks):
+        payload = {"chat_id":chat_id,"text":part}
+        if index == len(chunks)-1:
+            payload["reply_markup"] = keyboard
+        ok, err = telegram_api_post("sendMessage", payload)
+        if not ok:
+            logging.error("Не надіслано частину %s/%s події в групу %s: %s", index+1, len(chunks), chat_id, err)
+            return False
+    return True
+
+
 def notify_groups_sync(event_id, photo_url=None):
     """Публікує подію в усіх активних групах напряму через Telegram Bot API."""
     try:
@@ -5003,26 +5042,13 @@ def notify_groups_sync(event_id, photo_url=None):
             return
 
         for chat_id in group_ids:
-            if photo_url:
-                ok, err = telegram_api_post("sendPhoto", {
-                    "chat_id": chat_id,
-                    "photo": photo_url,
-                    "caption": text[:1024],
-                    "reply_markup": keyboard,
-                })
-            else:
-                ok, err = telegram_api_post("sendMessage", {
-                    "chat_id": chat_id,
-                    "text": text[:4096],
-                    "reply_markup": keyboard,
-                })
-
+            ok = _send_group_event_text_sync(chat_id, text, keyboard, photo_url=photo_url)
             if ok:
                 logging.info("Подію %s успішно опубліковано в групі %s", event_id, chat_id)
             else:
                 logging.error(
-                    "Не вдалось опублікувати подію %s в групі %s: %s",
-                    event_id, chat_id, err
+                    "Не вдалось опублікувати подію %s в групі %s",
+                    event_id, chat_id
                 )
     except Exception:
         logging.exception("Не вдалось опублікувати групове сповіщення про подію")
@@ -5076,11 +5102,9 @@ def event_group_keyboard(event_id, map_url=""):
         rows.append([
             InlineKeyboardButton(text="📍 Google Maps", url=map_url)
         ])
-    if WEBAPP_URL:
-        sep = "&" if "?" in WEBAPP_URL else "?"
-        rows.append([
-            InlineKeyboardButton(text="📅 Відкрити подію", url=f"{WEBAPP_URL}{sep}view=events&event={event_id}")
-        ])
+    app_link = _event_mini_app_link(event_id)
+    if app_link:
+        rows.append([InlineKeyboardButton(text="📅 Відкрити подію в Styloteka", url=app_link)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -5120,7 +5144,7 @@ def format_group_event(event):
     lines.append(places)
     desc = (event.get("description") or "").strip()
     if desc:
-        lines.extend(["", desc[:500]])
+        lines.extend(["", desc])
     lines.extend(["", "Натисни кнопку нижче, щоб записатися."])
     return "\n".join(lines)
 
@@ -5141,19 +5165,22 @@ async def get_active_group_ids():
 
 
 async def notify_groups(event_id, photo_url=None):
-    """Публікує нову подію у всіх активних Telegram-групах."""
+    """Публікує подію повністю без обрізання довгого опису."""
     try:
         event = get_event_snapshot(event_id)
         if not event:
             return
-        text = format_group_event(event)
+        chunks = _split_telegram_event_text(format_group_event(event))
         keyboard = event_group_keyboard(event_id, _event_google_maps_url(event))
         for chat_id in await get_active_group_ids():
             try:
                 if photo_url:
-                    await bot.send_photo(chat_id, photo=photo_url, caption=text[:1024], reply_markup=keyboard)
-                else:
-                    await bot.send_message(chat_id, text[:4096], reply_markup=keyboard)
+                    try:
+                        await bot.send_photo(chat_id, photo=photo_url)
+                    except Exception:
+                        logging.warning("Фото події не завантажилось до групи %s", chat_id)
+                for i, part in enumerate(chunks):
+                    await bot.send_message(chat_id, part, reply_markup=keyboard if i == len(chunks)-1 else None)
             except Exception:
                 logging.exception("Не вдалось опублікувати подію в групі %s", chat_id)
     except Exception:
@@ -5170,20 +5197,52 @@ def notify_groups_async(event_id, photo_url=None):
 
 
 async def refresh_group_event_message(callback: CallbackQuery, event_id: int):
-    """Оновлює лічильник місць прямо в повідомленні групи після RSVP."""
+    """Оновлює лічильник RSVP у повідомленні з кнопками; опис не обрізає."""
     try:
         event = get_event_snapshot(event_id)
         if not event or not callback.message:
             return
-        text = format_group_event(event)
+        chunks = _split_telegram_event_text(format_group_event(event))
         keyboard = event_group_keyboard(event_id, _event_google_maps_url(event))
         if callback.message.photo:
-            await callback.message.edit_caption(caption=text[:1024], reply_markup=keyboard)
+            # Сумісність зі старими постами з кнопками під фото.
+            safe_caption = chunks[0][:950]
+            await callback.message.edit_caption(caption=safe_caption, reply_markup=keyboard)
+        elif len(chunks) > 1:
+            # Початкові абзаци вже опубліковані окремо: не переписуємо останній
+            # шматок зміщеним текстом після зміни лічильника місць.
+            await callback.message.edit_reply_markup(reply_markup=keyboard)
         else:
-            await callback.message.edit_text(text[:4096], reply_markup=keyboard)
+            await callback.message.edit_text(chunks[-1], reply_markup=keyboard)
     except Exception as exc:
-        # "message is not modified" та старі повідомлення не повинні ламати callback.
         logging.info("Не вдалося оновити повідомлення події: %s", exc)
+
+
+def _ensure_event_attendee_profile(telegram_user):
+    """Зберігає ідентичність через незмінний Telegram ID після групового RSVP."""
+    if not telegram_user:
+        return
+    uid = int(telegram_user.id)
+    name = " ".join(x for x in [telegram_user.first_name, telegram_user.last_name] if x).strip()
+    username = str(telegram_user.username or "").strip().lstrip("@").lower()
+    payload = {
+        "telegram_user_id": uid,
+        "username": username,
+        "display_name": name or username or "Гравець",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        resp = requests.post(
+            PROFILES_REST,
+            headers={**HEADERS, "Content-Type":"application/json", "Prefer":"resolution=merge-duplicates,return=minimal"},
+            params={"on_conflict":"telegram_user_id"},
+            json=payload,
+            timeout=20,
+        )
+        if not resp.ok:
+            logging.warning("Не вдалося синхронізувати профіль RSVP Telegram ID %s: %s", uid, resp.text[:200])
+    except requests.RequestException:
+        logging.exception("Помилка синхронізації профілю після RSVP")
 
 
 def telegram_rsvp_identity(user):
@@ -5347,18 +5406,19 @@ async def callback_event_go(callback: CallbackQuery):
             callback.from_user.id,
         )
         if existing:
+            if (existing.get("status") or "going") in {"going", "waitlist"}:
+                await asyncio.to_thread(_ensure_event_attendee_profile, callback.from_user)
             await callback.answer(
                 rsvp_locked_message(existing.get("status")),
                 show_alert=True,
             )
             return
 
-        status = add_event_rsvp(
-            event_id,
-            username,
-            display_name,
-            callback.from_user.id,
+        status = await asyncio.to_thread(
+            add_event_rsvp,
+            event_id, username, display_name, callback.from_user.id,
         )
+        await asyncio.to_thread(_ensure_event_attendee_profile, callback.from_user)
 
         if status == "waitlist":
             await callback.answer(

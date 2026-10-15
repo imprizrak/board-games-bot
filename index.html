@@ -6175,6 +6175,53 @@ document.addEventListener('click', event => {
 .event-pick-loading{padding:22px 6px;color:var(--muted);text-align:center}
 @media(max-width:360px){.event-pick-row{gap:7px}.event-pick-btn{min-width:75px;padding:7px 6px}.event-pick-sheet{padding-left:12px;padding-right:12px}}
 
+
+/* v4.3 — Авто-рамки винесені за фотографію, обличчя не перекривається. */
+.profile-hero[class*="frame-shop-"] .profile-avatar,
+.home-avatar[class*="frame-shop-"],
+.club-member-avatar[class*="frame-shop-"],
+.profile-shop-preview-avatar[class*="frame-shop-"]{
+  isolation:isolate;
+  overflow:visible!important;
+}
+.profile-hero[class*="frame-shop-"] .profile-avatar img,
+.home-avatar[class*="frame-shop-"] img,
+.club-member-avatar[class*="frame-shop-"] img,
+.profile-shop-preview-avatar[class*="frame-shop-"] img{
+  position:relative;
+  z-index:3;
+  object-fit:cover;
+  border-radius:50%;
+  overflow:hidden;
+}
+.profile-hero[class*="frame-shop-"] .profile-avatar::after,
+.home-avatar[class*="frame-shop-"]::after,
+.club-member-avatar[class*="frame-shop-"]::after,
+.profile-shop-preview-avatar[class*="frame-shop-"]::after{
+  -webkit-mask-image:radial-gradient(circle at center, transparent 0 79%, #000 82%);
+  mask-image:radial-gradient(circle at center, transparent 0 79%, #000 82%);
+  pointer-events:none;
+}
+/* Рамка глітч — окремий формат зі скругленим квадратом. */
+.profile-hero.frame-shop-void .profile-avatar::after,
+.home-avatar.frame-shop-void::after,
+.club-member-avatar.frame-shop-void::after,
+.profile-shop-preview-avatar.frame-shop-void::after{
+  -webkit-mask-image:radial-gradient(ellipse at center,transparent 0 72%,#000 82%);
+  mask-image:radial-gradient(ellipse at center,transparent 0 72%,#000 82%);
+}
+/* Опис події має розгортатися повністю, без обрізання рядків. */
+.event-card .ev-description{
+  overflow:visible!important;
+  max-height:none!important;
+  height:auto!important;
+  display:block!important;
+  -webkit-line-clamp:unset!important;
+  line-clamp:unset!important;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
 </style>
 </head>
 <body>
@@ -10997,24 +11044,24 @@ function renderEventMemberGamePicker() {
   }
   const rank=Array.from(grouped.values()).sort((a,b)=>b.users.length-a.users.length||a.name.localeCompare(b.name,'uk'));
   const names = eventGameNames(eventPicksActiveEvent||{});
-  const suggestNote=canPick ? `Твої пропозиції: ${mine.size} із ${Number(s.max_per_user)||3}. Натисни «Додати» біля гри.` : s.event?.status==='completed' ? 'Захід завершено: список доступний для перегляду.' : 'Щоб додавати ігри, спочатку натисни «Записатись» у картці події.';
+  const suggestNote=canPick ? `Ти обрав(ла) ${mine.size} ігор. Можна додавати скільки завгодно з бібліотеки.` : s.event?.status==='completed' ? 'Захід завершено: список доступний для перегляду.' : 'Щоб додавати ігри, спочатку натисни «Записатись» у картці події.';
   const picture=(game)=>game?.cover_url?`<img class="event-pick-cover" src="${escapeHtml(game.cover_url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'event-pick-cover',textContent:'🎲'}))">`:`<span class="event-pick-cover">🎲</span>`;
   const proposed=rank.length?rank.map(g=>{
     const game=gameMap.get(g.id);
     const chosen=mine.has(g.id);
-    return `<div class="event-pick-row">${picture(game)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name)}</div><div class="event-pick-row-meta">${g.users.length} ${g.users.length===1?'вибір':'виборів'} · ${escapeHtml(g.users.join(', '))}</div></div>${canPick?`<button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${g.id}" ${!chosen&&mine.size>=3?'disabled':''}>${chosen?'✓ Моє · прибрати':'Підтримати'}</button>`:''}</div>`;
+    return `<div class="event-pick-row">${picture(game)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name)}</div><div class="event-pick-row-meta">${g.users.length} ${g.users.length===1?'вибір':'виборів'} · ${escapeHtml(g.users.join(', '))}</div></div>${canPick?`<button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${g.id}" >${chosen?'✓ Моє · прибрати':'Підтримати'}</button>`:''}</div>`;
   }).join(''):`<div class="event-pick-muted">Поки жодної пропозиції. Стань першим!</div>`;
   const all=(allGames||[]).filter(g=>Number.isFinite(Number(g.id))&&Number(g.id)>0).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'uk'));
   const q=eventPicksSearchTerm.toLowerCase();
   const visible=all.filter(g=>!q||String(g.name||'').toLowerCase().includes(q)).slice(0,40);
   const options=visible.length?visible.map(g=>{
     const id=Number(g.id), chosen=mine.has(id);
-    return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick||(!chosen&&mine.size>=3)?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
+    return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
   }).join(''):`<div class="event-pick-muted">За пошуком нічого не знайдено.</div>`;
   root.innerHTML = `
     ${names.length?`<div class="event-pick-block"><div class="event-pick-section">📋 Ігри організатора</div><div class="event-pick-muted">${names.map(escapeHtml).join(' · ')}</div></div>`:''}
     <div class="event-pick-block"><div class="event-pick-section">🙌 Пропозиції учасників <span class="event-pick-count">${rank.length} ігор</span></div>${proposed}</div>
-    <div class="event-pick-block"><div class="event-pick-section">➕ Обрати настолку <span class="event-pick-count">${mine.size}/3</span></div><div class="event-pick-muted">${suggestNote}</div>${s.event?.status==='scheduled'?`<input id="eventPicksSearch" type="search" placeholder="🔎 Знайти гру в бібліотеці" value="${escapeHtml(eventPicksSearchTerm)}" autocomplete="off"><div id="eventPicksOptions">${options}</div>`:''}</div>
+    <div class="event-pick-block"><div class="event-pick-section">➕ Обрати настолку <span class="event-pick-count">${mine.size} вибрано</span></div><div class="event-pick-muted">${suggestNote}</div>${s.event?.status==='scheduled'?`<input id="eventPicksSearch" type="search" placeholder="🔎 Знайти гру в бібліотеці" value="${escapeHtml(eventPicksSearchTerm)}" autocomplete="off"><div id="eventPicksOptions">${options}</div>`:''}</div>
   `;
   const search=root.querySelector('#eventPicksSearch');
   search?.addEventListener('input',e=>{
@@ -11025,7 +11072,7 @@ function renderEventMemberGamePicker() {
     const filtered=all.filter(g=>String(g.name||'').toLowerCase().includes(qq)).slice(0,40);
     place.innerHTML=filtered.length?filtered.map(g=>{
       const id=Number(g.id), chosen=mine.has(id);
-      return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick||(!chosen&&mine.size>=3)?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
+      return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
     }).join(''):'<div class="event-pick-muted">Нічого не знайдено.</div>';
   });
   root.onclick=async(e)=>{
@@ -11041,7 +11088,7 @@ function renderEventMemberGamePicker() {
         {method:chosen?'DELETE':'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:chosen?undefined:JSON.stringify({game_id:gameId})});
       const data=await res.json().catch(()=>({}));
       if(!res.ok) {
-        const messages={rsvp_required:'Спочатку запишись на подію.',pick_limit:'Можна обрати не більше трьох ігор.',event_closed:'Захід уже завершено.',game_not_found:'Цієї гри вже немає в бібліотеці.',telegram_auth_required:'Відкрий Styloteka через Telegram.'};
+        const messages={rsvp_required:'Спочатку запишись на подію.',event_closed:'Захід уже завершено.',game_not_found:'Цієї гри вже немає в бібліотеці.',telegram_auth_required:'Відкрий Styloteka через Telegram.'};
         throw new Error(messages[data.error]||'Не вдалося зберегти вибір.');
       }
       await Promise.all([refreshEventMemberGames(), loadEvents()]);
@@ -12196,14 +12243,18 @@ document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click
 async function applyInitialDeepLink() {
   try {
     const params = new URLSearchParams(window.location.search);
-    const requestedView = params.get('view');
+    const telegramStartParam = String(
+      tg.initDataUnsafe?.start_param || params.get('tgWebAppStartParam') || ''
+    );
+    const eventMatch = telegramStartParam.match(/^event_(\d+)$/);
+    const requestedView = eventMatch ? 'events' : params.get('view');
     if (requestedView === 'profile') {
       showMainView('view-profile');
       await loadMyProfile();
       return;
     }
     if (requestedView !== 'events') return;
-    window.__deepLinkedEventId = params.get('event') || '';
+    window.__deepLinkedEventId = eventMatch ? eventMatch[1] : (params.get('event') || '');
     showMainView('view-events');
     await loadEvents();
     requestAnimationFrame(() => {
