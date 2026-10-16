@@ -1,11 +1,11 @@
-/* Styloteka v4.5: public read-only offline shell. Sensitive responses are never cached. */
+/* Styloteka v4.6: offline tools + public read-only library. Private responses are never cached. */
 'use strict';
-const VERSION = 'v45-20261016';
+const VERSION = 'v46-20261016';
 const SHELL = `styloteka-shell-${VERSION}`;
 const DATA = `styloteka-public-data-${VERSION}`;
 const MEDIA = 'styloteka-allowed-covers-v1';
 const SHELL_URLS = [
-  '/', '/offline', '/offline.html', '/offline.js', '/offline-bridge.js',
+  '/', '/offline', '/offline.html', '/offline.js', '/offline-tools.js', '/offline-bridge.js',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-512-maskable.png'
 ];
 const MEDIA_PLACEHOLDER = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="160" viewBox="0 0 256 160"><rect width="256" height="160" rx="16" fill="#202b43"/><text x="128" y="84" font-size="52" text-anchor="middle">🎲</text></svg>`;
@@ -34,7 +34,7 @@ function isPublicJson(url) {
 function isShellPath(url) {
   return url.origin === self.location.origin &&
     (url.pathname === '/' || url.pathname === '/offline' || url.pathname === '/offline.html' ||
-      url.pathname === '/offline.js' || url.pathname === '/offline-bridge.js' ||
+      url.pathname === '/offline.js' || url.pathname === '/offline-tools.js' || url.pathname === '/offline-bridge.js' ||
       url.pathname === '/manifest.webmanifest' || url.pathname.startsWith('/icons/'));
 }
 async function cachePublicResponse(cache, request, response, url) {
@@ -73,6 +73,11 @@ async function networkFirst(request, cacheName, url, time=9000) {
     }
     return (await cache.match(request,{ignoreSearch:cacheName===SHELL})) || resp;
   } catch (_) {
+    // Open Styloteka from Telegram while offline: prefer self-contained offline tools.
+    if (cacheName === SHELL && request.mode === 'navigate' && url.pathname === '/') {
+      const toolsPage = await caches.match('/offline.html');
+      if (toolsPage) return toolsPage;
+    }
     const cached = await cache.match(request,{ignoreSearch:cacheName===SHELL});
     if (cached) return cached;
     if (cacheName === DATA) return new Response('[]',{status:200,headers:{'Content-Type':'application/json','X-Styloteka-Offline-Empty':'1'}});

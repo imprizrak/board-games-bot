@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Styloteka">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/icon-192.png">
-<title>Styloteka — офлайн-бібліотека</title>
+<title>Styloteka — інструменти без інтернету</title>
 <style>
 :root{color-scheme:dark;--bg:#0c1221;--panel:#172238;--edge:#34415b;--text:#f3f5ff;--muted:#bac5da;--gold:#f1d28b;--green:#a9e1b3}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% -10%,#273d59 0,transparent 45%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;line-height:1.45}
@@ -21,21 +21,93 @@ button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;curso
 .stats{font-size:12px;color:#d3c28e;margin:8px 0 13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{min-width:0;background:linear-gradient(165deg,#1b2a44,#141d32);border:1px solid #384a64;border-radius:15px;overflow:hidden}.card-cover{aspect-ratio:16/10;width:100%;object-fit:cover;background:#253754}.card-art{aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;font-size:43px;background:linear-gradient(145deg,#30486b,#18243a)}.card-body{padding:12px}.card h3{font-size:14px;margin:0 0 6px;line-height:1.25;overflow-wrap:anywhere}.tag{font-size:11px;color:#d4c18e;margin-bottom:8px;line-height:1.45}.card-desc{font-size:12px;color:#b9c7d9;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.card-meta{font-size:11px;color:#cdd1db;margin-top:7px}.card-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:11px}
 .empty{border:1px dashed #65728c;background:#162136;border-radius:14px;padding:25px 18px;color:#c8d6e8;text-align:center;font-size:13px}.hidden{display:none!important}dialog{border:1px solid #5f7390;border-radius:18px;padding:0;max-width:min(92vw,590px);width:100%;max-height:85vh;overflow:auto;background:#172238;color:#f3f5ff;box-shadow:0 20px 80px #000b}dialog::backdrop{background:#000a}.dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 17px 8px}.dialog-head h2{font-size:19px;margin:0}.dialog-body{font-size:13px;color:#e2e8f6;line-height:1.65;padding:0 17px 20px;overflow-wrap:anywhere;white-space:pre-wrap}.dialog-close{font-size:20px;padding:0 5px;min-width:34px;min-height:34px;border:1px solid #53657c;background:#25344c;color:#fff;border-radius:9px}.footer{font-size:11px;color:#9faec7;margin:24px 0 0;border-top:1px solid #34415b;padding-top:16px}
 @media(min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.brand{font-size:25px}}@media(max-width:370px){.wrap{padding-left:11px;padding-right:11px}.grid{gap:8px}.card-body{padding:10px}.card h3{font-size:13px}.head{gap:9px}.brand{font-size:20px}}
+
+/* Styloteka v4.6: local boardgame tools */
+.tabs{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.tab{font-size:12px;padding:11px 6px;white-space:normal}
+.tool-switches{gap:7px;margin:16px 0 12px}.tool-switch{flex:1 1 auto;font-size:12px;min-height:43px;border-radius:11px}.tool-switch.active{border-color:#f4d991;background:#f4d991;color:#15213b}
+.tool-view{border:1px solid #394a63;border-radius:16px;padding:16px;background:linear-gradient(150deg,#1b2943,#111b30);min-width:0}
+.tool-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:9px;margin:0 0 16px}.tool-heading h2{font-size:19px;line-height:1.2;margin:0 0 4px}.tool-heading p{margin:0;color:#b8c7db;font-size:12px;line-height:1.4}.local-badge{font-size:10px;white-space:nowrap;background:#243d32;border:1px solid #416b57;color:#c2ffda;border-radius:99px;padding:5px 8px;font-weight:800;flex-shrink:0}
+.score-list{display:flex;flex-direction:column;gap:10px}.score-player{display:grid;grid-template-columns:minmax(0,1fr) 46px 52px 46px 32px;align-items:center;gap:7px;padding:10px 9px;border-radius:14px;border:1px solid #435572;background:#152239;min-width:0}
+.score-name{font-size:13px;background:#0f192c;border:1px solid #495b78;border-radius:9px;color:#fff;width:100%;min-width:0;padding:10px 8px}
+.score-num{font-size:22px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}.score-btn{display:flex;justify-content:center;align-items:center;min-height:44px;border:1px solid #586c86;background:#263958;border-radius:11px;color:white;font-size:24px;font-weight:800}.score-btn.plus{background:#254b3b;border-color:#498465}.score-del{font-size:17px;min-height:42px;border:0;background:transparent;color:#f6b3af}
+.tool-actions{margin:13px 0 0}.tool-actions .btn{flex:1 1 auto}.tool-note{color:#b0bfd5;font-size:11px;line-height:1.55;margin:12px 0 2px}
+.picker-checks{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.pick-check{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:9px;background:#223653;border:1px solid #526583;font-size:12px}.pick-check input{accent-color:#f2ce85;width:16px;height:16px}
+.picker-pad{position:relative;height:280px;touch-action:none;overflow:hidden;user-select:none;background:radial-gradient(circle at 50% 45%,#283d60,#0b1425);border:2px dashed #7184a3;border-radius:18px;display:flex;align-items:center;justify-content:center}
+.picker-pad-hint{pointer-events:none;text-align:center;color:#c8d7ec;font-size:13px;line-height:1.6;padding:18px;max-width:260px}
+.picker-dot{position:absolute;transform:translate(-50%,-50%);width:78px;height:78px;border-radius:50%;background:var(--dot,#edc766);border:5px solid #ffffff9c;box-shadow:0 8px 22px #0009;display:flex;align-items:center;justify-content:center;color:#152139;font-weight:900;font-size:11px;line-height:1.2;text-align:center;padding:6px;z-index:2;pointer-events:none}
+.picker-dot.winner-dot{box-shadow:0 0 0 9px #ffffff44,0 0 34px #f6df7abf;animation:pulseWinner .6s ease-in-out 2}
+@keyframes pulseWinner{50%{scale:1.08}}.winner{background:#0c1a2b;padding:11px 12px;margin:12px 0;border-radius:11px;text-align:center;border:1px solid #415672;font-size:13px;font-weight:800;min-height:44px}
+.dice-choices{display:flex;flex-wrap:wrap;gap:8px}.die-choice{border-radius:10px;border:1px solid #566983;background:#233452;color:white;font-weight:800;font-size:13px;min-width:54px;min-height:46px}.die-choice.selected{color:#1a233a;background:#f0d28a;border-color:#f0d28a}
+.dice-result{display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,#334f72,#152239);margin:15px 0;border:1px solid #536985;border-radius:17px;min-height:145px;font-size:66px;font-weight:900;font-variant-numeric:tabular-nums}
+.flip-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.flip-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;background:#14233a;border:1px solid #435671;border-radius:12px;padding:10px;margin-bottom:8px}.flip-row strong{font-variant-numeric:tabular-nums;font-size:22px;text-align:right;color:#f2d18a}.flip-points{font-size:11px;color:#aabed6}.flip-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.flip-controls label{font-size:12px;color:#c8d8ed;display:flex;flex-direction:column;gap:5px}.flip-controls label .select,.flip-controls input{width:100%;min-width:0}.flip-controls .flip-check{flex-direction:row;align-items:center;gap:8px;background:#1d2b45;border:1px solid #415774;border-radius:9px;padding:10px}
+.turn-clock{font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:.07em;text-align:center;color:#f4d68e;background:radial-gradient(circle,#2d425e,#111b2d);border:1px solid #3e5676;border-radius:18px;padding:18px;margin:12px 0;font-size:clamp(46px,12vw,80px)}.turn-clock.time-up{color:#ffb5a9}
+.timer-set{display:flex;gap:12px}.timer-set label{display:flex;flex:1;flex-direction:column;gap:5px;color:#baccdd;font-size:12px}.timer-set input{width:100%;background:#121d31;border:1px solid #536b86;border-radius:10px;color:white;padding:10px;font:inherit}
+@media(max-width:380px){.tool-view{padding:12px}.score-player{grid-template-columns:minmax(0,1fr) 38px 43px 38px 26px;gap:4px;padding:7px 6px}.score-btn{min-height:41px}.score-num{font-size:19px}.score-name{font-size:12px;padding:9px 5px}.tool-heading h2{font-size:17px}.local-badge{font-size:9px}.picker-pad{height:245px}}
+
 </style>
 </head><body>
 <main class="wrap">
-<header class="head"><img src="/icons/icon-192.png" class="logo" alt="Styloteka"><div class="head-copy"><h1 class="brand">STYLOTEKA</h1><p class="sub">Твої настолки та події — завжди під рукою</p></div></header>
+<header class="head"><img src="/icons/icon-192.png" class="logo" alt="Styloteka"><div class="head-copy"><h1 class="brand">STYLOTEKA</h1><p class="sub">Кубики, вибір гравця, лічильники й настолки — навіть офлайн</p></div></header>
 <div class="status" id="connStatus" role="status" aria-live="polite">Перевіряємо з’єднання…</div>
-<section class="hero"><h2>📚 Офлайн-бібліотека</h2><p>Збережи каталог настолок і події, поки є інтернет. Потім відкривай їх навіть без мережі — з іконки на екрані телефона.</p>
+<section class="hero"><h2>🎲 Грай без інтернету</h2><p>Обирай гравців, веди рахунок, кидай кубики й запускай таймер. Усе працює на цьому телефоні та зберігається автоматично. Бібліотека й події також доступні після завантаження.</p>
  <div class="actions"><button type="button" class="btn" id="syncBtn">↻ Оновити дані</button><button type="button" class="btn secondary" id="saveCoversBtn">🖼️ Зберегти обкладинки</button><button type="button" class="btn secondary" id="installBtn" hidden>📲 Встановити</button></div>
  <div id="syncMessage" class="notice" aria-live="polite"></div>
  <div class="install-help" id="installHelp">На iPhone: відкрий цю сторінку в Safari → Поділитися → «На початковий екран». На Android: меню браузера → «Встановити застосунок».</div>
 </section>
-<div class="tabs" role="tablist" aria-label="Розділи бібліотеки"><button type="button" class="tab" id="tabGames" role="tab" aria-selected="true" aria-controls="panelGames">🎲 Настолки <span id="gamesCount"></span></button><button type="button" class="tab" id="tabEvents" role="tab" aria-selected="false" aria-controls="panelEvents">📅 Події <span id="eventsCount"></span></button></div>
-<section id="panelGames" role="tabpanel" aria-labelledby="tabGames"><div class="toolbar"><input class="search" id="searchGames" type="search" autocomplete="off" placeholder="Пошук за назвою, тегами або описом" aria-label="Пошук гри"><button type="button" class="btn secondary" id="randomBtn">🎲 Випадкова</button></div><div class="stats" id="gamesMeta">Готуємо бібліотеку…</div><div class="grid" id="gamesGrid"></div></section>
+<div class="tabs" role="tablist" aria-label="Розділи Styloteka"><button type="button" class="tab" id="tabTools" role="tab" aria-selected="true" aria-controls="panelTools">🎲 Інструменти</button><button type="button" class="tab" id="tabGames" role="tab" aria-selected="false" aria-controls="panelGames">📚 Настолки <span id="gamesCount"></span></button><button type="button" class="tab" id="tabEvents" role="tab" aria-selected="false" aria-controls="panelEvents">📅 Події <span id="eventsCount"></span></button></div>
+<section id="panelTools" role="tabpanel" aria-labelledby="tabTools">
+ <div class="toolbar tool-switches" role="group" aria-label="Ігрові інструменти">
+  <button type="button" class="btn secondary tool-switch active" data-tool="score" aria-pressed="true">🏆 Лічильники</button>
+  <button type="button" class="btn secondary tool-switch" data-tool="picker" aria-pressed="false">👆 Хто перший?</button>
+  <button type="button" class="btn secondary tool-switch" data-tool="dice" aria-pressed="false">🎲 Кубики</button>
+  <button type="button" class="btn secondary tool-switch" data-tool="flip" aria-pressed="false">7️⃣ Flip Seven</button>
+  <button type="button" class="btn secondary tool-switch" data-tool="timer" aria-pressed="false">⏱️ Таймер</button>
+ </div>
+ <div class="tool-view" id="tool-score">
+   <div class="tool-heading"><div><h2>Лічильники очок</h2><p>Створи гравців, змінюй очки та повертай попередній хід.</p></div><span class="local-badge">На пристрої</span></div>
+   <div id="offlineCounterRows" class="score-list"></div>
+   <div class="toolbar tool-actions"><button class="btn" id="offlineAddPlayer" type="button">+ Додати гравця</button><button class="btn secondary" id="offlineUndoScore" type="button">↶ Скасувати</button><button class="btn secondary" id="offlineResetScore" type="button">Скинути очки</button></div>
+   <p class="tool-note" id="scoreSavedText">Рахунок зберігається автоматично.</p>
+ </div>
+ <div class="tool-view hidden" id="tool-picker">
+   <div class="tool-heading"><div><h2>Хто починає гру?</h2><p>Вибери гравців або покладіть кілька пальців на поле.</p></div><span class="local-badge">Без мережі</span></div>
+   <div id="pickerPlayerChecks" class="picker-checks"></div>
+   <div id="offlinePickerArea" class="picker-pad" role="group" aria-label="Поле вибору першого гравця">
+     <div class="picker-pad-hint" id="offlinePickerHint">Покладіть одночасно 2+ пальці на екран і утримуйте їх 2 секунди</div>
+   </div>
+   <div id="pickerWinner" class="winner" role="status" aria-live="polite">Очікуємо гравців…</div>
+   <div class="toolbar tool-actions"><button class="btn" type="button" id="offlinePickRandom">🎲 Обрати зі списку</button><button class="btn secondary" type="button" id="offlinePickReset">Спробувати ще</button></div>
+ </div>
+ <div class="tool-view hidden" id="tool-dice">
+   <div class="tool-heading"><div><h2>Кубики</h2><p>Вибери потрібний кубик і натисни «Кинути».</p></div><span class="local-badge">Без мережі</span></div>
+   <div id="diceButtons" class="dice-choices"></div><div class="dice-result" aria-live="polite" id="offlineDiceResult">🎲</div>
+   <div class="toolbar tool-actions"><button class="btn" id="offlineRoll" type="button">Кинути кубик</button><button class="btn secondary" id="offlineClearRolls" type="button">Очистити історію</button></div><div class="tool-note" id="diceHistory">Обери кубик.</div>
+ </div>
+ <div class="tool-view hidden" id="tool-flip">
+   <div class="tool-heading"><div><h2>Flip Seven · рахунок</h2><p>Нараховуй очки по раундах; результати зберігаються автоматично.</p></div><span class="local-badge">На пристрої</span></div>
+   <div class="flip-top"><strong id="flipRoundLabel">Раунд 1</strong><button class="btn secondary small" type="button" id="flipAddPlayer">+ Гравець</button></div>
+   <div id="flipPlayers" class="score-list"></div>
+   <div class="flip-controls">
+     <label>Гравець <select class="select" id="flipTarget"></select></label>
+     <label>Очки раунду <input class="search" id="flipInput" type="number" inputmode="numeric" min="0" max="5000" value="0"></label>
+     <label class="flip-check"><input type="checkbox" id="flipDouble"> ×2</label>
+     <label class="flip-check"><input type="checkbox" id="flipBonus"> +15 (Flip 7)</label>
+   </div>
+   <div class="toolbar tool-actions"><button class="btn" id="flipCommit" type="button">Записати очки</button><button class="btn secondary" id="flipBust" type="button">Перебір (0)</button><button class="btn secondary" id="flipRoundEnd" type="button">Завершити раунд</button><button class="btn secondary" id="flipUndo" type="button">↶ Скасувати</button></div>
+   <p class="tool-note">Записуй очки для кожного гравця, потім завершуй раунд. ×2 застосовується до введених очок, потім додається бонус +15.</p>
+ </div>
+ <div class="tool-view hidden" id="tool-timer">
+   <div class="tool-heading"><div><h2>Таймер ходу</h2><p>Працює без мережі. Можна призупинити або скинути.</p></div><span class="local-badge">Без мережі</span></div>
+   <div id="turnClock" class="turn-clock" aria-live="off">02:00</div>
+   <div class="timer-set"><label>Хвилин <input id="turnMinutes" type="number" inputmode="numeric" min="0" max="180" value="2"></label><label>Секунд <input id="turnSeconds" type="number" inputmode="numeric" min="0" max="59" value="0"></label></div>
+   <div class="toolbar tool-actions"><button class="btn" type="button" id="turnStart">▶ Старт</button><button class="btn secondary" type="button" id="turnPause">Пауза</button><button class="btn secondary" type="button" id="turnReset">Скинути</button></div>
+ </div>
+ <p class="tool-note privacy-note">Офлайн-інструменти не нараховують XP або стілси та не змінюють серверні профілі учасників. Імена й очки зберігаються тільки на цьому телефоні.</p>
+</section>
+<section id="panelGames" role="tabpanel" aria-labelledby="tabGames" class="hidden"><div class="toolbar"><input class="search" id="searchGames" type="search" autocomplete="off" placeholder="Пошук за назвою, тегами або описом" aria-label="Пошук гри"><button type="button" class="btn secondary" id="randomBtn">🎲 Випадкова</button></div><div class="stats" id="gamesMeta">Готуємо бібліотеку…</div><div class="grid" id="gamesGrid"></div></section>
 <section id="panelEvents" role="tabpanel" aria-labelledby="tabEvents" class="hidden"><div class="toolbar"><input class="search" id="searchEvents" type="search" autocomplete="off" placeholder="Знайти подію" aria-label="Пошук події"><select class="select" id="eventScope" aria-label="Тип подій"><option value="upcoming">Майбутні</option><option value="history">Історія</option></select></div><div class="stats" id="eventsMeta">Готуємо події…</div><div class="grid" id="eventsGrid"></div></section>
 <dialog id="detailDialog"><div class="dialog-head"><h2 id="detailTitle">Деталі</h2><button type="button" class="dialog-close" aria-label="Закрити" id="detailClose">×</button></div><div class="dialog-body" id="detailBody"></div></dialog>
-<p class="footer">Офлайн-режим працює лише з раніше збереженими даними. Інформація про місця й учасників може змінитися. Запис, голосування, XP, магазин, правила за зовнішніми посиланнями та оплата monobank потребують інтернету й Telegram-авторизації. Особисті дані користувачів не кешуються.</p>
+<p class="footer">Бібліотека й події доступні лише після попереднього збереження. Інструменти працюють без них. Інформація про місця й учасників може змінитися. Лічильники, вибір гравця, кубики, Flip Seven та таймер працюють локально. Запис на події, XP, магазин та оплата monobank потребують інтернету й Telegram-авторизації. Профілі Telegram та платіжні дані не кешуються; введені вручну імена гравців залишаються на цьому пристрої.</p>
 </main>
-<script src="/offline.js"></script>
+<script src="/offline.js"></script><script src="/offline-tools.js"></script>
 </body></html>

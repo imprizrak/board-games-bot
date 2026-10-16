@@ -3,7 +3,7 @@
   'use strict';
   const K = {games:'styloteka_public_games_offline_v45',upcoming:'styloteka_public_events_offline_v45_upcoming',history:'styloteka_public_events_offline_v45_history'};
   const $ = id=>document.getElementById(id);
-  const state={games:[],upcoming:[],history:[],savedAt:{},active:'games',scope:'upcoming',deferredInstall:null};
+  const state={games:[],upcoming:[],history:[],savedAt:{},active:'tools',scope:'upcoming',deferredInstall:null};
   const storageGet = key=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}};
   const storageSet=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));return true}catch{return false}};
   const safeText=s=>String(s??'');
@@ -112,8 +112,10 @@
   }
   const selectTab=kind=>{
     state.active=kind;
+    $('tabTools').setAttribute('aria-selected',String(kind==='tools'));
     $('tabGames').setAttribute('aria-selected',String(kind==='games'));
     $('tabEvents').setAttribute('aria-selected',String(kind==='events'));
+    $('panelTools').classList.toggle('hidden',kind!=='tools');
     $('panelGames').classList.toggle('hidden',kind!=='games');
     $('panelEvents').classList.toggle('hidden',kind!=='events');
   };
@@ -121,6 +123,7 @@
     hydrate();render();
     $('syncBtn').addEventListener('click',sync);$('saveCoversBtn').addEventListener('click',saveCovers);
     $('searchGames').addEventListener('input',renderGames);$('searchEvents').addEventListener('input',renderEvents);
+    $('tabTools').addEventListener('click',()=>selectTab('tools'));
     $('tabGames').addEventListener('click',()=>selectTab('games'));$('tabEvents').addEventListener('click',()=>selectTab('events'));
     $('eventScope').addEventListener('change',e=>{state.scope=e.target.value;renderEvents()});
     $('randomBtn').addEventListener('click',()=>{
