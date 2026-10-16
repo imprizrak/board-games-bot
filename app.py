@@ -522,6 +522,47 @@ def index():
     return response
 
 
+
+# Styloteka offline-first PWA: public, read-only shell and assets only.
+@app.route("/offline")
+@app.route("/offline.html")
+def offline_library():
+    response = send_from_directory(".", "offline.html", conditional=False)
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/manifest.webmanifest")
+def pwa_manifest():
+    response = send_from_directory(".", "manifest.webmanifest", mimetype="application/manifest+json")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
+@app.route("/sw.js")
+def pwa_service_worker():
+    response = send_from_directory(".", "sw.js", mimetype="text/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/offline.js")
+@app.route("/offline-bridge.js")
+def pwa_js_assets():
+    filename = request.path.lstrip("/")
+    response = send_from_directory(".", filename, mimetype="text/javascript")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/icons/<filename>")
+def pwa_icon_assets(filename):
+    if filename not in {"icon-192.png", "icon-512.png", "icon-512-maskable.png"}:
+        return jsonify({"error": "not_found"}), 404
+    return send_from_directory("icons", filename, mimetype="image/png")
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"}), 200

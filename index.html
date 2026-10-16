@@ -4,11 +4,37 @@
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Бібліотека настільних ігор</title>
+<title>Styloteka — настільні ігри</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#101526">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Styloteka">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<script src="/offline-bridge.js" defer></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+/* Якщо Telegram SDK недоступний, не блокуємо завантаження публічної бібліотеки.
+   Авторизований доступ НЕ імітується: initData завжди порожні. */
+if (!window.Telegram?.WebApp) {
+  const noop = () => {};
+  window.Telegram = window.Telegram || {};
+  window.Telegram.WebApp = {
+    initData: '', initDataUnsafe: {}, ready: noop, expand: noop,
+    onEvent: noop, exitFullscreen: noop, requestFullscreen: noop,
+    showAlert: (s) => window.alert(String(s || '')),
+    showConfirm: (s, cb) => { const answer = window.confirm(String(s || '')); if (typeof cb === 'function') cb(answer); },
+    openLink: (url) => { if (typeof url === 'string' && /^https:\/\//.test(url)) window.open(url, '_blank', 'noopener'); },
+    HapticFeedback: {impactOccurred:noop, selectionChanged:noop, notificationOccurred:noop},
+    MainButton: {show:noop,hide:noop,setText:noop,onClick:noop,offClick:noop,enable:noop,disable:noop},
+  };
+}
+</script>
+
 <script>
 
 /* ==================== ЛОВИ МОНЕТИ · COIN RUSH v2 ==================== */
@@ -6230,9 +6256,27 @@ document.addEventListener('click', event => {
 #eventPriceMode{display:block;width:100%;min-height:44px;border-radius:12px}
 #eventPriceAmountRow input{width:100%;box-sizing:border-box}
 
+
+/* Styloteka v4.5: PWA / offline entry */
+.styloteka-offline-entry{display:flex;align-items:center;gap:10px;min-width:0;padding:12px 13px;border-radius:14px;margin:11px 0 5px;background:linear-gradient(100deg,rgba(75,105,156,.16),rgba(27,35,55,.6));border:1px solid rgba(158,181,225,.22)}
+.styloteka-offline-entry-icon{font-size:23px;flex:0 0 auto}
+.styloteka-offline-entry-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.styloteka-offline-entry-copy strong{font-size:12px;font-weight:800;color:#ecf3ff;line-height:1.25}
+.styloteka-offline-entry-copy small{font-size:10px;line-height:1.4;color:#bac4d8}
+.styloteka-offline-entry a{color:#f4d789;border:1px solid rgba(244,215,137,.32);font-size:10px;font-weight:800;padding:9px 10px;border-radius:10px;flex:none;text-decoration:none}
+.styloteka-offline-ribbon{position:relative;z-index:2000;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px max(12px,env(safe-area-inset-right,0px));background:#40301f;border-bottom:1px solid #937146;color:#ffe7c0;font-weight:700;font-size:11px;line-height:1.4}
+.styloteka-offline-ribbon[hidden]{display:none!important}
+.styloteka-offline-ribbon a{white-space:nowrap;color:#ffe1a5;font-size:10px;text-decoration:underline}
+@media(max-width:340px){.styloteka-offline-entry{flex-wrap:wrap}.styloteka-offline-entry a{margin-left:30px}}
+
 </style>
 </head>
 <body>
+<div id="stylotekaOfflineRibbon" class="styloteka-offline-ribbon" role="status" aria-live="polite" hidden>
+  <span>📴 Немає з’єднання — доступні тільки збережені дані. Запис, магазин і платежі працюють онлайн.</span>
+  <a href="/offline">Офлайн-бібліотека →</a>
+</div>
+
 
 
 <!-- ==================== ВКЛАДКА: ГОЛОВНА ==================== -->
@@ -6268,6 +6312,12 @@ document.addEventListener('click', event => {
       <div class="mmorpg-corner mmorpg-corner-tl"></div>
       <div class="mmorpg-corner mmorpg-corner-br"></div>
     </div>
+
+<div class="styloteka-offline-entry" id="stylotekaOfflineEntry">
+  <div class="styloteka-offline-entry-icon" aria-hidden="true">📚</div>
+  <div class="styloteka-offline-entry-copy"><strong>Бібліотека без інтернету</strong><small>Завантаж настолки й події на телефон заздалегідь</small></div>
+  <a href="/offline" target="_blank" rel="noopener" aria-label="Відкрити офлайн-бібліотеку">Відкрити ↗</a>
+</div>
 
     <section class="steam-section">
       <div class="steam-section-head">
@@ -7773,13 +7823,14 @@ async function loadGames(force = false) {
       const data = await res.json();
       allGames = Array.isArray(data) ? data : [];
       gamesLoadedAt = Date.now();
-      try { sessionStorage.setItem('styloteka_games_cache_v1', JSON.stringify(allGames)); } catch (_) {}
+      try { sessionStorage.setItem('styloteka_games_cache_v1', JSON.stringify(allGames)); localStorage.setItem('styloteka_public_games_offline_v45', JSON.stringify({savedAt:Date.now(),items:allGames})); } catch (_) {}
     } catch (e) {
       console.error("Не вдалося завантажити бібліотеку ігор", e);
       if (!allGames.length) {
         try {
           const cached = JSON.parse(sessionStorage.getItem('styloteka_games_cache_v1') || '[]');
           if (Array.isArray(cached)) allGames = cached;
+          if (!allGames.length) { const saved = JSON.parse(localStorage.getItem('styloteka_public_games_offline_v45') || 'null'); if (Array.isArray(saved?.items)) allGames = saved.items; }
         } catch (_) {}
       }
       if (!allGames.length) {
@@ -8281,9 +8332,23 @@ async function loadEvents(mode = eventsMode) {
   document.querySelectorAll('.events-subtab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.eventsMode === eventsMode));
   try {
     const res = await fetch(`/api/events?scope=${encodeURIComponent(eventsMode)}`);
-    lastEventsData = await res.json();
+    if (!res.ok) throw new Error('events_http_' + res.status);
+    const responseData = await res.json();
+    lastEventsData = Array.isArray(responseData) ? responseData : [];
+    try {
+      const publicSnapshot = lastEventsData.map(ev => ({
+        id:ev.id,title:ev.title,event_date:ev.event_date,event_time:ev.event_time,
+        description:ev.description,game_name:ev.game_name,game_names:ev.game_names,
+        cover_url:ev.cover_url,location_text:ev.location_text,price_kop:ev.price_kop,
+        max_participants:ev.max_participants,status:ev.status
+      }));
+      localStorage.setItem('styloteka_public_events_offline_v45_'+eventsMode, JSON.stringify({savedAt:Date.now(),items:publicSnapshot}));
+    } catch (_) {}
   } catch (e) {
-    lastEventsData = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('styloteka_public_events_offline_v45_'+eventsMode)||'null');
+      lastEventsData = Array.isArray(saved?.items) ? saved.items : [];
+    } catch (_) { lastEventsData = []; }
   }
   renderEvents(lastEventsData);
 }
