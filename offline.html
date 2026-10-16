@@ -52,6 +52,9 @@ button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;curso
 <section class="hero"><h2>🎲 Грай без інтернету</h2><p>Обирай гравців, веди рахунок, кидай кубики й запускай таймер. Усе працює на цьому телефоні та зберігається автоматично. Бібліотека й події також доступні після завантаження.</p>
  <div class="actions"><button type="button" class="btn" id="syncBtn">↻ Оновити дані</button><button type="button" class="btn secondary" id="saveCoversBtn">🖼️ Зберегти обкладинки</button><button type="button" class="btn secondary" id="installBtn" hidden>📲 Встановити</button></div>
  <div id="syncMessage" class="notice" aria-live="polite"></div>
+ <div id="offlineReady" role="status" aria-live="polite" class="status offline" style="margin-top:12px">⏳ Перевіряємо офлайн-режим…</div>
+ <div style="margin-top:10px"><button type="button" class="btn secondary" id="prepareOfflineBtn">⬇️ Підготувати офлайн-запуск</button></div>
+ <p class="install-help"><strong>Важливо для iPhone:</strong> додай Styloteka з Safari на початковий екран, потім <strong>відкрий саме встановлену іконку з інтернетом</strong> та дочекайся зеленого повідомлення «Готово для офлайн». Лише після цього вмикай авіарежим. Не використовуй звичайний ярлик адреси головного бота.</p>
  <div class="install-help" id="installHelp">На iPhone: відкрий цю сторінку в Safari → Поділитися → «На початковий екран». На Android: меню браузера → «Встановити застосунок».</div>
 </section>
 <div class="tabs" role="tablist" aria-label="Розділи Styloteka"><button type="button" class="tab" id="tabTools" role="tab" aria-selected="true" aria-controls="panelTools">🎲 Інструменти</button><button type="button" class="tab" id="tabGames" role="tab" aria-selected="false" aria-controls="panelGames">📚 Настолки <span id="gamesCount"></span></button><button type="button" class="tab" id="tabEvents" role="tab" aria-selected="false" aria-controls="panelEvents">📅 Події <span id="eventsCount"></span></button></div>

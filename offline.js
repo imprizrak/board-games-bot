@@ -119,6 +119,57 @@
     $('panelGames').classList.toggle('hidden',kind!=='games');
     $('panelEvents').classList.toggle('hidden',kind!=='events');
   };
+
+  const VERSION = 'v47-20261016';
+  const OFFLINE_SHELL = `styloteka-shell-${VERSION}`;
+  let isPreparing = false;
+  function readyMessage(text, success) {
+    const el=$('offlineReady');
+    el.textContent=text;
+    el.classList.toggle('offline',!success);
+    // Do not claim "ready" unless all critical cached files were verified.
+  }
+  async function checkPrepared() {
+    if(!('caches' in window))return false;
+    const cache=await caches.open(OFFLINE_SHELL);
+    const files=['/offline','/offline.html','/offline.js','/offline-tools.js'];
+    return (await Promise.all(files.map(path=>cache.match(new URL(path,location.origin).href)))).every(Boolean);
+  }
+  async function prepareOffline(force) {
+    if(isPreparing)return;
+    const btn=$('prepareOfflineBtn');
+    if(!navigator.onLine) {
+      let cached=false;
+      try{cached=await checkPrepared()}catch(_){}
+      readyMessage(cached?'✅ Офлайн-файли збережено — ігрові інструменти доступні.':'⚠️ Офлайн-файли ще не збережені. Підключи інтернет, відкрий іконку і натисни «Підготувати офлайн-запуск».',cached);
+      return;
+    }
+    if(!('serviceWorker' in navigator)||!window.isSecureContext) {
+      readyMessage('⚠️ Цей режим браузера не підтримує встановлення офлайн-застосунку. Відкрий посилання у Safari.',false);
+      return;
+    }
+    isPreparing=true;btn.disabled=true;
+    readyMessage('⏳ Зберігаємо файли інструментів на телефон…',false);
+    try {
+      const registration=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+      if(force)await registration.update();
+      const active=await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),16000))
+      ]);
+      if(!active.active)throw new Error('worker not active');
+      // iOS can take a moment to commit cache on first install.
+      let ok=false;
+      for(let n=0;n<9;n++) {
+        if(await checkPrepared()){ok=true;break}
+        await new Promise(resolve=>setTimeout(resolve,450));
+      }
+      readyMessage(ok?'✅ Готово для офлайн! Можна вимкнути інтернет і користуватися інструментами.':'⚠️ Кеш іще не готовий. Натисни «Підготувати офлайн-запуск» ще раз, не вимикаючи інтернет.',ok);
+    }catch(error){
+      readyMessage('⚠️ Не вдалося підготувати офлайн-режим. Перевір інтернет і повтори. ('+String(error?.message||'помилка')+')',false);
+    }finally{isPreparing=false;btn.disabled=false}
+  }
+
   function init(){
     hydrate();render();
     $('syncBtn').addEventListener('click',sync);$('saveCoversBtn').addEventListener('click',saveCovers);
@@ -136,7 +187,8 @@
     window.addEventListener('online',()=>{status();sync()});window.addEventListener('offline',()=>{status();msg('Офлайн: показуємо збережені дані.')});
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();state.deferredInstall=e;$('installBtn').hidden=false});
     $('installBtn').addEventListener('click',async()=>{const p=state.deferredInstall;if(!p)return;await p.prompt();state.deferredInstall=null;$('installBtn').hidden=true});
-    if('serviceWorker' in navigator&&window.isSecureContext){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(e=>console.warn('PWA offline unavailable',e))}
+    $('prepareOfflineBtn').addEventListener('click',()=>prepareOffline(true));
+    prepareOffline(false);
     if(navigator.onLine)sync();else msg('Офлайн: показуємо дані, збережені раніше.');
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
