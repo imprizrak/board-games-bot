@@ -3676,7 +3676,11 @@ def notify_event_reminder_groups_sync(event):
         photo_url = (fresh_event.get("cover_url") or "").strip()
         sent_any = False
         for chat_id in group_ids:
-            ok = _send_group_event_text_sync(chat_id, text, keyboard, photo_url=photo_url)
+            ok = _send_group_event_text_sync(
+                chat_id, text, keyboard,
+                photo_url=photo_url,
+                summary="⏰ Нагадування: подія вже завтра!\n\n" + _format_group_event_header(fresh_event),
+            )
             if ok:
                 sent_any = True
                 logging.info("Нагадування про подію %s надіслано в групу %s", event_id, chat_id)
@@ -5185,7 +5189,7 @@ def telegram_keyboard_payload(event_id, map_url=""):
     map_url = str(map_url or "").strip()
     if map_url:
         rows.append([{
-            "text": "📍 Google Maps",
+            "text": "📍 Маршрут",
             "url": map_url,
         }])
     app_link = _event_mini_app_link(event_id)
@@ -5400,22 +5404,75 @@ def _split_telegram_event_text(text, max_chars=3600):
     return chunks
 
 
-def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None):
-    """Надсилає фото окремо й увесь текст поста частинами; кнопки на останній."""
+def _telegram_utf16_length(text):
+    """Telegram counts UTF-16 code units for photo captions and message limits."""
+    return sum(2 if ord(ch) > 0xFFFF else 1 for ch in str(text or ""))
+
+
+def _prepare_group_event_post(text, summary, photo=False):
+    """Keep an entire short event under its photo, and move only overflow below.
+
+    Returns main caption/text and list of follow-up texts. Never truncates the
+    event description. The first message always owns the registration buttons.
+    """
+    text = str(text or "")
+    summary = str(summary or "")
+    first_limit = 990 if photo else 3850  # Telegram limits: 1024 / 4096 UTF-16 units
+    if _telegram_utf16_length(text) <= first_limit:
+        return text, []
+
+    hint = "\n\n📝 Повний опис події — у повідомленні нижче ⬇️"
+    if text.startswith(summary) and _telegram_utf16_length(summary + hint) <= first_limit:
+        lead = summary + hint
+        remaining = text[len(summary):].lstrip("\n")
+    else:
+        # Even a very long title or game list must not cause any lost text.
+        fallback_title = "⏰ Нагадування: подія вже завтра!" if text.startswith("⏰ Нагадування") else "📅 Подія Styloteka"
+        lead = fallback_title + "\n📝 Усі деталі — у повідомленні нижче ⬇️"
+        remaining = text
+    return lead, _split_telegram_event_text(remaining, max_chars=3600)
+
+
+def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary=""):
+    """Photo + caption + buttons in ONE post; overflow follows without clipping."""
+    photo_url = str(photo_url or "").strip()
+    lead, followups = _prepare_group_event_post(text, summary, photo=bool(photo_url))
+    first_payload = {"chat_id": chat_id, "reply_markup": keyboard}
     if photo_url:
-        ok, err = telegram_api_post("sendPhoto", {"chat_id": chat_id, "photo": photo_url})
+        ok, result = telegram_api_post("sendPhoto", {
+            **first_payload, "photo": photo_url, "caption": lead,
+        })
         if not ok:
-            logging.warning("Фото події не надіслано в групу %s: %s", chat_id, err)
-    chunks = _split_telegram_event_text(text)
-    for index, part in enumerate(chunks):
-        payload = {"chat_id":chat_id,"text":part}
-        if index == len(chunks)-1:
-            payload["reply_markup"] = keyboard
-        ok, err = telegram_api_post("sendMessage", payload)
-        if not ok:
-            logging.error("Не надіслано частину %s/%s події в групу %s: %s", index+1, len(chunks), chat_id, err)
-            return False
-    return True
+            logging.warning("Фото події в групу %s не надіслано: %s; повторюю як текст", chat_id, result)
+            # If a picture is invalid, publish the complete content as normal text.
+            lead, followups = _prepare_group_event_post(text, summary, photo=False)
+            ok, result = telegram_api_post("sendMessage", {**first_payload, "text": lead})
+    else:
+        ok, result = telegram_api_post("sendMessage", {**first_payload, "text": lead})
+
+    if not ok:
+        logging.error("Не вдалося опублікувати основний пост події в групу %s: %s", chat_id, result)
+        return False
+
+    first_message_id = result.get("message_id") if isinstance(result, dict) else None
+    all_sent = True
+    for index, part in enumerate(followups, start=1):
+        payload = {"chat_id": chat_id, "text": part}
+        if first_message_id:
+            payload["reply_parameters"] = {
+                "message_id": first_message_id,
+                "allow_sending_without_reply": True,
+            }
+        sent, err = telegram_api_post("sendMessage", payload)
+        if not sent and "reply_parameters" in payload:
+            # Not all group settings allow a reply: send the continuation anyway.
+            payload.pop("reply_parameters", None)
+            sent, err = telegram_api_post("sendMessage", payload)
+        if not sent:
+            all_sent = False
+            logging.error("Не надіслано продовження %s/%s події в групу %s: %s",
+                          index, len(followups), chat_id, err)
+    return all_sent
 
 
 def notify_groups_sync(event_id, photo_url=None):
@@ -5437,7 +5494,11 @@ def notify_groups_sync(event_id, photo_url=None):
             return
 
         for chat_id in group_ids:
-            ok = _send_group_event_text_sync(chat_id, text, keyboard, photo_url=photo_url)
+            ok = _send_group_event_text_sync(
+                chat_id, text, keyboard,
+                photo_url=photo_url or event.get("cover_url"),
+                summary=_format_group_event_header(event),
+            )
             if ok:
                 logging.info("Подію %s успішно опубліковано в групі %s", event_id, chat_id)
             else:
@@ -5502,7 +5563,7 @@ def event_group_keyboard(event_id, map_url=""):
     map_url = str(map_url or "").strip()
     if map_url:
         rows.append([
-            InlineKeyboardButton(text="📍 Google Maps", url=map_url)
+            InlineKeyboardButton(text="📍 Маршрут", url=map_url)
         ])
     app_link = _event_mini_app_link(event_id)
     if app_link:
@@ -5510,7 +5571,28 @@ def event_group_keyboard(event_id, map_url=""):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def format_group_event(event):
+def _event_location_in_group(event):
+    """Show a readable location; put Google Maps URLs into the button only."""
+    location = str(event.get("location_text") or "").strip()
+    if not location:
+        return ""
+    if _is_google_maps_url(location):
+        label = _google_maps_label_from_url(location)
+        if not label:
+            try:
+                query = parse_qs(urlparse(location).query)
+                label = (query.get("q") or query.get("query") or [""])[0].strip()
+            except (ValueError, TypeError):
+                pass
+        if label and not label.startswith(("http://", "https://")) and len(label) <= 160:
+            return label
+        return "Місце на мапі (натисни «📍 Маршрут»)"
+    if re.match(r"^https?://", location, re.IGNORECASE):
+        return "Місце за посиланням (натисни «📍 Маршрут»)"
+    return location
+
+
+def _format_group_event_header(event):
     rsvps = event.get("rsvps") or []
     going = [r for r in rsvps if (r.get("status") or "going") == "going"]
     waiting = [r for r in rsvps if r.get("status") == "waitlist"]
@@ -5521,32 +5603,32 @@ def format_group_event(event):
         dt += f" · {str(event.get('event_time'))[:5]}"
     if dt:
         lines.append(f"🗓 {dt}")
-    price=int(event.get("price_kop") or 0)
-    lines.append(f"💳 Вартість: {price/100:.2f} грн" if price else "🆓 Вартість: безкоштовно")
+    price = int(event.get("price_kop") or 0)
+    lines.append(f"💳 Вартість: {price / 100:.2f} грн" if price else "🆓 Вартість: безкоштовно")
 
-    game_names = event.get("game_names") or []
-    if not isinstance(game_names, list):
-        game_names = []
-    game_names = [str(name).strip() for name in game_names if str(name).strip()]
-    if not game_names and event.get("game_name"):
-        game_names = [str(event.get("game_name")).strip()]
-    if game_names:
-        lines.append(f"🎲 Ігри: {', '.join(game_names)}")
+    names = event.get("game_names") or []
+    names = [str(name).strip() for name in names if str(name).strip()] if isinstance(names, list) else []
+    if not names and event.get("game_name"):
+        names = [str(event.get("game_name")).strip()]
+    if names:
+        lines.append(f"🎲 Ігри: {', '.join(names)}")
 
-    location_text = (event.get("location_text") or "").strip()
-    if location_text:
-        lines.append(f"📍 {location_text}")
+    location = _event_location_in_group(event)
+    if location:
+        lines.append(f"📍 {location}")
 
     cap = int(event.get("max_participants") or 0)
-    if cap:
-        places = f"👥 {len(going)}/{cap} місць"
-    else:
-        places = f"👥 Учасників: {len(going)}"
+    places = f"👥 {len(going)}/{cap} місць" if cap else f"👥 Учасників: {len(going)}"
     if waiting:
         places += f" · черга: {len(waiting)}"
     places += f" · відповіли: {len(rsvps)}"
     lines.append(places)
-    desc = (event.get("description") or "").strip()
+    return "\n".join(lines)
+
+
+def format_group_event(event):
+    lines = [_format_group_event_header(event)]
+    desc = str(event.get("description") or "").strip()
     if desc:
         lines.extend(["", desc])
     lines.extend(["", "Натисни кнопку нижче, щоб записатися."])
@@ -5569,26 +5651,8 @@ async def get_active_group_ids():
 
 
 async def notify_groups(event_id, photo_url=None):
-    """Публікує подію повністю без обрізання довгого опису."""
-    try:
-        event = get_event_snapshot(event_id)
-        if not event:
-            return
-        chunks = _split_telegram_event_text(format_group_event(event))
-        keyboard = event_group_keyboard(event_id, _event_google_maps_url(event))
-        for chat_id in await get_active_group_ids():
-            try:
-                if photo_url:
-                    try:
-                        await bot.send_photo(chat_id, photo=photo_url)
-                    except Exception:
-                        logging.warning("Фото події не завантажилось до групи %s", chat_id)
-                for i, part in enumerate(chunks):
-                    await bot.send_message(chat_id, part, reply_markup=keyboard if i == len(chunks)-1 else None)
-            except Exception:
-                logging.exception("Не вдалось опублікувати подію в групі %s", chat_id)
-    except Exception:
-        logging.exception("Не вдалось опублікувати групове сповіщення про подію")
+    """Use the same tested caption-first layout for async and sync callers."""
+    await asyncio.to_thread(notify_groups_sync, event_id, photo_url)
 
 
 def notify_groups_async(event_id, photo_url=None):
@@ -5601,23 +5665,26 @@ def notify_groups_async(event_id, photo_url=None):
 
 
 async def refresh_group_event_message(callback: CallbackQuery, event_id: int):
-    """Оновлює лічильник RSVP у повідомленні з кнопками; опис не обрізає."""
+    """Refresh RSVP counts on the main photo/caption without losing overflow."""
     try:
         event = get_event_snapshot(event_id)
         if not event or not callback.message:
             return
-        chunks = _split_telegram_event_text(format_group_event(event))
+        photo = bool(callback.message.photo)
+        old_text = str(getattr(callback.message, "caption" if photo else "text", "") or "")
+        reminder = old_text.startswith("⏰ Нагадування")
+        full = format_group_event_reminder(event) if reminder else format_group_event(event)
+        summary = ("⏰ Нагадування: подія вже завтра!\n\n" if reminder else "") + _format_group_event_header(event)
+        first, _ = _prepare_group_event_post(full, summary, photo=photo)
         keyboard = event_group_keyboard(event_id, _event_google_maps_url(event))
-        if callback.message.photo:
-            # Сумісність зі старими постами з кнопками під фото.
-            safe_caption = chunks[0][:950]
-            await callback.message.edit_caption(caption=safe_caption, reply_markup=keyboard)
-        elif len(chunks) > 1:
-            # Початкові абзаци вже опубліковані окремо: не переписуємо останній
-            # шматок зміщеним текстом після зміни лічильника місць.
-            await callback.message.edit_reply_markup(reply_markup=keyboard)
+        if photo:
+            await callback.message.edit_caption(caption=first, reply_markup=keyboard)
+        elif old_text.startswith(("📅 ", "⏰ Нагадування")):
+            await callback.message.edit_text(first, reply_markup=keyboard)
         else:
-            await callback.message.edit_text(chunks[-1], reply_markup=keyboard)
+            # Older multi-part posts put their buttons on the last text chunk.
+            # Don't replace the original continuation with a duplicate heading.
+            await callback.message.edit_reply_markup(reply_markup=keyboard)
     except Exception as exc:
         logging.info("Не вдалося оновити повідомлення події: %s", exc)
 
