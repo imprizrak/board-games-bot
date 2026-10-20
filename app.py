@@ -657,7 +657,7 @@ def add_game():
     # Адміністратор публікує гру одразу.
     resp = requests.post(
         REST,
-        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
         json={
             "name": name,
             "description": description,
@@ -675,7 +675,9 @@ def add_game():
     if description:
         notify_text += f"\n\n{description}"
     notify_subscribers_async(notify_text, photo_url=cover_url)
-    pass  # Вимкнено: нові ігри не анонсуються у Telegram-групі.
+    created_game = (resp.json() or [{}])[0]
+    notify_game_groups_async(name, description=description, cover_url=cover_url,
+                             game_id=created_game.get("id"))
     log_activity(
         "game_added",
         f"У бібліотеці з’явилась нова гра: {name}",
@@ -1191,7 +1193,9 @@ def admin_approve_game_submission(submission_id):
     if description:
         notify_text += f"\n\n{description}"
     notify_subscribers_async(notify_text, photo_url=game_payload.get("cover_url"))
-    pass  # Вимкнено: нові ігри не анонсуються у Telegram-групі.
+    created_game = (created.json() or [{}])[0]
+    notify_game_groups_async(name, description=description,
+                             cover_url=game_payload.get("cover_url"), game_id=created_game.get("id"))
     log_activity("game_added", f"У бібліотеці з’явилась нова гра: {name}", description,
                  actor_name=game_payload.get("added_by"), image_url=game_payload.get("cover_url"),
                  metadata={"game_name": name, "moderated": True})
@@ -1908,6 +1912,21 @@ def _profile_shop_catalog():
         {'id': 'shop_bundle_arcane', 'type': 'bundle', 'icon': '💎', 'name': 'Скарби арканіста', 'price': 1680, 'rarity': 'legendary', 'description': '4 преміальні предмети: арканна рамка, зоряна тема, космос і примара. Економія 690 стілсів.', 'grants': ['shop_frame_arcane', 'shop_theme_starlight', 'shop_background_cosmos', 'shop_companion_ghost']},
         {'id': 'shop_box_lucky', 'type': 'mystery', 'icon': '🎲', 'name': 'Lucky Box', 'price': 240, 'rarity': 'rare', 'repeatable': True, 'description': 'Один випадковий ще не зібраний предмет зі звичайної колекції. Без дублікатів.', 'pool': ['shop_frame_bronze', 'shop_frame_frost', 'shop_theme_forest', 'shop_companion_owl', 'shop_background_tavern', 'shop_coin_skin_crystal']},
         {'id': 'shop_box_arcane', 'type': 'mystery', 'icon': '🌠', 'name': 'Arcane Box', 'price': 590, 'rarity': 'epic', 'repeatable': True, 'description': 'Один випадковий ще не зібраний рідкісний або епічний предмет. Без дублікатів.', 'pool': ['shop_frame_arcane', 'shop_frame_dragonfire', 'shop_theme_crimson', 'shop_theme_royal', 'shop_background_cosmos', 'shop_companion_ghost', 'shop_treasure_skin_neon', 'shop_dungeon_skin_arcane']},
+        {'id': 'shop_frame_lightning', 'type': 'frame', 'icon': '⚡', 'name': 'Блискавична рамка', 'price': 720, 'rarity': 'epic', 'description': 'Електричні золотаві контури навколо аватарки.'},
+        {'id': 'shop_frame_void', 'type': 'frame', 'icon': '🌑', 'name': 'Рамка Безодні', 'price': 950, 'rarity': 'legendary', 'description': 'Темна містична рамка з холодним сяйвом.'},
+        {'id': 'shop_background_dungeon', 'type': 'background', 'icon': '🏰', 'name': 'Підземна зала', 'price': 330, 'rarity': 'rare', 'description': 'Атмосферний фон підземелля для профілю.'},
+        {'id': 'shop_background_dragonlair', 'type': 'background', 'icon': '🐲', 'name': 'Лігво дракона', 'price': 760, 'rarity': 'epic', 'description': 'Вогняний фон профілю з драконячим настроєм.'},
+        {'id': 'shop_companion_mimic', 'type': 'companion', 'icon': '🧰', 'name': 'Мімік', 'price': 390, 'rarity': 'rare', 'description': 'Хитрий скринько-монстрик біля твого профілю.'},
+        {'id': 'shop_companion_dragon', 'type': 'companion', 'icon': '🐉', 'name': 'Маленький дракон', 'price': 880, 'rarity': 'legendary', 'description': 'Рідкісний дракончик-компаньйон.'},
+        {'id': 'shop_coin_skin_rune', 'type': 'coin_skin', 'icon': 'ᚱ', 'name': 'Рунічні стілси', 'price': 420, 'rarity': 'rare', 'description': 'Магічні руни у грі Stils Rush.'},
+        {'id': 'shop_coin_skin_styloteka', 'type': 'coin_skin', 'icon': '⭐', 'name': 'Золотий знак Styloteka', 'price': 640, 'rarity': 'epic', 'description': 'Фірмове золотаве оформлення стілсів.'},
+        {'id': 'shop_treasure_skin_pirate', 'type': 'treasure_skin', 'icon': '🏴\u200d☠️', 'name': 'Піратська скарбниця', 'price': 340, 'rarity': 'rare', 'description': 'Піратське оформлення карток Скарбниці.'},
+        {'id': 'shop_treasure_skin_dragon', 'type': 'treasure_skin', 'icon': '🐲', 'name': 'Скарби дракона', 'price': 760, 'rarity': 'epic', 'description': 'Драконячі скарби та вогняні акценти.'},
+        {'id': 'shop_dungeon_skin_crypt', 'type': 'dungeon_skin', 'icon': '🪦', 'name': 'Стародавня крипта', 'price': 310, 'rarity': 'rare', 'description': 'Містичний образ кімнат Данжу.'},
+        {'id': 'shop_dungeon_skin_inferno', 'type': 'dungeon_skin', 'icon': '🔥', 'name': 'Палаючий Данж', 'price': 720, 'rarity': 'epic', 'description': 'Полум’яні акценти під час пригод у Данжі.'},
+        {'id': 'shop_bundle_shadow', 'type': 'bundle', 'icon': '🌘', 'name': 'Набір Тіней', 'price': 1650, 'rarity': 'legendary', 'description': '4 предмети: рамка Безодні, підземна зала, мімік і крипта. Економія 330 стілсів.', 'grants': ['shop_frame_void', 'shop_background_dungeon', 'shop_companion_mimic', 'shop_dungeon_skin_crypt']},
+        {'id': 'shop_bundle_dragon', 'type': 'bundle', 'icon': '🐉', 'name': 'Набір Дракона', 'price': 3090, 'rarity': 'legendary', 'description': '5 предметів: блискавична рамка, дракончик, лігво, скарбниця та палаючий Данж. Економія 750 стілсів.', 'grants': ['shop_frame_lightning', 'shop_companion_dragon', 'shop_background_dragonlair', 'shop_treasure_skin_dragon', 'shop_dungeon_skin_inferno']},
+        {'id': 'shop_box_relic', 'type': 'mystery', 'icon': '🗝️', 'name': 'Скриня реліквій', 'price': 480, 'rarity': 'epic', 'repeatable': True, 'description': 'Один випадковий ще не придбаний предмет із дев’яти реліквій. Без дублікатів.', 'pool': ['shop_frame_lightning', 'shop_background_dungeon', 'shop_companion_mimic', 'shop_coin_skin_rune', 'shop_treasure_skin_pirate', 'shop_dungeon_skin_crypt', 'shop_treasure_skin_dragon', 'shop_dungeon_skin_inferno', 'shop_background_dragonlair']},
     ]
 
 
@@ -5251,64 +5270,87 @@ def notify_subscribers_sync(text, photo_url=None):
             logging.warning("Не вдалось надіслати особисте сповіщення %s: %s", chat_id, err)
 
 
-def game_group_keyboard_payload():
+def game_group_keyboard_payload(game_id=None):
+    """Посилання відкриває саме нову гру всередині Telegram Mini App."""
     rows = []
-    if WEBAPP_URL:
-        rows.append([{
-            "text": "🎲 Відкрити бібліотеку",
-            "url": WEBAPP_URL,
-        }])
+    try:
+        game_id = int(game_id)
+    except (TypeError, ValueError):
+        game_id = None
+    if game_id and game_id > 0 and TELEGRAM_BOT_USERNAME:
+        bot_url = f"https://t.me/{TELEGRAM_BOT_USERNAME}"
+        if TELEGRAM_APP_SHORT_NAME:
+            bot_url += f"/{TELEGRAM_APP_SHORT_NAME}"
+        rows.append([{"text": "🎲 Відкрити гру", "url": f"{bot_url}?startapp=game_{game_id}"}])
+    elif WEBAPP_URL:
+        rows.append([{"text": "🎲 Відкрити бібліотеку", "url": WEBAPP_URL}])
     return {"inline_keyboard": rows} if rows else None
 
 
-def notify_game_groups_sync(name, description="", cover_url=None):
-    """Публікує нову гру в усіх активних Telegram-групах."""
+def _game_group_announcement(name, description):
+    """Тримай основний пост у межах Telegram photo caption — 1024 символи."""
+    title = str(name or "Без назви").strip()
+    desc = str(description or "").strip()
+    main = f"🎲 Нова настільна гра в Styloteka!\n\n🆕 {title}"
+    # Опис може бути необмеженим у базі, але анонс — коротким.
+    # Не розділяємо сурогатні пари та зберігаємо охайний підпис.
+    max_length = 1010
+    if len(main) > max_length:
+        main = main[:max_length - 1] + "…"
+    available = max(0, max_length - len(main) - 2)
+    if desc and available >= 16:
+        summary = desc[:available]
+        if len(desc) > available:
+            cut = summary.rfind(" ")
+            if cut > len(summary) * 0.6:
+                summary = summary[:cut]
+            summary = summary.rstrip(".,;:! ") + "…"
+        main += "\n\n" + summary
+    return main
+
+
+def notify_game_groups_sync(name, description="", cover_url=None, game_id=None):
+    """Публікує разовий анонс тільки після фактичного створення гри."""
     try:
         group_ids = get_active_group_ids_sync()
         if not group_ids:
-            logging.warning(
-                "Немає активних Telegram-груп для анонсу нової гри. Надішли /setgroup у потрібній групі."
-            )
+            logging.info("Немає активних груп для анонсу нової гри")
             return
-
-        lines = ["🎲 Нова гра в бібліотеці", "", str(name or "Без назви")]
-        desc = (description or "").strip()
-        if desc:
-            lines.extend(["", desc[:700]])
-        lines.extend(["", "Відкрий бібліотеку, щоб переглянути гру."])
-        text = "\n".join(lines)
-        keyboard = game_group_keyboard_payload()
-
-        for chat_id in group_ids:
-            payload = {"chat_id": chat_id}
+        announcement = _game_group_announcement(name, description)
+        keyboard = game_group_keyboard_payload(game_id)
+        for chat_id in set(group_ids):
+            common = {"chat_id": chat_id, "disable_notification": False}
             if keyboard:
-                payload["reply_markup"] = keyboard
-
+                common["reply_markup"] = keyboard
             if cover_url:
-                payload.update({
-                    "photo": cover_url,
-                    "caption": text[:1024],
+                ok, err = telegram_api_post("sendPhoto", {
+                    **common, "photo": cover_url, "caption": announcement,
                 })
-                ok, err = telegram_api_post("sendPhoto", payload)
+                if not ok:
+                    logging.warning("Фото нової гри для групи %s не надіслано (%s). Пробуємо текст.", chat_id, err)
+                    ok, err = telegram_api_post("sendMessage", {
+                        **common, "text": announcement,
+                    })
             else:
-                payload["text"] = text[:4096]
-                ok, err = telegram_api_post("sendMessage", payload)
-
+                ok, err = telegram_api_post("sendMessage", {
+                    **common, "text": announcement,
+                })
             if ok:
-                logging.info("Нову гру '%s' опубліковано в групі %s", name, chat_id)
+                logging.info("Анонс нової гри %r (ID %s) надіслано в %s", name, game_id, chat_id)
             else:
-                logging.error(
-                    "Не вдалось опублікувати нову гру '%s' в групі %s: %s",
-                    name, chat_id, err
-                )
+                logging.error("Помилка анонсу нової гри %r для %s: %s", name, chat_id, err)
     except Exception:
-        logging.exception("Не вдалось опублікувати групове сповіщення про нову гру")
+        logging.exception("Не вдалося опублікувати анонс нової гри")
 
 
-def notify_game_groups_async(name, description="", cover_url=None):
-    """Вимкнено: в Telegram-групу надсилаються лише події й нагадування."""
-    return None
-
+def notify_game_groups_async(name, description="", cover_url=None, game_id=None):
+    """Не блокує запит додавання гри й не дублює анонси при редагуванні."""
+    Thread(
+        target=notify_game_groups_sync,
+        kwargs={"name": name, "description": description,
+                "cover_url": cover_url, "game_id": game_id},
+        daemon=True,
+    ).start()
 
 
 def profile_group_keyboard_payload():
