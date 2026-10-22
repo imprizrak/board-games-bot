@@ -957,8 +957,11 @@ document.addEventListener('click', event => {
   .event-cover {
     display: block;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
+    height: auto;
+    max-height: 460px;
+    object-fit: contain;
+    object-position: center;
+    background: #14253a;
   }
 
 
@@ -1001,8 +1004,11 @@ document.addEventListener('click', event => {
   .event-cover-preview {
     display: none;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
+    height: auto;
+    max-height: 460px;
+    object-fit: contain;
+    object-position: center;
+    background: #14253a;
     border: 1px solid var(--border);
     border-radius: 12px;
     margin-top: 10px;
@@ -3239,10 +3245,12 @@ document.addEventListener('click', event => {
     background: var(--hub-panel);
   }
   .next-event-cover {
-    width: 100%;
-    aspect-ratio: 16 / 7;
-    object-fit: cover;
     display: block;
+    width: 100%;
+    height: auto;
+    max-height: 460px;
+    object-fit: contain;
+    object-position: center;
     background: #14253a;
   }
   .next-event-body { padding: 14px; }
