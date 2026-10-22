@@ -52,6 +52,7 @@ HISTORY_REST = f"{SUPABASE_URL}/rest/v1/game_history"
 WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
 EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
+EVENT_GROUP_POSTS_REST = f"{SUPABASE_URL}/rest/v1/event_group_posts"
 MONOBANK_EVENT_PAYMENTS_REST = f"{SUPABASE_URL}/rest/v1/event_monobank_payments"
 MONOBANK_CONFIRM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/confirm_event_monobank_payment"
 MONOBANK_RESERVE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/reserve_event_monobank_payment"
@@ -3699,6 +3700,7 @@ def notify_event_reminder_groups_sync(event):
                 chat_id, text, keyboard,
                 photo_url=photo_url,
                 summary="⏰ Нагадування: подія вже завтра!\n\n" + _format_group_event_header(fresh_event),
+                event_id=event_id, reminder=True,
             )
             if ok:
                 sent_any = True
@@ -3919,6 +3921,8 @@ def _sync_monobank_payment(row):
         result=r.json() or {}
         if result.get('status')!='paid':
             raise ValueError('payment_confirmation_'+str(result.get('error') or 'failed'))
+        # Оновлюємо лічильник на вже опублікованому пості після підтвердженої оплати.
+        refresh_event_group_posts_async(row.get('event_id'))
         return result
     status=str(state.get('status') or 'created')
     if status in {'expired','failure','reversed'}:
@@ -4087,6 +4091,89 @@ def event_monobank_webhook():
     except Exception:
         logging.exception('Помилка вебхука монобанку')
         return jsonify({'error':'temporary_unavailable'}),503
+
+
+# ==================== QUESTS INC LINKED EVENT ====================
+def _validated_quests_event_url(raw):
+    """Only accept an actual HTTPS Quests page, not an arbitrary redirect."""
+    url = str(raw or "").strip()
+    if not url:
+        return ""
+    if len(url) > 1200:
+        raise ValueError("quests_url_too_long")
+    try:
+        parsed = urlparse(url)
+    except (TypeError, ValueError):
+        raise ValueError("invalid_quests_url")
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or parsed.username or parsed.password or parsed.port or host not in {
+        "quests.inc", "www.quests.inc", "share.quests.inc", "questsapp.com", "www.questsapp.com"
+    }:
+        raise ValueError("invalid_quests_url")
+    return url
+
+
+def _quests_count_from_input(raw):
+    try:
+        value = int(str(raw or "0").strip())
+    except (ValueError, TypeError):
+        raise ValueError("invalid_quests_count")
+    if value < 0 or value > 10000:
+        raise ValueError("invalid_quests_count")
+    return value
+
+
+def _event_source_counts(event):
+    going = sum(1 for row in (event.get("rsvps") or []) if (row.get("status") or "going") == "going")
+    quests = max(0, int(event.get("quests_count") or 0)) if event.get("quests_event_url") else 0
+    return going, quests
+
+
+def _remember_event_group_post(event_id, chat_id, message_id, is_photo, reminder=False):
+    try:
+        response = requests.post(
+            EVENT_GROUP_POSTS_REST,
+            headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
+            params={"on_conflict": "chat_id,message_id"},
+            json={"event_id": int(event_id), "chat_id": int(chat_id), "message_id": int(message_id),
+                  "is_photo": bool(is_photo), "is_reminder": bool(reminder)},
+            timeout=12,
+        )
+        response.raise_for_status()
+    except Exception:
+        logging.exception("Не вдалося зберегти id групового поста для події %s", event_id)
+
+
+def refresh_event_group_posts_sync(event_id):
+    """Edit existing linked group posts, no new post and no notification flood."""
+    try:
+        event = get_event_snapshot(event_id)
+        if not event:
+            return
+        r = requests.get(EVENT_GROUP_POSTS_REST, headers=HEADERS,
+            params={"event_id": f"eq.{int(event_id)}", "select": "chat_id,message_id,is_photo,is_reminder", "limit": "100"},
+            timeout=18)
+        r.raise_for_status()
+        for post in r.json():
+            reminder = bool(post.get("is_reminder"))
+            full = format_group_event_reminder(event) if reminder else format_group_event(event)
+            heading = ("⏰ Нагадування: подія вже завтра!\n\n" if reminder else "") + _format_group_event_header(event)
+            lead, _followups = _prepare_group_event_post(full, heading, photo=bool(post.get("is_photo")))
+            photo = bool(post.get("is_photo"))
+            payload = {"chat_id": post["chat_id"], "message_id": post["message_id"],
+                       "reply_markup": telegram_keyboard_payload(event_id, _event_google_maps_url(event))}
+            payload["caption" if photo else "text"] = lead
+            ok, response = telegram_api_post("editMessageCaption" if photo else "editMessageText", payload)
+            if not ok and "message is not modified" not in str(response).lower():
+                logging.warning("Не вдалося оновити груповий пост події %s: %s", event_id, response)
+    except Exception:
+        logging.exception("Помилка синхронізації групових постів події %s", event_id)
+
+
+def refresh_event_group_posts_async(event_id):
+    if not event_id:
+        return
+    Thread(target=refresh_event_group_posts_sync, args=(int(event_id),), daemon=True).start()
 
 
 # ==================== ДОПОМІЖНА ЛОГІКА ПОДІЙ ====================
@@ -4430,6 +4517,10 @@ def get_events():
             logging.exception("Не вдалось завантажити пропозиції ігор для подій")
     for e in events:
         e["rsvps"] = rsvps_by_event.get(e["id"], [])
+        stylo_count, quests_count = _event_source_counts(e)
+        e["styloteka_count"] = stylo_count
+        e["quests_display_count"] = quests_count
+        e["registration_count"] = stylo_count + quests_count
         e["member_game_picks"] = picks_by_event.get(int(e["id"]), [])
 
     return jsonify(events)
@@ -4613,7 +4704,16 @@ def add_event():
     except ValueError as exc:
         return jsonify({"error":str(exc)}),400
 
+    try:
+        quests_url = _validated_quests_event_url(data.get("quests_event_url"))
+        quests_count = _quests_count_from_input(data.get("quests_count")) if quests_url else 0
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
     payload = {
+        "quests_event_url": quests_url,
+        "quests_count": quests_count,
+        "quests_count_updated_at": datetime.now(timezone.utc).isoformat() if quests_url else None,
         "price_kop":price_kop,
         "title": data.get("title", ""),
         "event_date": data.get("event_date"),
@@ -4822,7 +4922,16 @@ def edit_event(event_id):
             if paid_checks.json():return jsonify({"error":"event_price_locked_after_invoice"}),409
         except requests.RequestException:
             return jsonify({"error":"payment_check_unavailable"}),503
+    try:
+        quests_url = _validated_quests_event_url(data.get("quests_event_url", current_event.get("quests_event_url")))
+        quests_count = _quests_count_from_input(data.get("quests_count", current_event.get("quests_count"))) if quests_url else 0
+    except ValueError as exc:
+        return jsonify({"error":str(exc)}),400
+
     payload = {
+        "quests_event_url": quests_url,
+        "quests_count": quests_count,
+        "quests_count_updated_at": datetime.now(timezone.utc).isoformat() if (quests_url != (current_event.get("quests_event_url") or "") or quests_count != int(current_event.get("quests_count") or 0)) else current_event.get("quests_count_updated_at"),
         "price_kop":price_kop,
         "title": title,
         "event_date": event_date,
@@ -4904,6 +5013,7 @@ def edit_event(event_id):
         metadata={"event_id": event_id, "games": game_names},
     )
 
+    refresh_event_group_posts_async(event_id)
     return jsonify({"status": "updated", "event": updated_event})
 
 
@@ -4977,6 +5087,7 @@ def rsvp_event(event_id):
             return jsonify({"status": "completed"}), 409
         return jsonify({"status": "not_found"}), 404
 
+    refresh_event_group_posts_async(event_id)
     return jsonify({"status": status})
 
 
@@ -4990,6 +5101,7 @@ def cancel_rsvp(event_id, username):
 
     try:
         remove_event_rsvp(event_id, username)
+        refresh_event_group_posts_async(event_id)
     except ValueError as exc:
         if str(exc) == "event_closed":
             return jsonify({"status": "completed"}), 409
@@ -5211,6 +5323,9 @@ def telegram_keyboard_payload(event_id, map_url=""):
             "text": "📍 Маршрут",
             "url": map_url,
         }])
+    quests_url = str((event or {}).get("quests_event_url") or "").strip()
+    if quests_url:
+        rows.append([{"text": "🔗 Учасники Quests Inc", "url": quests_url}])
     app_link = _event_mini_app_link(event_id)
     if app_link:
         rows.append([{"text": "📅 Відкрити подію в Styloteka", "url": app_link}])
@@ -5475,11 +5590,12 @@ def _prepare_group_event_post(text, summary, photo=False):
     return lead, _split_telegram_event_text(remaining, max_chars=3600)
 
 
-def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary=""):
+def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary="", event_id=None, reminder=False):
     """Photo + caption + buttons in ONE post; overflow follows without clipping."""
     photo_url = str(photo_url or "").strip()
     lead, followups = _prepare_group_event_post(text, summary, photo=bool(photo_url))
     first_payload = {"chat_id": chat_id, "reply_markup": keyboard}
+    sent_as_photo = bool(photo_url)
     if photo_url:
         ok, result = telegram_api_post("sendPhoto", {
             **first_payload, "photo": photo_url, "caption": lead,
@@ -5487,6 +5603,7 @@ def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary
         if not ok:
             logging.warning("Фото події в групу %s не надіслано: %s; повторюю як текст", chat_id, result)
             # If a picture is invalid, publish the complete content as normal text.
+            sent_as_photo = False
             lead, followups = _prepare_group_event_post(text, summary, photo=False)
             ok, result = telegram_api_post("sendMessage", {**first_payload, "text": lead})
     else:
@@ -5497,6 +5614,8 @@ def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary
         return False
 
     first_message_id = result.get("message_id") if isinstance(result, dict) else None
+    if event_id and first_message_id:
+        _remember_event_group_post(event_id, chat_id, first_message_id, sent_as_photo, reminder)
     all_sent = True
     for index, part in enumerate(followups, start=1):
         payload = {"chat_id": chat_id, "text": part}
@@ -5540,6 +5659,7 @@ def notify_groups_sync(event_id, photo_url=None):
                 chat_id, text, keyboard,
                 photo_url=photo_url or event.get("cover_url"),
                 summary=_format_group_event_header(event),
+                event_id=event_id,
             )
             if ok:
                 logging.info("Подію %s успішно опубліковано в групі %s", event_id, chat_id)
@@ -5607,6 +5727,9 @@ def event_group_keyboard(event_id, map_url=""):
         rows.append([
             InlineKeyboardButton(text="📍 Маршрут", url=map_url)
         ])
+    quests_url = str((event or {}).get("quests_event_url") or "").strip()
+    if quests_url:
+        rows.append([InlineKeyboardButton(text="🔗 Учасники Quests Inc", url=quests_url)])
     app_link = _event_mini_app_link(event_id)
     if app_link:
         rows.append([InlineKeyboardButton(text="📅 Відкрити подію в Styloteka", url=app_link)])
@@ -5665,6 +5788,10 @@ def _format_group_event_header(event):
         places += f" · черга: {len(waiting)}"
     places += f" · відповіли: {len(rsvps)}"
     lines.append(places)
+    if event.get("quests_event_url"):
+        local, external = _event_source_counts(event)
+        lines.append(f"🎲 Styloteka: {local} · 🔗 Quests Inc: {external}")
+        lines.append(f"👥 Разом записів: {local + external} (без перевірки повторів)")
     return "\n".join(lines)
 
 
@@ -5852,6 +5979,41 @@ async def cmd_chatid(message: Message):
     await message.answer(f"ID цього чату: {message.chat.id}")
 
 
+@dp.message(Command("bindevent"))
+async def bind_existing_group_event_post(message: Message):
+    """Admin recovery for a pre-update group post: reply /bindevent <id>."""
+    if message.chat.type not in ("group", "supergroup"):
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Команда доступна тільки адміністраторам.")
+            return
+        args = (message.text or "").split()
+        if len(args) != 2 or not args[1].isdigit() or not message.reply_to_message:
+            await message.answer("Відповідай на головний пост бота командою /bindevent ID_події")
+            return
+        event_id = int(args[1])
+        target = message.reply_to_message
+        me = await bot.get_me()
+        if not target.from_user or target.from_user.id != me.id:
+            await message.answer("Потрібно відповісти саме на пост Styloteka.")
+            return
+        event = await asyncio.to_thread(get_event_snapshot, event_id)
+        if not event:
+            await message.answer("Подію з таким ID не знайдено.")
+            return
+        old_text = str(target.caption or target.text or "")
+        reminder = old_text.startswith("⏰ Нагадування")
+        await asyncio.to_thread(_remember_event_group_post, event_id, message.chat.id,
+                                target.message_id, bool(target.photo), reminder)
+        refresh_event_group_posts_async(event_id)
+        await message.answer("✅ Пост прив’язано. Лічильники в ньому тепер оновлюватимуться.")
+    except Exception:
+        logging.exception("Не вдалося прив’язати старий пост події")
+        await message.answer("Не вдалося прив’язати пост. Перевір ID події та спробуй ще раз.")
+
+
 @dp.message(Command("app"))
 async def cmd_app(message: Message):
     """Надсилає в групу постійну кнопку запуску Styloteka Mini App."""
@@ -5952,6 +6114,7 @@ async def callback_event_go(callback: CallbackQuery):
             )
 
         await refresh_group_event_message(callback, event_id)
+        refresh_event_group_posts_async(event_id)
 
     except ValueError as exc:
         if str(exc) == "event_closed":
@@ -5995,6 +6158,7 @@ async def callback_event_no(callback: CallbackQuery):
             show_alert=True,
         )
         await refresh_group_event_message(callback, event_id)
+        refresh_event_group_posts_async(event_id)
 
     except ValueError as exc:
         if str(exc) == "event_closed":

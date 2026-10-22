@@ -7063,6 +7063,13 @@ button,.btn{font-family:inherit}
 .profile-shop-modal,.profile-shop-sheet{max-width:100vw}
 .shop-detail-dialog,.shop-gift-dialog,.shop-drop-dialog{max-width:calc(100vw - 24px)}
 @media(max-width:375px){.shop-new-launch{flex-wrap:wrap}.shop-new-launch button{width:100%}}
+
+/* v5.0 linked Quests events */
+.ev-quests-block{margin:12px 0 8px;border:1px solid rgba(130,168,226,.28);background:rgba(55,87,132,.14);padding:12px;border-radius:13px;line-height:1.6;font-size:13px;overflow-wrap:anywhere}
+.ev-quests-block b{font-weight:800;color:#f7e0a3}
+.ev-quests-block a{color:#9ec8ff;font-weight:700;display:inline-block;margin-top:5px}
+.ev-quests-total{font-size:14px;font-weight:650;margin-top:2px}
+.ev-quests-disclaimer{color:#b8c2d4;font-size:11px;margin-top:4px}
 </style>
 
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
@@ -7560,6 +7567,14 @@ button,.btn{font-family:inherit}
       <label for="eventPriceUah">Сума за одного учасника, грн</label>
       <input type="number" id="eventPriceUah" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="Наприклад, 150.00">
       <div class="event-form-hint">Запис тільки після підтвердження платежу банком. Для платних подій потрібен еквайринг monobank.</div>
+    </div>
+
+    <label for="eventQuestsUrl">Подія в Quests Inc (необов'язково)</label>
+    <input type="url" id="eventQuestsUrl" inputmode="url" placeholder="https://share.quests.inc/event.html?id=..." oninput="setEventQuestsVisibility()">
+    <div id="eventQuestsCountRow" style="display:none;">
+      <label for="eventQuestsCount">Скільки людей іде через Quests Inc</label>
+      <input type="number" id="eventQuestsCount" min="0" max="10000" step="1" inputmode="numeric" value="0">
+      <div class="event-form-hint">Кількість поки вводить адміністратор. Автоматичне оновлення та профілі можливі після перевірки доступу до Quests Inc.</div>
     </div>
 
     <label>Максимум учасників (0 = без ліміту)</label>
@@ -11312,6 +11327,7 @@ function renderEvents(events) {
           ${eventGamesHtml(ev)}
           ${eventMemberGamesSummary(ev)}
           ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
+          ${eventQuestsCountsHtml(ev, going.length)}
           ${eventLocationHtml(ev)}
           ${cover}
           ${historyMode
@@ -11466,6 +11482,23 @@ function eventPriceLabel(ev){
   return price>0 ? `💳 ${Number(price/100).toFixed(2)} грн` : '🆓 Безкоштовно';
 }
 
+function setEventQuestsVisibility(){
+  const linked = !!document.getElementById('eventQuestsUrl')?.value.trim();
+  const row = document.getElementById('eventQuestsCountRow');
+  if(row) row.style.display = linked ? '' : 'none';
+}
+function eventQuestsCountsHtml(ev, localCount){
+  const link = String(ev?.quests_event_url || '').trim();
+  if(!link) return '';
+  const external = Math.max(0, Number(ev?.quests_count) || 0);
+  return `<div class="ev-quests-block">
+    <div>🎲 Styloteka: <b>${localCount}</b> · 🔗 Quests Inc: <b>${external}</b></div>
+    <div class="ev-quests-total">👥 Разом записів: <b>${localCount + external}</b></div>
+    <a href="${escapeHtml(link)}" rel="noopener noreferrer" target="_blank">Переглянути учасників у Quests Inc ↗</a>
+    <div class="ev-quests-disclaimer">Можливі повторні записи однієї людини. Дані Quests оновлює організатор.</div>
+  </div>`;
+}
+
 function openEditEventModal(ev) {
   if (!isAdmin || !ev?.id) return;
 
@@ -11480,6 +11513,9 @@ function openEditEventModal(ev) {
   if (locationInput) locationInput.value = ev.location_text || '';
 
   document.getElementById('eventDescription').value = ev.description || '';
+  document.getElementById('eventQuestsUrl').value = ev.quests_event_url || '';
+  document.getElementById('eventQuestsCount').value = String(Number(ev.quests_count) || 0);
+  setEventQuestsVisibility();
   const paid=(Number(ev.price_kop)||0)>0;
   document.getElementById('eventPriceMode').value=paid?'paid':'free';
   document.getElementById('eventPriceUah').value=paid?(Number(ev.price_kop)/100).toFixed(2):'';
@@ -11509,6 +11545,9 @@ function openEventModal() {
   const locationInput = document.getElementById('eventLocation');
   if (locationInput) locationInput.value = '';
   document.getElementById('eventDescription').value = '';
+  document.getElementById('eventQuestsUrl').value = '';
+  document.getElementById('eventQuestsCount').value = '0';
+  setEventQuestsVisibility();
   document.getElementById('eventPriceMode').value='free';
   document.getElementById('eventPriceUah').value='';
   setEventPriceMode('free');
@@ -11547,6 +11586,16 @@ async function submitEvent() {
   formData.append('price_uah',priceMode==='paid'?priceUah:'0');
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
+  const questsEventUrl = document.getElementById('eventQuestsUrl').value.trim();
+  const questsCount = document.getElementById('eventQuestsCount').value.trim() || '0';
+  if (questsEventUrl && !/^https:\/\/(?:share\.)?quests\.inc\//i.test(questsEventUrl) && !/^https:\/\/(?:www\.)?questsapp\.com\//i.test(questsEventUrl)) {
+    tg.showAlert('Вкажи посилання на подію Quests Inc.');return;
+  }
+  if (questsEventUrl && (!/^\d+$/.test(questsCount) || Number(questsCount)>10000)) {
+    tg.showAlert('Кількість учасників Quests має бути цілим числом від 0 до 10000.');return;
+  }
+  formData.append('quests_event_url',questsEventUrl);
+  formData.append('quests_count',questsEventUrl?questsCount:'0');
   formData.append(isEditing ? 'updated_by' : 'created_by', username);
 
   if (isEditing && editingEventRemoveCover) {
