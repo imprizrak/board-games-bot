@@ -57,6 +57,8 @@ MONOBANK_EVENT_PAYMENTS_REST = f"{SUPABASE_URL}/rest/v1/event_monobank_payments"
 MONOBANK_CONFIRM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/confirm_event_monobank_payment"
 MONOBANK_RESERVE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/reserve_event_monobank_payment"
 EVENT_GAME_PICKS_REST = f"{SUPABASE_URL}/rest/v1/event_game_picks"
+EVENT_CHECKINS_REST = f"{SUPABASE_URL}/rest/v1/event_checkins"
+EVENT_CHECKIN_RPC = f"{SUPABASE_URL}/rest/v1/rpc/styloteka_confirm_event_checkin"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
 TELEGRAM_GROUPS_REST = f"{SUPABASE_URL}/rest/v1/telegram_groups"
@@ -4198,6 +4200,15 @@ def get_event_snapshot(event_id):
     )
     rr.raise_for_status()
     event["rsvps"] = rr.json()
+    try:
+        resp = requests.get(EVENT_CHECKINS_REST,headers=HEADERS,params={
+            'event_id':f'eq.{event_id}','checked_in_at':'not.is.null',
+            'select':'event_id','limit':'10000'},timeout=12)
+        resp.raise_for_status()
+        event['checked_in_count'] = len(resp.json())
+    except requests.RequestException:
+        logging.exception('Не вдалося отримати QR-відмітки події %s',event_id)
+        event['checked_in_count'] = 0
     return event
 
 
@@ -4515,7 +4526,23 @@ def get_events():
                 picks_by_event.setdefault(int(pick["event_id"]), []).append(pick)
         except Exception:
             logging.exception("Не вдалось завантажити пропозиції ігор для подій")
+    checked_by_event = {}
+    if ids:
+        try:
+            resp_checkins = requests.get(EVENT_CHECKINS_REST, headers=HEADERS, params={
+                'select': 'event_id', 'event_id': f"in.({','.join(ids)})",
+                'checked_in_at': 'not.is.null', 'limit': '10000',
+            }, timeout=20)
+            resp_checkins.raise_for_status()
+            for item in resp_checkins.json():
+                key = int(item['event_id'])
+                checked_by_event[key] = checked_by_event.get(key,0)+1
+        except requests.RequestException:
+            logging.exception('Не вдалося отримати статистику QR-відміток')
     for e in events:
+        e['checked_in_count'] = checked_by_event.get(int(e['id']),0)
+        e['quests_checked_in_count'] = (min(max(0,int(e.get('quests_checked_in_count') or 0)),
+            max(0,int(e.get('quests_count') or 0))) if e.get('quests_event_url') else 0)
         e["rsvps"] = rsvps_by_event.get(e["id"], [])
         stylo_count, quests_count = _event_source_counts(e)
         e["styloteka_count"] = stylo_count
@@ -4526,6 +4553,92 @@ def get_events():
     return jsonify(events)
 
 
+
+
+# ==================== STYLOTEKA v5.1: PERSONAL QR TICKETS ====================
+def _event_ticket_code(event_id, ticket_id):
+    """Opaque random UUID, no names, phone numbers, or Telegram ID in QR."""
+    return f"STY51:{int(event_id)}:{ticket_id}"
+
+
+def _event_ticket_svg(ticket_value):
+    """Build a QR as SVG using vendored, BSD-licensed qrcode Python library."""
+    import qrcode
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=4)
+    qr.add_data(ticket_value)
+    qr.make(fit=True)
+    cells = qr.get_matrix()
+    n = len(cells)
+    paths = ''.join(f'<path d="M{x} {y}h1v1h-1z"/>'
+                    for y,row in enumerate(cells) for x, filled in enumerate(row) if filled)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {n} {n}" '
+            f'width="300" height="300" role="img" aria-label="QR квиток">'
+            f'<rect width="100%" height="100%" fill="white"/>'
+            f'<g fill="#0f1525">{paths}</g></svg>')
+
+
+@app.route('/api/events/<int:event_id>/checkin/ticket',methods=['POST'])
+def member_event_ticket(event_id):
+    user = _request_telegram_user()
+    if not user: return jsonify({'error':'telegram_auth_required'}),401
+    uid = int(user['id'])
+    try:
+        event = _event_for_member_games(event_id)
+        if not event: return jsonify({'error':'event_not_found'}),404
+        if event.get('status') != 'scheduled': return jsonify({'error':'event_closed'}),409
+        username = str(user.get('username') or '').lstrip('@').lower()
+        rsvp = get_event_rsvp_response(event_id,username,uid)
+        # Neither unpaid purchases nor the waiting list grant tickets.
+        if not rsvp or rsvp.get('status')!='going' or int(rsvp.get('telegram_user_id') or 0)!=uid:
+            return jsonify({'error':'going_rsvp_required'}),403
+        lookup = {'event_id':f'eq.{event_id}','telegram_user_id':f'eq.{uid}',
+                  'select':'ticket_id,checked_in_at','limit':'1'}
+        r=requests.get(EVENT_CHECKINS_REST,headers=HEADERS,params=lookup,timeout=20)
+        r.raise_for_status()
+        rows=r.json()
+        if not rows:
+            r=requests.post(EVENT_CHECKINS_REST,headers={**HEADERS,
+                'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=representation'},
+                params={'on_conflict':'event_id,telegram_user_id'},
+                json={'event_id':event_id,'telegram_user_id':uid},timeout=20)
+            r.raise_for_status()
+            rows=r.json()
+            if not rows:
+                r=requests.get(EVENT_CHECKINS_REST,headers=HEADERS,params=lookup,timeout=20)
+                r.raise_for_status()
+                rows=r.json()
+        if not rows: return jsonify({'error':'ticket_unavailable'}),503
+        row=rows[0]
+        code=_event_ticket_code(event_id,row['ticket_id'])
+        return jsonify({'ticket':code,'qr_svg':_event_ticket_svg(code),
+            'checked_in':bool(row.get('checked_in_at'))})
+    except requests.RequestException:
+        logging.exception('Не вдалося видати квиток події %s',event_id)
+        return jsonify({'error':'ticket_unavailable'}),503
+
+
+@app.route('/api/events/<int:event_id>/checkin/scan',methods=['POST'])
+def event_checkin_scan(event_id):
+    denied=_admin_required_response()
+    if denied: return denied
+    user=_request_telegram_user()
+    body=request.get_json(silent=True) or {}
+    code=str(body.get('ticket') or '').strip()
+    found=re.fullmatch(r'STY51:(\d{1,18}):([0-9a-fA-F-]{36})',code)
+    if not found or int(found.group(1))!=event_id: return jsonify({'error':'invalid_ticket'}),400
+    try: ticket_id=str(uuid.UUID(found.group(2)))
+    except ValueError: return jsonify({'error':'invalid_ticket'}),400
+    try:
+        r=requests.post(EVENT_CHECKIN_RPC,headers={**HEADERS,'Content-Type':'application/json'},
+            json={'p_event_id':event_id,'p_ticket_id':ticket_id,'p_admin_id':int(user['id'])},timeout=20)
+        r.raise_for_status()
+        out=r.json() or {}
+        status=out.get('status')
+        if status=='checked_in': refresh_event_group_posts_async(event_id)
+        return jsonify(out),(200 if status in {'checked_in','already_checked_in'} else 409)
+    except requests.RequestException:
+        logging.exception('Не вдалося відмітити відвідування події %s',event_id)
+        return jsonify({'error':'checkin_unavailable'}),503
 
 
 # ==================== ІГРИ В ПОДІЯХ: ПРОПОЗИЦІЇ УЧАСНИКІВ ====================
@@ -4707,12 +4820,16 @@ def add_event():
     try:
         quests_url = _validated_quests_event_url(data.get("quests_event_url"))
         quests_count = _quests_count_from_input(data.get("quests_count")) if quests_url else 0
+        quests_checked = _quests_count_from_input(data.get('quests_checked_in_count')) if quests_url else 0
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+    if quests_checked > quests_count:
+        return jsonify({'error':'quests_checkins_exceed_registration'}),400
 
     payload = {
         "quests_event_url": quests_url,
         "quests_count": quests_count,
+        "quests_checked_in_count": quests_checked,
         "quests_count_updated_at": datetime.now(timezone.utc).isoformat() if quests_url else None,
         "price_kop":price_kop,
         "title": data.get("title", ""),
@@ -4928,9 +5045,17 @@ def edit_event(event_id):
     except ValueError as exc:
         return jsonify({"error":str(exc)}),400
 
+    try:
+        quests_checked = _quests_count_from_input(data.get('quests_checked_in_count',current_event.get('quests_checked_in_count') or 0)) if quests_url else 0
+    except ValueError:
+        return jsonify({'error':'invalid_quests_checkins'}),400
+    if quests_checked > quests_count:
+        return jsonify({'error':'quests_checkins_exceed_registration'}),400
+
     payload = {
         "quests_event_url": quests_url,
         "quests_count": quests_count,
+        "quests_checked_in_count": quests_checked,
         "quests_count_updated_at": datetime.now(timezone.utc).isoformat() if (quests_url != (current_event.get("quests_event_url") or "") or quests_count != int(current_event.get("quests_count") or 0)) else current_event.get("quests_count_updated_at"),
         "price_kop":price_kop,
         "title": title,
@@ -5792,6 +5917,11 @@ def _format_group_event_header(event):
         local, external = _event_source_counts(event)
         lines.append(f"🎲 Styloteka: {local} · 🔗 Quests Inc: {external}")
         lines.append(f"👥 Разом записів: {local + external} (без перевірки повторів)")
+    local_present = max(0,int(event.get('checked_in_count') or 0))
+    quests_present = min(max(0,int(event.get('quests_checked_in_count') or 0)),
+        max(0,int(event.get('quests_count') or 0))) if event.get('quests_event_url') else 0
+    if local_present or quests_present:
+        lines.append(f"✅ Прийшли: Styloteka {local_present} · Quests Inc {quests_present} (вручну)")
     return "\n".join(lines)
 
 

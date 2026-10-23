@@ -7070,6 +7070,26 @@ button,.btn{font-family:inherit}
 .ev-quests-block a{color:#9ec8ff;font-weight:700;display:inline-block;margin-top:5px}
 .ev-quests-total{font-size:14px;font-weight:650;margin-top:2px}
 .ev-quests-disclaimer{color:#b8c2d4;font-size:11px;margin-top:4px}
+
+/* Styloteka v5.1 · on-site check-in + voting leaderboard */
+.event-attendance{margin:10px 0;padding:12px;border:1px solid rgba(159,190,244,.25);background:rgba(53,72,117,.16);border-radius:13px;font-size:12px;line-height:1.6}
+.event-attendance-title{color:#f4d99c;font-size:12px;font-weight:900;margin-bottom:7px}
+.event-attendance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.event-attendance-grid>div{padding:9px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(4,14,34,.24);min-width:0}
+.event-attendance-grid b{display:block;color:#f4e4bd;font-size:16px;line-height:1.25}
+.event-attendance-grid span{font-size:10px;color:#bdcbe6}
+.event-attendance-note{margin-top:7px;color:#b8c7df;font-size:10px}
+.event-checkin-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+.event-checkin-actions button{flex:1;min-width:135px;padding:11px 9px;border:1px solid rgba(244,211,133,.4);border-radius:11px;background:rgba(217,179,98,.12);color:#ffe4aa;font-weight:850;font-size:12px}
+.event-checkin-modal .sheet{max-width:450px;box-sizing:border-box}
+.event-checkin-qr{display:block;width:min(100%,290px);height:auto;margin:12px auto;padding:8px;background:#fff;border-radius:12px}
+.event-checkin-token{overflow-wrap:anywhere;text-align:center;font-size:10px;color:#bbc9df;margin:7px 0 13px}
+.event-checkin-result{padding:10px 12px;border-radius:11px;background:rgba(144,180,215,.13);border:1px solid rgba(144,180,215,.2);margin-top:11px;line-height:1.55;font-size:12px}
+.event-checkin-modal textarea{width:100%;box-sizing:border-box;min-height:70px;margin:12px 0 4px}
+.event-checkin-modal .btn{width:100%;margin-top:9px}
+.event-vote-winners{margin:9px 0 10px;padding:10px;border-radius:12px;background:rgba(198,162,96,.09);border:1px solid rgba(236,195,113,.22);font-size:12px;line-height:1.65}
+.event-vote-winners b{color:#ffdf9e}
+@media(max-width:350px){.event-attendance-grid{gap:5px}.event-attendance-grid>div{padding:7px}.event-checkin-actions button{min-width:0;width:100%;flex-basis:100%}}
 </style>
 
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
@@ -7532,6 +7552,15 @@ button,.btn{font-family:inherit}
   </div>
 </div>
 
+<!-- QR ticket and admission scanner (v5.1) -->
+<div class="modal event-checkin-modal" id="eventCheckinModal" onclick="if(event.target===this) closeModal('eventCheckinModal')">
+  <div class="sheet">
+    <button class="close-btn" onclick="closeModal('eventCheckinModal')" aria-label="Закрити">×</button>
+    <h2 id="eventCheckinHeading">🎫 Вхід на подію</h2>
+    <div id="eventCheckinContent" aria-live="polite"></div>
+  </div>
+</div>
+
 <div class="modal" id="eventModal">
   <div class="sheet">
     <button class="close-btn" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
@@ -7574,6 +7603,9 @@ button,.btn{font-family:inherit}
     <div id="eventQuestsCountRow" style="display:none;">
       <label for="eventQuestsCount">Скільки людей іде через Quests Inc</label>
       <input type="number" id="eventQuestsCount" min="0" max="10000" step="1" inputmode="numeric" value="0">
+      <label for="eventQuestsCheckedInCount">Фактично прийшли через Quests (вручну)</label>
+      <input type="number" id="eventQuestsCheckedInCount" min="0" max="10000" step="1" inputmode="numeric" value="0">
+      <div class="event-form-hint">Це лише підтверджена організатором кількість: акаунти Quests не підтягуються автоматично.</div>
       <div class="event-form-hint">Кількість поки вводить адміністратор. Автоматичне оновлення та профілі можливі після перевірки доступу до Quests Inc.</div>
     </div>
 
@@ -11199,6 +11231,7 @@ function renderEventMemberGamePicker() {
     return `<div class="event-pick-row">${picture(g)}<div class="event-pick-row-main"><div class="event-pick-row-title">${escapeHtml(g.name||'Гра')}</div><div class="event-pick-row-meta">${escapeHtml(String(g.tags||'Настільна гра').slice(0,110))}</div></div><button type="button" class="event-pick-btn ${chosen?'selected':''}" data-pick-game="${id}" ${!canPick?'disabled':''}>${chosen?'✓ Прибрати':'Додати'}</button></div>`;
   }).join(''):`<div class="event-pick-muted">За пошуком нічого не знайдено.</div>`;
   root.innerHTML = `
+    ${rank.length ? `<div class="event-vote-winners"><b>🏆 Рейтинг голосування</b><div>${rank.slice(0,3).map((g,i)=>`${['🥇','🥈','🥉'][i]} ${escapeHtml(g.name)} — <b>${g.users.length}</b> голосів`).join('<div style="height:5px"></div>')}</div></div>` : ''}
     ${names.length?`<div class="event-pick-block"><div class="event-pick-section">📋 Ігри організатора</div><div class="event-pick-muted">${names.map(escapeHtml).join(' · ')}</div></div>`:''}
     <div class="event-pick-block"><div class="event-pick-section">🙌 Пропозиції учасників <span class="event-pick-count">${rank.length} ігор</span></div>${proposed}</div>
     <div class="event-pick-block"><div class="event-pick-section">➕ Обрати настолку <span class="event-pick-count">${mine.size} вибрано</span></div><div class="event-pick-muted">${suggestNote}</div>${s.event?.status==='scheduled'?`<input id="eventPicksSearch" type="search" placeholder="🔎 Знайти гру в бібліотеці" value="${escapeHtml(eventPicksSearchTerm)}" autocomplete="off"><div id="eventPicksOptions">${options}</div>`:''}</div>
@@ -11236,6 +11269,90 @@ function renderEventMemberGamePicker() {
     }catch(err){tg.showAlert(err.message||'Не вдалося зберегти вибір.');renderEventMemberGamePicker();}
     finally{eventPicksPending=false;}
   };
+}
+
+function eventAttendanceStatsHtml(ev, localCount) {
+  const local = Math.max(0,Number(ev.checked_in_count)||0);
+  const questsRegistered = ev.quests_event_url ? Math.max(0,Number(ev.quests_count)||0) : 0;
+  const questsPresent = ev.quests_event_url ? Math.min(questsRegistered,Math.max(0,Number(ev.quests_checked_in_count)||0)) : 0;
+  const registered = localCount+questsRegistered;
+  return `<div class="event-attendance"><div class="event-attendance-title">✅ Фактична присутність</div>
+    <div class="event-attendance-grid"><div><b>${local} / ${localCount}</b><span>Styloteka · прийшли / записані</span></div>
+    <div><b>${questsPresent} / ${questsRegistered}</b><span>Quests · вручну</span></div></div>
+    <div class="event-attendance-note">Разом: ${local+questsPresent} відміток із ${registered} записів. Люди в обох застосунках можуть повторюватися.</div></div>`;
+}
+
+let activeCheckinEventId = null;
+async function openEventTicket(ev) {
+  activeCheckinEventId = Number(ev.id);
+  const modal = document.getElementById('eventCheckinModal');
+  document.getElementById('eventCheckinHeading').textContent = '🎫 Мій квиток · '+(ev.title||'Подія');
+  const root=document.getElementById('eventCheckinContent');
+  root.innerHTML = '<p>Готую твій персональний QR-квиток…</p>';
+  modal.classList.add('open');
+  try {
+    const res = await fetch(`/api/events/${ev.id}/checkin/ticket`,{method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:'{}'});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error==='going_rsvp_required'?'Квиток доступний тільки після підтвердженого запису.':'Не вдалося отримати QR-квиток.');
+    if(activeCheckinEventId!==Number(ev.id)) return;
+    // SVG is generated by our trusted backend. Never render arbitrary user text as SVG.
+    const uri='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(data.qr_svg);
+    root.innerHTML=`<p>Покажи цей QR-код організатору на вході. У кожної людини власний квиток.</p>
+       <img class="event-checkin-qr" alt="QR-квиток для входу" src="${uri}">
+       <div class="event-checkin-token">Код: ${escapeHtml(data.ticket)}</div>
+       <div class="event-checkin-result">${data.checked_in?'✅ Твій прихід уже підтверджено.':'⏳ Очікує сканування організатором.'}</div>`;
+  } catch(err) {root.textContent=err.message||'QR-квиток недоступний.';}
+}
+
+function openEventCheckinScanner(ev) {
+  if(!isAdmin) return;
+  activeCheckinEventId = Number(ev.id);
+  const modal=document.getElementById('eventCheckinModal');
+  document.getElementById('eventCheckinHeading').textContent='📷 Відмітка гостей · '+(ev.title||'Подія');
+  const root=document.getElementById('eventCheckinContent');
+  root.innerHTML=`<p>Скануй QR-квиток учасника або встав його код. Відмітити присутність може лише адміністратор групи.</p>
+    <button type="button" class="btn" id="checkinCameraBtn">📷 Відкрити QR-сканер</button>
+    <textarea id="checkinTicketInput" rows="2" placeholder="STY51:номер_події:код_квитка" autocomplete="off"></textarea>
+    <button type="button" class="btn" id="checkinConfirmBtn">✅ Підтвердити прихід</button>
+    <div id="checkinScanResult" class="event-checkin-result" aria-live="polite">Для платного заходу враховуються лише підтверджені записи.</div>`;
+  modal.classList.add('open');
+  document.getElementById('checkinConfirmBtn').onclick=()=>confirmEventCheckin();
+  document.getElementById('checkinCameraBtn').onclick=()=>{
+    const scanner=tg?.showScanQrPopup;
+    if(typeof scanner==='function') {
+      tg.showScanQrPopup({text:'Наведи камеру на QR-квиток Styloteka'},(text)=>{
+        if(typeof text!=='string'||!text.startsWith('STY51:'))return false;
+        document.getElementById('checkinTicketInput').value=text;
+        if(tg.closeScanQrPopup)tg.closeScanQrPopup();
+        confirmEventCheckin();
+        return true;
+      });
+    } else {
+      tg.showAlert('У цій версії Telegram немає QR-сканера. Встав код квитка вручну або онови Telegram.');
+    }
+  };
+}
+
+async function confirmEventCheckin() {
+  const id=activeCheckinEventId;
+  const input=document.getElementById('checkinTicketInput');
+  const root=document.getElementById('checkinScanResult');
+  const btn=document.getElementById('checkinConfirmBtn');
+  if(!id||!input||!root)return;
+  const token=input.value.trim();
+  if(!token.startsWith('STY51:')){root.textContent='Встав правильний код Styloteka.';return;}
+  if(btn)btn.disabled=true;
+  root.textContent='Перевіряю квиток…';
+  try {
+    const res=await fetch(`/api/events/${id}/checkin/scan`,{
+      method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({ticket:token})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const errors={invalid_ticket:'Невідомий або чужий QR-квиток.',not_registered:'Людина ще не має підтвердженого місця.',event_closed:'Подія вже закрита.',group_admin_required:'Лише адміністратор може підтвердити прихід.'};throw Error(errors[data.status||data.error]||'Не вдалося відмітити прихід.');}
+    root.textContent=(data.status==='already_checked_in'?'ℹ️ Уже відмічено: ':'✅ Прихід підтверджено: ')+(data.display_name||'Гравець');
+    input.value='';
+    await loadEvents();
+  }catch(err){root.textContent=err.message||'Помилка сканування.';}
+  finally{if(btn)btn.disabled=false;}
 }
 
 function renderEvents(events) {
@@ -11328,6 +11445,7 @@ function renderEvents(events) {
           ${eventMemberGamesSummary(ev)}
           ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
           ${eventQuestsCountsHtml(ev, going.length)}
+          ${eventAttendanceStatsHtml(ev, going.length)}
           ${eventLocationHtml(ev)}
           ${cover}
           ${historyMode
@@ -11348,6 +11466,10 @@ function renderEvents(events) {
           : ''}
       </div>
 
+      ${!historyMode && (mine?.status === 'going' || isAdmin) ? `<div class="event-checkin-actions">
+        ${mine?.status === 'going' ? '<button type="button" class="event-open-ticket">🎫 Мій QR-квиток</button>' : ''}
+        ${isAdmin ? '<button type="button" class="event-open-scanner">📷 Відмітити прихід</button>' : ''}
+      </div>` : ''}
       <button type="button" class="event-games-open" aria-label="Переглянути і вибрати настільні ігри на подію">🎲 ${historyMode ? 'Переглянути ігри заходу' : 'Обрати ігри для заходу'} <span aria-hidden="true">→</span></button>
       <div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div>
       <div class="ev-participants">${participantHtml}</div>
@@ -11364,6 +11486,8 @@ function renderEvents(events) {
     `;
 
     card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
+    card.querySelector('.event-open-ticket')?.addEventListener('click', () => openEventTicket(ev));
+    card.querySelector('.event-open-scanner')?.addEventListener('click', () => openEventCheckinScanner(ev));
     card.querySelector('.ev-payment-check')?.addEventListener('click',()=>checkMonobankEventPayment(ev.id));
 
     if (!historyMode) {
@@ -11515,6 +11639,7 @@ function openEditEventModal(ev) {
   document.getElementById('eventDescription').value = ev.description || '';
   document.getElementById('eventQuestsUrl').value = ev.quests_event_url || '';
   document.getElementById('eventQuestsCount').value = String(Number(ev.quests_count) || 0);
+  document.getElementById('eventQuestsCheckedInCount').value = String(Number(ev.quests_checked_in_count) || 0);
   setEventQuestsVisibility();
   const paid=(Number(ev.price_kop)||0)>0;
   document.getElementById('eventPriceMode').value=paid?'paid':'free';
@@ -11547,6 +11672,7 @@ function openEventModal() {
   document.getElementById('eventDescription').value = '';
   document.getElementById('eventQuestsUrl').value = '';
   document.getElementById('eventQuestsCount').value = '0';
+  document.getElementById('eventQuestsCheckedInCount').value = '0';
   setEventQuestsVisibility();
   document.getElementById('eventPriceMode').value='free';
   document.getElementById('eventPriceUah').value='';
@@ -11588,6 +11714,7 @@ async function submitEvent() {
   formData.append('description', document.getElementById('eventDescription').value.trim());
   const questsEventUrl = document.getElementById('eventQuestsUrl').value.trim();
   const questsCount = document.getElementById('eventQuestsCount').value.trim() || '0';
+  const questsCheckedIn = document.getElementById('eventQuestsCheckedInCount').value.trim() || '0';
   if (questsEventUrl && !/^https:\/\/(?:share\.)?quests\.inc\//i.test(questsEventUrl) && !/^https:\/\/(?:www\.)?questsapp\.com\//i.test(questsEventUrl)) {
     tg.showAlert('Вкажи посилання на подію Quests Inc.');return;
   }
@@ -11595,7 +11722,11 @@ async function submitEvent() {
     tg.showAlert('Кількість учасників Quests має бути цілим числом від 0 до 10000.');return;
   }
   formData.append('quests_event_url',questsEventUrl);
+  if (questsEventUrl && (!/^\d+$/.test(questsCheckedIn) || Number(questsCheckedIn)>Number(questsCount))) {
+    tg.showAlert('Кількість тих, хто прийшов через Quests, не може перевищувати кількість записів.');return;
+  }
   formData.append('quests_count',questsEventUrl?questsCount:'0');
+  formData.append('quests_checked_in_count',questsEventUrl?questsCheckedIn:'0');
   formData.append(isEditing ? 'updated_by' : 'created_by', username);
 
   if (isEditing && editingEventRemoveCover) {
