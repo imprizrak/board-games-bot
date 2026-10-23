@@ -7081,6 +7081,11 @@ button,.btn{font-family:inherit}
 .event-attendance-note{margin-top:7px;color:#b8c7df;font-size:10px}
 .event-checkin-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
 .event-checkin-actions button{flex:1;min-width:135px;padding:11px 9px;border:1px solid rgba(244,211,133,.4);border-radius:11px;background:rgba(217,179,98,.12);color:#ffe4aa;font-weight:850;font-size:12px}
+.event-quests-person{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.1)}
+.event-quests-person-name{font-size:13px;min-width:0;overflow-wrap:anywhere}
+.event-quests-person button{border:1px solid rgba(225,194,120,.4);border-radius:9px;background:rgba(247,217,149,.12);color:#ffdf9b;padding:9px;min-width:114px;font-size:12px;font-weight:750}
+.event-quests-person button.checked{background:rgba(77,170,109,.2);border-color:rgba(77,170,109,.5);color:#b6f6c5}
+.event-quests-person button:disabled{opacity:.55}
 .event-checkin-modal .sheet{max-width:450px;box-sizing:border-box}
 .event-checkin-qr{display:block;width:min(100%,290px);height:auto;margin:12px auto;padding:8px;background:#fff;border-radius:12px}
 .event-checkin-token{overflow-wrap:anywhere;text-align:center;font-size:10px;color:#bbc9df;margin:7px 0 13px}
@@ -7601,10 +7606,11 @@ button,.btn{font-family:inherit}
     <label for="eventQuestsUrl">Подія в Quests Inc (необов'язково)</label>
     <input type="url" id="eventQuestsUrl" inputmode="url" placeholder="https://share.quests.inc/event.html?id=..." oninput="setEventQuestsVisibility()">
     <div id="eventQuestsCountRow" style="display:none;">
-      <label for="eventQuestsCount">Скільки людей іде через Quests Inc</label>
+      <label for="eventQuestsCount">Учасники Quests Inc (автоматично для публічних подій)</label>
       <input type="number" id="eventQuestsCount" min="0" max="10000" step="1" inputmode="numeric" value="0">
-      <label for="eventQuestsCheckedInCount">Фактично прийшли через Quests (вручну)</label>
+      <label for="eventQuestsCheckedInCount">Фактично прийшли через Quests (автоматичні відмітки)</label>
       <input type="number" id="eventQuestsCheckedInCount" min="0" max="10000" step="1" inputmode="numeric" value="0">
+      <div class="event-attendance-note" id="eventQuestsSyncHint">Для підтримуваних Quests-посилань дані оновлюються автоматично.</div>
       <div class="event-form-hint">Це лише підтверджена організатором кількість: акаунти Quests не підтягуються автоматично.</div>
       <div class="event-form-hint">Кількість поки вводить адміністратор. Автоматичне оновлення та профілі можливі після перевірки доступу до Quests Inc.</div>
     </div>
@@ -11278,8 +11284,45 @@ function eventAttendanceStatsHtml(ev, localCount) {
   const registered = localCount+questsRegistered;
   return `<div class="event-attendance"><div class="event-attendance-title">✅ Фактична присутність</div>
     <div class="event-attendance-grid"><div><b>${local} / ${localCount}</b><span>Styloteka · прийшли / записані</span></div>
-    <div><b>${questsPresent} / ${questsRegistered}</b><span>Quests · вручну</span></div></div>
+    <div><b>${questsPresent} / ${questsRegistered}</b><span>Quests · ${ev.quests_sync_status==='synced'?'автоматично':ev.quests_sync_status==='stale'?'останні доступні дані':'вручну'}</span></div></div>
     <div class="event-attendance-note">Разом: ${local+questsPresent} відміток із ${registered} записів. Люди в обох застосунках можуть повторюватися.</div></div>`;
+}
+
+async function openEventQuestsParticipants(ev) {
+  if(!isAdmin || !ev.quests_event_url) return;
+  const eventId=Number(ev.id), modal=document.getElementById('eventCheckinModal');
+  document.getElementById('eventCheckinHeading').textContent='🔗 Гості Quests · '+(ev.title||'Подія');
+  const root=document.getElementById('eventCheckinContent');
+  root.textContent='Отримую учасників із Quests…';
+  modal.classList.add('open');
+  let data;
+  try {
+    const res=await fetch(`/api/events/${eventId}/quests/participants`,{headers:telegramAuthHeaders()});
+    data=await res.json().catch(()=>({}));
+    if(!res.ok) throw Error('Не вдалося отримати учасників. Перевір посилання на подію та спробуй пізніше.');
+  } catch(err) {root.textContent=err.message||'Quests тимчасово недоступний.';return;}
+  const render=()=>{
+    const people=data.participants||[], present=people.filter(p=>p.checked_in).length;
+    root.innerHTML=`<div class="event-attendance-note">Quests: ${data.count} записів · ${present} іменних відміток. Оновлено: ${escapeHtml(data.updated_at ? new Date(data.updated_at).toLocaleTimeString('uk-UA') : 'невідомо')}${data.status==='stale'?' · тимчасово показані останні доступні дані':''}.</div>
+      ${!data.complete?`<div class="event-attendance-note">⚠️ Quests надає лише ${data.visible} профілів із ${data.count}. Решту неможливо відмітити поіменно через це підключення.</div>`:''}
+      ${people.length?people.map(p=>`<div class="event-quests-person"><span class="event-quests-person-name">${escapeHtml(p.name)}</span><button type="button" class="${p.checked_in?'checked':''}" data-quests-checkin="${escapeHtml(p.key)}">${p.checked_in?'✅ Прийшов':'Відмітити прихід'}</button></div>`).join(''):'<p>Quests поки не повернув профілів учасників.</p>'}`;
+    root.querySelectorAll('[data-quests-checkin]').forEach(btn=>btn.onclick=async()=>{
+      const person=people.find(p=>p.key===btn.dataset.questsCheckin);
+      if(!person) return;
+      btn.disabled=true;
+      try {
+        const res=await fetch(`/api/events/${eventId}/quests/checkin`,{
+          method:'POST', headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+          body:JSON.stringify({participant_key:person.key,checked_in:!person.checked_in})});
+        const reply=await res.json().catch(()=>({}));
+        if(!res.ok) throw Error(reply.error==='event_closed'?'Завершену подію не можна змінювати.':'Не вдалося зберегти відмітку.');
+        person.checked_in=!person.checked_in;
+        render();
+        await loadEvents();
+      } catch(err) {btn.disabled=false;tg.showAlert(err.message||'Помилка відмітки.');}
+    });
+  };
+  render();
 }
 
 let activeCheckinEventId = null;
@@ -11469,6 +11512,7 @@ function renderEvents(events) {
       ${!historyMode && (mine?.status === 'going' || isAdmin) ? `<div class="event-checkin-actions">
         ${mine?.status === 'going' ? '<button type="button" class="event-open-ticket">🎫 Мій QR-квиток</button>' : ''}
         ${isAdmin ? '<button type="button" class="event-open-scanner">📷 Відмітити прихід</button>' : ''}
+        ${isAdmin && ev.quests_event_url ? '<button type="button" class="event-open-quests">🔗 Гості Quests</button>' : ''}
       </div>` : ''}
       <button type="button" class="event-games-open" aria-label="Переглянути і вибрати настільні ігри на подію">🎲 ${historyMode ? 'Переглянути ігри заходу' : 'Обрати ігри для заходу'} <span aria-hidden="true">→</span></button>
       <div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div>
@@ -11488,6 +11532,7 @@ function renderEvents(events) {
     card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
     card.querySelector('.event-open-ticket')?.addEventListener('click', () => openEventTicket(ev));
     card.querySelector('.event-open-scanner')?.addEventListener('click', () => openEventCheckinScanner(ev));
+    card.querySelector('.event-open-quests')?.addEventListener('click', () => openEventQuestsParticipants(ev));
     card.querySelector('.ev-payment-check')?.addEventListener('click',()=>checkMonobankEventPayment(ev.id));
 
     if (!historyMode) {
@@ -11610,6 +11655,18 @@ function setEventQuestsVisibility(){
   const linked = !!document.getElementById('eventQuestsUrl')?.value.trim();
   const row = document.getElementById('eventQuestsCountRow');
   if(row) row.style.display = linked ? '' : 'none';
+  let supported=false;
+  try {
+    const url=new URL(document.getElementById('eventQuestsUrl').value.trim());
+    supported=url.protocol==='https:' && ['share.quests.inc','quests.inc','www.quests.inc'].includes(url.hostname)
+      && url.pathname==='/event.html' && /^[a-f\d-]{36}$/i.test(url.searchParams.get('id')||'');
+  }catch(_e){}
+  for(const id of ['eventQuestsCount','eventQuestsCheckedInCount']) {
+    const field=document.getElementById(id);
+    if(field) field.disabled=linked&&supported;
+  }
+  const hint=document.getElementById('eventQuestsSyncHint');
+  if(hint)hint.textContent=supported?'Кількість оновиться з Quests; присутність відмічай у списку «Гості Quests».':'Для цього посилання автоматична синхронізація недоступна — введи кількість вручну.';
 }
 function eventQuestsCountsHtml(ev, localCount){
   const link = String(ev?.quests_event_url || '').trim();
@@ -11619,7 +11676,7 @@ function eventQuestsCountsHtml(ev, localCount){
     <div>🎲 Styloteka: <b>${localCount}</b> · 🔗 Quests Inc: <b>${external}</b></div>
     <div class="ev-quests-total">👥 Разом записів: <b>${localCount + external}</b></div>
     <a href="${escapeHtml(link)}" rel="noopener noreferrer" target="_blank">Переглянути учасників у Quests Inc ↗</a>
-    <div class="ev-quests-disclaimer">Можливі повторні записи однієї людини. Дані Quests оновлює організатор.</div>
+    <div class="ev-quests-disclaimer">${ev.quests_sync_status==='synced'?'Дані Quests оновлюються автоматично (до 15 профілів у списку).':ev.quests_sync_status==='stale'?'Тимчасово показані останні доступні дані Quests.':'Дані Quests введені вручну або синхронізація недоступна.'} Людина може записатися в обох застосунках.</div>
   </div>`;
 }
 

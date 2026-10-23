@@ -9,7 +9,7 @@ import json
 import time
 import re
 from decimal import Decimal, InvalidOperation
-from threading import Thread
+from threading import Thread, Lock
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from urllib.parse import quote, parse_qsl, urlparse, unquote, parse_qs
@@ -58,6 +58,7 @@ MONOBANK_CONFIRM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/confirm_event_monobank_payme
 MONOBANK_RESERVE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/reserve_event_monobank_payment"
 EVENT_GAME_PICKS_REST = f"{SUPABASE_URL}/rest/v1/event_game_picks"
 EVENT_CHECKINS_REST = f"{SUPABASE_URL}/rest/v1/event_checkins"
+QUESTS_CHECKINS_REST = f"{SUPABASE_URL}/rest/v1/event_quests_checkins"
 EVENT_CHECKIN_RPC = f"{SUPABASE_URL}/rest/v1/rpc/styloteka_confirm_event_checkin"
 ADMINS_REST = f"{SUPABASE_URL}/rest/v1/admins"
 MASTERCLASS_REST = f"{SUPABASE_URL}/rest/v1/masterclass_bookings"
@@ -3814,6 +3815,7 @@ def event_completion_worker():
             # допомагає відновити пропущені відповіді банку.
             if step % 5 == 0:
                 _reconcile_recent_event_payments()
+                _sync_linked_quests_event_counts()
         except Exception:
             logging.exception('Помилка робітника подій; наступна спроба за хвилину')
         step+=1
@@ -4123,6 +4125,126 @@ def _quests_count_from_input(raw):
     if value < 0 or value > 10000:
         raise ValueError("invalid_quests_count")
     return value
+
+
+# Quests Inc exposes a read-only public event summary to its own share page.
+# It contains the total number of attendees, but at most 15 public profiles.
+# Never fetch an arbitrary URL supplied by an event editor (SSRF protection).
+_QUESTS_CACHE = {}
+_QUESTS_CACHE_LOCK = Lock()
+_QUESTS_CACHE_SECONDS = 75
+
+
+def _quests_public_id(event_url):
+    try:
+        parsed = urlparse(_validated_quests_event_url(event_url))
+        if parsed.hostname not in ("share.quests.inc", "quests.inc", "www.quests.inc"):
+            return None
+        if parsed.path.rstrip("/") != "/event.html":
+            return None
+        values = parse_qs(parsed.query).get("id", [])
+        if len(values) != 1:
+            return None
+        return str(uuid.UUID(values[0]))
+    except (ValueError, AttributeError):
+        return None
+
+
+def _quests_public_snapshot(event_url, force=False):
+    quest_id = _quests_public_id(event_url)
+    if not quest_id:
+        return {"status": "unsupported", "quest_id": None, "count": None, "participants": []}
+    now = time.monotonic()
+    with _QUESTS_CACHE_LOCK:
+        old = _QUESTS_CACHE.get(quest_id)
+        if old and not force and now - old[0] < _QUESTS_CACHE_SECONDS:
+            return old[1]
+    try:
+        response = requests.get(
+            f"https://share.quests.inc/api/quests/{quest_id}/public",
+            timeout=8, allow_redirects=False,
+            headers={"Accept": "application/json", "User-Agent": "Styloteka-Quests-Sync/1.0"},
+        )
+        response.raise_for_status()
+        if response.is_redirect:
+            raise ValueError("unexpected Quests redirect")
+        payload = response.json()
+        records = payload.get("data") or []
+        if payload.get("is_success") is not True or not isinstance(records, list) or not records:
+            raise ValueError("invalid Quests response")
+        record = records[0]
+        count = int(record.get("participators_count"))
+        if not 0 <= count <= 10000:
+            raise ValueError("invalid Quests participant count")
+        people = []
+        seen = set()
+        for item in (record.get("participators_15") or [])[:15]:
+            if not isinstance(item, dict):
+                continue
+            profile_url = str(item.get("share_url") or "").strip()
+            username = str(item.get("username") or "").strip()
+            identity = profile_url or username
+            if not identity:
+                continue
+            key = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+            if key in seen:
+                continue
+            seen.add(key)
+            full_name = " ".join(str(item.get(k) or "").strip()
+                                 for k in ("firstname", "last_name")).strip()
+            people.append({"key": key, "name": full_name[:140] or username[:140] or "Гість Quests"})
+        snapshot = {"status": "synced", "quest_id": quest_id,
+                    "count": count, "participants": people,
+                    "complete": len(people) >= count,
+                    "updated_at": datetime.now(timezone.utc).isoformat()}
+        with _QUESTS_CACHE_LOCK:
+            _QUESTS_CACHE[quest_id] = (now, snapshot)
+        return snapshot
+    except (requests.RequestException, ValueError, TypeError, KeyError):
+        logging.warning("Quests Inc temporarily unavailable for quest %s", quest_id, exc_info=True)
+        if old:
+            return {**old[1], "status": "stale"}
+        return {"status": "unavailable", "quest_id": quest_id,
+                "count": None, "participants": []}
+
+
+def _quests_checked_keys(event_id, quest_id):
+    response = requests.get(QUESTS_CHECKINS_REST, headers=HEADERS, params={
+        "event_id": f"eq.{int(event_id)}", "quest_id": f"eq.{quest_id}",
+        "select": "participant_key,checked_in_at", "limit": "10000"}, timeout=12)
+    response.raise_for_status()
+    return {row["participant_key"] for row in response.json() if row.get("checked_in_at")}
+
+
+def _quests_set_count(event_id, old_count, new_count):
+    if old_count == new_count:
+        return
+    try:
+        response = requests.patch(EVENTS_REST, headers={**HEADERS, "Content-Type": "application/json"},
+            params={"id": f"eq.{int(event_id)}"}, json={
+                "quests_count": int(new_count),
+                "quests_count_updated_at": datetime.now(timezone.utc).isoformat()}, timeout=12)
+        response.raise_for_status()
+        refresh_event_group_posts_async(event_id)
+    except requests.RequestException:
+        logging.exception("Cannot persist synced Quests count for event %s", event_id)
+
+
+def _sync_linked_quests_event_counts():
+    """Periodically refresh linked events even when no visitor opens the Mini App."""
+    try:
+        response = requests.get(EVENTS_REST, headers=HEADERS, params={
+            "status": "eq.scheduled", "quests_event_url": "not.is.null",
+            "select": "id,quests_event_url,quests_count", "limit": "100"}, timeout=15)
+        response.raise_for_status()
+        for event in response.json():
+            if not event.get('quests_event_url'):
+                continue
+            sync = _quests_public_snapshot(event['quests_event_url'])
+            if sync['status'] == 'synced':
+                _quests_set_count(event['id'], int(event.get('quests_count') or 0), sync['count'])
+    except requests.RequestException:
+        logging.exception('Cannot update scheduled Quests event counts')
 
 
 def _event_source_counts(event):
@@ -4541,6 +4663,21 @@ def get_events():
             logging.exception('Не вдалося отримати статистику QR-відміток')
     for e in events:
         e['checked_in_count'] = checked_by_event.get(int(e['id']),0)
+        if e.get('quests_event_url'):
+            sync = _quests_public_snapshot(e['quests_event_url'])
+            e['quests_sync_status'] = sync['status']
+            e['quests_profiles_visible'] = len(sync['participants'])
+            e['quests_profiles_complete'] = bool(sync.get('complete'))
+            if sync.get('count') is not None:
+                old_count = max(0, int(e.get('quests_count') or 0))
+                e['quests_count'] = sync['count']
+                if sync['status'] == 'synced':
+                    _quests_set_count(e['id'], old_count, sync['count'])
+                try:
+                    if sync.get('quest_id'):
+                        e['quests_checked_in_count'] = len(_quests_checked_keys(e['id'], sync['quest_id']))
+                except requests.RequestException:
+                    logging.exception('Cannot load Quests check-ins for event %s', e['id'])
         e['quests_checked_in_count'] = (min(max(0,int(e.get('quests_checked_in_count') or 0)),
             max(0,int(e.get('quests_count') or 0))) if e.get('quests_event_url') else 0)
         e["rsvps"] = rsvps_by_event.get(e["id"], [])
@@ -4551,6 +4688,77 @@ def get_events():
         e["member_game_picks"] = picks_by_event.get(int(e["id"]), [])
 
     return jsonify(events)
+
+
+@app.route('/api/events/<int:event_id>/quests/participants', methods=['GET'])
+def event_quests_participants(event_id):
+    """Organizer-only names and personal attendance, never a public list endpoint."""
+    if not _request_is_group_admin():
+        return jsonify({'error': 'group_admin_required'}), 403
+    try:
+        event = get_event_snapshot(event_id)
+        if not event or not event.get('quests_event_url'):
+            return jsonify({'error': 'quests_event_not_linked'}), 404
+        sync = _quests_public_snapshot(event['quests_event_url'])
+        if sync.get('count') is None:
+            return jsonify({'error': 'quests_sync_unavailable', 'status': sync['status']}), 503
+        checked = _quests_checked_keys(event_id, sync['quest_id'])
+        participants = [{**p, 'checked_in': p['key'] in checked}
+                        for p in sync['participants']]
+        return jsonify({'status': sync['status'], 'count': sync['count'],
+                        'complete': bool(sync.get('complete')), 'visible': len(participants),
+                        'checked_in_count': len(checked), 'participants': participants,
+                        'updated_at': sync.get('updated_at')})
+    except requests.RequestException:
+        logging.exception('Quests participants unavailable for event %s', event_id)
+        return jsonify({'error': 'quests_sync_unavailable'}), 503
+
+
+@app.route('/api/events/<int:event_id>/quests/checkin', methods=['POST'])
+def event_quests_checkin(event_id):
+    if not _request_is_group_admin():
+        return jsonify({'error': 'group_admin_required'}), 403
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error': 'telegram_auth_required'}), 401
+    data = request.get_json(silent=True) or {}
+    key = str(data.get('participant_key') or '')
+    if not re.fullmatch(r'[a-f0-9]{64}', key) or type(data.get('checked_in')) is not bool:
+        return jsonify({'error': 'invalid_checkin'}), 400
+    try:
+        event = get_event_snapshot(event_id)
+        if not event or not event.get('quests_event_url'):
+            return jsonify({'error': 'quests_event_not_linked'}), 404
+        if event.get('status') != 'scheduled':
+            return jsonify({'error': 'event_closed'}), 409
+        sync = _quests_public_snapshot(event['quests_event_url'])
+        if sync['status'] not in ('synced', 'stale'):
+            return jsonify({'error': 'quests_sync_unavailable'}), 503
+        if not any(person['key'] == key for person in sync['participants']):
+            return jsonify({'error': 'participant_not_found'}), 404
+        match = {'event_id': f'eq.{event_id}', 'quest_id': f'eq.{sync["quest_id"]}',
+                 'participant_key': f'eq.{key}'}
+        if data['checked_in']:
+            response = requests.post(QUESTS_CHECKINS_REST,
+                headers={**HEADERS, 'Content-Type': 'application/json',
+                         'Prefer': 'resolution=merge-duplicates,return=minimal'},
+                params={'on_conflict': 'event_id,quest_id,participant_key'},
+                json={'event_id': event_id, 'quest_id': sync['quest_id'],
+                      'participant_key': key, 'checked_in_at': datetime.now(timezone.utc).isoformat(),
+                      'checked_in_by': int(user['id'])}, timeout=15)
+        else:
+            response = requests.delete(QUESTS_CHECKINS_REST, headers=HEADERS,
+                                       params=match, timeout=15)
+        response.raise_for_status()
+        count = len(_quests_checked_keys(event_id, sync['quest_id']))
+        update = requests.patch(EVENTS_REST, headers={**HEADERS, 'Content-Type': 'application/json'},
+            params={'id': f'eq.{event_id}'}, json={'quests_checked_in_count': count}, timeout=12)
+        update.raise_for_status()
+        refresh_event_group_posts_async(event_id)
+        return jsonify({'checked_in': data['checked_in'], 'checked_in_count': count})
+    except requests.RequestException:
+        logging.exception('Quests check-in unavailable for event %s', event_id)
+        return jsonify({'error': 'quests_checkin_unavailable'}), 503
 
 
 
@@ -4823,6 +5031,10 @@ def add_event():
         quests_checked = _quests_count_from_input(data.get('quests_checked_in_count')) if quests_url else 0
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+    if quests_url:
+        sync = _quests_public_snapshot(quests_url)
+        if sync['status'] == 'synced':
+            quests_count, quests_checked = sync['count'], 0
     if quests_checked > quests_count:
         return jsonify({'error':'quests_checkins_exceed_registration'}),400
 
@@ -5049,6 +5261,15 @@ def edit_event(event_id):
         quests_checked = _quests_count_from_input(data.get('quests_checked_in_count',current_event.get('quests_checked_in_count') or 0)) if quests_url else 0
     except ValueError:
         return jsonify({'error':'invalid_quests_checkins'}),400
+    if quests_url:
+        sync = _quests_public_snapshot(quests_url)
+        if sync['status'] == 'synced':
+            quests_count = sync['count']
+            if sync.get('quest_id'):
+                try:
+                    quests_checked = len(_quests_checked_keys(event_id, sync['quest_id']))
+                except requests.RequestException:
+                    return jsonify({'error':'quests_checkins_unavailable'}),503
     if quests_checked > quests_count:
         return jsonify({'error':'quests_checkins_exceed_registration'}),400
 
