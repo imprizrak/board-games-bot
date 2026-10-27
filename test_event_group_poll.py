@@ -102,17 +102,23 @@ class EventGamePollTests(TestCase):
         self.app["_event_game_poll_options"]({"id": 43})
         self.assertEqual(len([c for c in self.requests.calls if c[1] == "games"]), 1)
 
-    def test_two_buttons_per_row_and_live_counts(self):
+    def test_one_full_name_button_per_row_and_live_counts(self):
         self.requests.picks = [
             {"event_id": 42, "game_id": 1, "telegram_user_id": 1},
             {"event_id": 42, "game_id": 1, "telegram_user_id": 2},
         ]
         rows = self.app["_event_game_poll_rows"](self.event)
-        self.assertEqual(len(rows), 11)
-        self.assertTrue(all(len(row) == 2 for row in rows))
+        self.assertEqual(len(rows), 22)
+        self.assertTrue(all(len(row) == 1 for row in rows))
         callbacks = [button["callback_data"] for row in rows for button in row]
         self.assertEqual(len(set(callbacks)), 22)
         self.assertIn("· 2", rows[0][0]["text"])
+
+    def test_long_game_name_is_not_shortened(self):
+        long_name = "Вижити: втеча з таємничого острова"
+        self.requests.catalog.append({"id": 23, "name": long_name})
+        rows = self.app["_event_game_poll_rows"](self.event)
+        self.assertIn(f"🎲 {long_name} · 0", [row[0]["text"] for row in rows])
 
     def test_telegram_announcement_includes_catalog_poll(self):
         keyboard = self.app["telegram_keyboard_payload"](42)["inline_keyboard"]
