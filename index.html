@@ -6209,6 +6209,41 @@ document.addEventListener('click', event => {
 .event-pick-loading{padding:22px 6px;color:var(--muted);text-align:center}
 @media(max-width:360px){.event-pick-row{gap:7px}.event-pick-btn{min-width:75px;padding:7px 6px}.event-pick-sheet{padding-left:12px;padding-right:12px}}
 
+/* Home brand: the transparent ПРО 100 logo replaces only the title's first word. */
+.steam-view > header.home-brand-title{
+  padding-top:12px;
+  padding-bottom:13px;
+  text-shadow:none;
+}
+.home-brand-content{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(2px,1vw,9px);
+  min-width:0;
+  width:100%;
+}
+.home-brand-logo{
+  display:block;
+  width:clamp(108px,29vw,142px);
+  height:auto;
+  flex:0 0 auto;
+}
+.home-brand-word{
+  color:#e6eeff;
+  font-family:'Cinzel','EB Garamond',serif;
+  font-size:clamp(23px,5.9vw,30px);
+  line-height:1.1;
+  font-weight:800;
+  letter-spacing:.01em;
+  white-space:nowrap;
+  text-shadow:0 1px 8px rgba(168,197,255,.50),0 2px 3px rgba(0,0,0,.5);
+}
+@media(max-width:350px){
+  .home-brand-logo{width:98px}
+  .home-brand-word{font-size:22px}
+}
+
 
 /* v4.3 — Авто-рамки винесені за фотографію, обличчя не перекривається. */
 .profile-hero[class*="frame-shop-"] .profile-avatar,
@@ -6290,7 +6325,12 @@ document.addEventListener('click', event => {
 <!-- ==================== ВКЛАДКА: ГОЛОВНА ==================== -->
 <div class="view active" id="view-home">
   <div class="steam-view">
-    <header>Про100 Настолки</header>
+    <header class="home-brand-title" aria-label="Про100 Настолки">
+      <span class="home-brand-content">
+        <img class="home-brand-logo" src="/pro100-logo.png" alt="Про100" width="1536" height="1024" decoding="async">
+        <span class="home-brand-word">Настолки</span>
+      </span>
+    </header>
 
     <div class="home-welcome mmorpg-player-card" id="homeWelcome" role="button" tabindex="0" onclick="showMainView('view-profile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showMainView('view-profile');}">
       <div class="mmorpg-avatar-wrap">
