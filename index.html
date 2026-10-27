@@ -7280,6 +7280,212 @@ button,.btn{font-family:inherit}
   }
 </style>
 
+<!-- Styloteka v5.3.6: Liquid Glass-inspired floating controls for iOS 27. -->
+<style id="styloteka-liquid-glass">
+  :root {
+    --glass-nav-height: 72px;
+    --glass-bottom-gap: max(8px, env(safe-area-inset-bottom, 0px), var(--tg-safe-bottom, 0px));
+    --glass-border: rgba(222, 244, 255, .31);
+    --glass-shine: rgba(245, 252, 255, .47);
+    --glass-deep-edge: rgba(1, 9, 23, .87);
+    --glass-shadow: 0 12px 32px rgba(0, 3, 16, .38);
+    --glass-soft: linear-gradient(155deg,
+      rgba(167, 214, 255, .24) 0%,
+      rgba(69, 125, 178, .23) 46%,
+      rgba(8, 28, 56, .57) 100%);
+    --glass-strong: linear-gradient(150deg,
+      rgba(186, 231, 255, .39),
+      rgba(86, 163, 222, .25) 44%,
+      rgba(12, 47, 87, .49));
+  }
+
+  /* Content stays clear; only controls float as a distinct glass layer. */
+  body {
+    padding-bottom: calc(var(--glass-nav-height) + var(--glass-bottom-gap) + 26px) !important;
+  }
+  .view.active {
+    padding-bottom: max(10px, var(--glass-bottom-gap));
+  }
+
+  .bottom-nav {
+    left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    right: max(10px, env(safe-area-inset-right, 0px)) !important;
+    bottom: var(--glass-bottom-gap) !important;
+    width: auto !important;
+    height: var(--glass-nav-height) !important;
+    min-height: var(--glass-nav-height) !important;
+    padding: 5px 5px !important;
+    align-items: center !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 26px !important;
+    background: var(--glass-soft) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(175%) brightness(1.06);
+    backdrop-filter: blur(28px) saturate(175%) brightness(1.06);
+    box-shadow: var(--glass-shadow),
+      inset 0 1.5px 0 var(--glass-shine),
+      inset 0 -1.5px 0 var(--glass-deep-edge),
+      inset 1px 0 0 rgba(225, 246, 255, .14);
+    isolation: isolate;
+    overflow: hidden;
+    z-index: 100 !important;
+  }
+  .bottom-nav::before {
+    content: '';
+    position: absolute;
+    inset: 1px 1px auto;
+    height: 42%;
+    border-radius: 25px 25px 45% 45%;
+    background: linear-gradient(180deg, rgba(246, 253, 255, .14), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bottom-nav button {
+    position: relative;
+    z-index: 1;
+    height: 60px !important;
+    min-height: 60px !important;
+    min-width: 0;
+    padding: 4px 1px 5px !important;
+    border: 1px solid transparent !important;
+    border-radius: 19px !important;
+    background: transparent !important;
+    color: #a9c4dd !important;
+    grid-template-rows: 28px 17px;
+    gap: 2px;
+    transition: background .22s ease, box-shadow .22s ease,
+      color .22s ease, transform .22s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav button.active {
+    border-color: rgba(225, 246, 255, .43) !important;
+    background: var(--glass-strong) !important;
+    color: #f2fbff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .44),
+      inset 0 -1px 0 rgba(2, 24, 57, .55),
+      0 3px 14px rgba(7, 19, 46, .27);
+    text-shadow: 0 1px 7px rgba(190, 236, 255, .25);
+  }
+  .bottom-nav button:active { transform: scale(.96); }
+  .bottom-nav button .icon svg { stroke-width: 1.8; }
+  .bottom-nav button.active .icon {
+    filter: drop-shadow(0 0 5px rgba(191, 238, 255, .49));
+  }
+  .bottom-nav button span:last-child {
+    font-weight: 650;
+    letter-spacing: 0 !important;
+  }
+
+  /* Interactive surfaces: soft refraction, luminous upper edge, dark lower edge. */
+  .btn:not([style*="background"]),
+  .tool-tab-btn, .lib-subtab-btn, .counters-subtab-btn,
+  .quick-start-btn, .steam-small-btn, .home-tool-btn,
+  .event-games-open, .event-pick-btn, .event-checkin-actions button,
+  .admin-users-open-btn, .admin-users-refresh,
+  .shop-chip, .shop-filter-line button, .library-reset,
+  .shop-detail-actions button, .shop-confirm-actions button {
+    background: var(--glass-soft) !important;
+    color: #e7f7ff !important;
+    border: 1px solid rgba(215, 240, 255, .28) !important;
+    border-radius: 17px;
+    -webkit-backdrop-filter: blur(16px) saturate(155%);
+    backdrop-filter: blur(16px) saturate(155%);
+    box-shadow: inset 0 1px 0 rgba(246, 253, 255, .28),
+      inset 0 -1px 0 rgba(0, 11, 31, .54),
+      0 4px 13px rgba(0, 6, 25, .22);
+    transition: transform .2s ease, box-shadow .2s ease,
+      background .2s ease, border-color .2s ease;
+  }
+  .btn:not([style*="background"]):active,
+  .tool-tab-btn:active, .lib-subtab-btn:active,
+  .home-tool-btn:active, .steam-small-btn:active,
+  .event-games-open:active, .event-pick-btn:active,
+  .shop-chip:active, .shop-detail-actions button:active {
+    transform: scale(.975);
+  }
+  .tool-tab-btn.active, .lib-subtab-btn.active, .counters-subtab-btn.active,
+  .quick-start-btn.primary, .steam-small-btn.primary,
+  .event-pick-btn.selected, .shop-chip.on,
+  .shop-detail-actions .primary, .shop-confirm-actions .primary {
+    background: var(--glass-strong) !important;
+    border-color: rgba(218, 244, 255, .52) !important;
+    color: #f1fbff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42),
+      inset 0 -1px 0 rgba(4, 33, 66, .52),
+      0 5px 17px rgba(36, 106, 173, .21);
+  }
+  button:disabled { transform: none !important; filter: saturate(.75); }
+
+  /* Floating circular tools and dismiss controls. */
+  .fab {
+    bottom: calc(var(--glass-nav-height) + var(--glass-bottom-gap) + 16px) !important;
+    background: var(--glass-strong) !important;
+    border: 1px solid rgba(231, 249, 255, .43) !important;
+    box-shadow: 0 9px 24px rgba(0, 4, 20, .4),
+      inset 0 1.5px 0 rgba(250, 254, 255, .52),
+      inset 0 -2px 0 rgba(1, 18, 40, .63);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+  }
+  .close-btn, .admin-user-detail-close {
+    border: 1px solid rgba(218, 244, 255, .27) !important;
+    border-radius: 50% !important;
+    background: rgba(156, 203, 244, .14) !important;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24);
+  }
+
+  /* Sheets are calmer, highly readable standard material behind glass controls. */
+  .sheet, .admin-user-detail-sheet, .event-pick-sheet {
+    background: linear-gradient(165deg,
+      rgba(19, 44, 76, .91), rgba(5, 19, 40, .96)) !important;
+    border-top: 1px solid rgba(227, 246, 255, .37) !important;
+    border-radius: 28px 28px 0 0 !important;
+    -webkit-backdrop-filter: blur(22px) saturate(135%);
+    backdrop-filter: blur(22px) saturate(135%);
+    box-shadow: 0 -18px 60px rgba(0, 4, 17, .47),
+      inset 0 1px 0 rgba(240, 252, 255, .22);
+  }
+  .sheet input:not([type="checkbox"]):not([type="radio"]),
+  .sheet textarea, .sheet select, .lib-search-input, #eventPicksSearch {
+    border: 1px solid rgba(179, 222, 252, .28) !important;
+    border-radius: 14px !important;
+    background: rgba(6, 23, 48, .58) !important;
+    box-shadow: inset 0 1px 3px rgba(1, 7, 22, .25);
+  }
+
+  /* Don't rely on blur: older Telegram clients and accessibility fallback. */
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .bottom-nav { background: #17314d !important; }
+    .fab, .btn:not([style*="background"]), .tool-tab-btn, .lib-subtab-btn,
+    .quick-start-btn, .home-tool-btn, .event-games-open, .shop-chip {
+      background: #1b3d5f !important;
+    }
+    .sheet, .admin-user-detail-sheet, .event-pick-sheet { background: #102741 !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .bottom-nav { background: #17314d !important; }
+    .sheet, .admin-user-detail-sheet, .event-pick-sheet { background: #102741 !important; }
+  }
+  @media (max-width: 359px) {
+    .bottom-nav {
+      left: 6px !important;
+      right: 6px !important;
+      border-radius: 22px !important;
+    }
+    .bottom-nav button { border-radius: 15px !important; }
+    .bottom-nav button span:last-child { font-size: 8.5px !important; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bottom-nav button, .btn, .tool-tab-btn, .lib-subtab-btn,
+    .steam-small-btn, .home-tool-btn, .shop-chip {
+      transition: none !important;
+    }
+    .bottom-nav button:active, .btn:active, .tool-tab-btn:active,
+    .lib-subtab-btn:active, .home-tool-btn:active { transform: none !important; }
+  }
+</style>
+
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
 <div class="view" id="view-community">
   <header>Спільнота</header>
