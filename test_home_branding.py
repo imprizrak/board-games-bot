@@ -8,12 +8,14 @@ ROOT = Path(__file__).parent
 
 
 class HomeBrandingTests(TestCase):
-    def test_home_header_uses_image_and_keeps_name(self):
+    def test_home_header_has_only_centered_smaller_logo(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('<header class="home-brand-title" aria-label="Про100 Настолки">', html)
+        self.assertIn('<header class="home-brand-title" aria-label="Про100">', html)
         self.assertIn('class="home-brand-logo" src="/pro100-logo.png"', html)
-        self.assertIn('<span class="home-brand-word">Настолки</span>', html)
+        self.assertNotIn('class="home-brand-word"', html)
         self.assertIn('.home-brand-content{', html)
+        self.assertIn('justify-content:center;', html)
+        self.assertIn('width:clamp(88px,24vw,118px)', html)
 
     def test_transparent_logo_is_bundled_and_served(self):
         logo = (ROOT / "pro100-logo.png").read_bytes()
