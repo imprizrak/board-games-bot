@@ -8,6 +8,7 @@ import hmac
 import json
 import time
 import re
+from collections import Counter
 from decimal import Decimal, InvalidOperation
 from threading import Thread, Lock
 from datetime import datetime, timezone, timedelta
@@ -5651,6 +5652,63 @@ def _event_mini_app_link(event_id, payment=False):
     return f"{base}?startapp={start}"
 
 
+# Event game votes are shared with the Mini App's event_game_picks table.
+# Every game in the Styloteka library is an option in a group announcement,
+# regardless of the games an organizer mentioned in the event description.
+# Cache the catalog to avoid querying it for every group post edit.
+_EVENT_GAME_OPTIONS_CACHE = {}
+_EVENT_GAME_OPTIONS_LOCK = Lock()
+
+
+def _event_game_poll_options(event):
+    key = "styloteka_library"
+    now = time.monotonic()
+    with _EVENT_GAME_OPTIONS_LOCK:
+        saved = _EVENT_GAME_OPTIONS_CACHE.get(key)
+        if saved and now - saved[0] < 300:
+            return saved[1]
+    try:
+        response = requests.get(REST, headers=HEADERS,
+            params={"select": "id,name", "limit": "10000", "order": "name.asc"}, timeout=20)
+        response.raise_for_status()
+        options = []
+        seen_ids = set()
+        for row in sorted(response.json(), key=lambda item: str(item.get("name") or "").casefold()):
+            name = str(row.get("name") or "").strip()
+            game_id = int(row.get("id") or 0)
+            if name and game_id > 0 and game_id not in seen_ids:
+                options.append((game_id, name))
+                seen_ids.add(game_id)
+        with _EVENT_GAME_OPTIONS_LOCK:
+            _EVENT_GAME_OPTIONS_CACHE[key] = (now, options)
+        return options
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        logging.exception("Cannot load Styloteka game library for event %s", event.get('id'))
+        return saved[1] if saved else []
+
+
+def _event_game_poll_rows(event):
+    """Two library game choices per row, with votes shared with the Mini App."""
+    options = _event_game_poll_options(event)
+    if not options:
+        return []
+    try:
+        response = requests.get(EVENT_GAME_PICKS_REST, headers=HEADERS,
+            params={"event_id": f"eq.{int(event['id'])}",
+                    "select": "game_id", "limit": "10000"}, timeout=15)
+        response.raise_for_status()
+        counts = Counter(int(p['game_id']) for p in response.json())
+    except (requests.RequestException, ValueError, KeyError):
+        logging.exception("Cannot load game vote counts for event %s", event.get('id'))
+        counts = Counter()
+    buttons = []
+    for game_id, name in options:
+        short = name[:19] + ('…' if len(name) > 19 else '')
+        buttons.append({"text": f"🎲 {short} · {counts[game_id]}",
+                        "callback_data": f"ev_game:{int(event['id'])}:{game_id}"})
+    return [buttons[i:i+2] for i in range(0, len(buttons), 2)]
+
+
 def telegram_keyboard_payload(event_id, map_url=""):
     event = get_event_snapshot(event_id)
     price = int((event or {}).get('price_kop') or 0)
@@ -5663,6 +5721,8 @@ def telegram_keyboard_payload(event_id, map_url=""):
             {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
             {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
         ]]
+    if event and event.get('status') == 'scheduled':
+        rows.extend(_event_game_poll_rows(event))
     map_url = str(map_url or "").strip()
     if map_url:
         rows.append([{
@@ -6068,6 +6128,9 @@ def event_group_keyboard(event_id, map_url=""):
             InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
             InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
         ]]
+    if event and event.get('status') == 'scheduled':
+        rows.extend([[InlineKeyboardButton(**button) for button in buttons]
+                     for buttons in _event_game_poll_rows(event)])
     map_url = str(map_url or "").strip()
     if map_url:
         rows.append([
@@ -6151,6 +6214,10 @@ def format_group_event(event):
     desc = str(event.get("description") or "").strip()
     if desc:
         lines.extend(["", desc])
+    if event.get('status') == 'scheduled':
+        lines.extend(["", "🎲 Обери настільні ігри кнопками нижче після запису на подію. "
+                      "Варіанти — з усієї бібліотеки Styloteka. "
+                      "Можна голосувати за кілька ігор; повторне натискання прибирає голос."])
     lines.extend(["", "Натисни кнопку нижче, щоб записатися."])
     return "\n".join(lines)
 
@@ -6418,6 +6485,76 @@ async def cmd_app(message: Message):
     except Exception:
         logging.exception("Не вдалося створити кнопку запуску Mini App")
         await message.answer("Не вдалося створити кнопку запуску Styloteka.")
+
+
+def _toggle_group_event_game_vote(event_id, game_id, telegram_user):
+    """Toggle the same vote used by Mini App, using Telegram's verified user ID."""
+    event = get_event_snapshot(event_id)
+    if not event:
+        raise ValueError('event_not_found')
+    if event.get('status') != 'scheduled':
+        raise ValueError('event_closed')
+    options = dict(_event_game_poll_options(event))
+    if game_id not in options:
+        raise ValueError('game_not_in_poll')
+    user = {"id": int(telegram_user.id), "username": telegram_user.username or "",
+            "first_name": telegram_user.first_name or "",
+            "last_name": telegram_user.last_name or ""}
+    if not _event_games_membership(event_id, user):
+        raise ValueError('rsvp_required')
+    lookup = {"event_id": f"eq.{event_id}", "game_id": f"eq.{game_id}",
+              "telegram_user_id": f"eq.{user['id']}"}
+    existing = requests.get(EVENT_GAME_PICKS_REST, headers=HEADERS,
+                            params={**lookup, "select": "id", "limit": "1"}, timeout=15)
+    existing.raise_for_status()
+    if existing.json():
+        response = requests.delete(EVENT_GAME_PICKS_REST, headers=HEADERS,
+                                   params=lookup, timeout=15)
+        response.raise_for_status()
+        return False, options[game_id]
+    display = " ".join(filter(None, (user['first_name'], user['last_name']))).strip()
+    display = display or user['username'] or 'Гравець'
+    response = requests.post(EVENT_GAME_PICKS_REST,
+        headers={**HEADERS, "Content-Type": "application/json",
+                 "Prefer": "resolution=ignore-duplicates,return=minimal"},
+        params={"on_conflict": "event_id,game_id,telegram_user_id"},
+        json={"event_id": event_id, "game_id": game_id,
+              "game_name": options[game_id], "telegram_user_id": user['id'],
+              "display_name": display[:100]}, timeout=15)
+    response.raise_for_status()
+    return True, options[game_id]
+
+
+@dp.callback_query(F.data.startswith("ev_game:"))
+async def callback_event_game_vote(callback: CallbackQuery):
+    try:
+        parts = callback.data.split(':')
+        if len(parts) != 3:
+            raise ValueError('invalid_game')
+        event_id, game_id = int(parts[1]), int(parts[2])
+        if event_id <= 0 or game_id <= 0:
+            raise ValueError('invalid_game')
+        selected, game_name = await asyncio.to_thread(
+            _toggle_group_event_game_vote, event_id, game_id, callback.from_user)
+        message = ("✅ Голос зараховано: " if selected else "↩️ Голос прибрано: ") + game_name[:75]
+        await callback.answer(message, show_alert=False)
+        await refresh_group_event_message(callback, event_id)
+        refresh_event_group_posts_async(event_id)
+    except ValueError as exc:
+        messages = {
+            'event_not_found': 'Подію не знайдено.',
+            'event_closed': 'Подія вже завершена, голосування закрито.',
+            'game_not_in_poll': 'Цю гру прибрано з опитування.',
+            'rsvp_required': 'Спочатку натисни «✅ Я йду» та запишись на подію.',
+        }
+        await callback.answer(messages.get(str(exc), 'Невірний варіант голосування.'),
+                              show_alert=True)
+    except requests.RequestException:
+        logging.exception('Не вдалося зберегти голос із групового анонсу')
+        await callback.answer('Помилка збереження голосу. Спробуй пізніше.', show_alert=True)
+    except Exception:
+        logging.exception('Помилка групового голосування за настільні ігри')
+        await callback.answer('Не вдалося проголосувати.', show_alert=True)
 
 
 @dp.callback_query(F.data.startswith("ev_go:"))
