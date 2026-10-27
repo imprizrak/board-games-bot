@@ -6209,7 +6209,7 @@ document.addEventListener('click', event => {
 .event-pick-loading{padding:22px 6px;color:var(--muted);text-align:center}
 @media(max-width:360px){.event-pick-row{gap:7px}.event-pick-btn{min-width:75px;padding:7px 6px}.event-pick-sheet{padding-left:12px;padding-right:12px}}
 
-/* Home brand: the transparent ПРО 100 wordmark stands alone, centered. */
+/* Home brand: the transparent STYLOTEKA wordmark stands alone, centered. */
 .steam-view > header.home-brand-title{
   padding-top:12px;
   padding-bottom:13px;
@@ -6224,8 +6224,10 @@ document.addEventListener('click', event => {
 }
 .home-brand-logo{
   display:block;
-  width:clamp(88px,24vw,118px);
-  height:auto;
+  width:auto;
+  height:clamp(46px,15vw,66px);
+  max-width:100%;
+  object-fit:contain;
   flex:0 0 auto;
 }
 
@@ -6310,9 +6312,9 @@ document.addEventListener('click', event => {
 <!-- ==================== ВКЛАДКА: ГОЛОВНА ==================== -->
 <div class="view active" id="view-home">
   <div class="steam-view">
-    <header class="home-brand-title" aria-label="Про100">
+    <header class="home-brand-title" aria-label="STYLOTEKA">
       <span class="home-brand-content">
-        <img class="home-brand-logo" src="/pro100-logo.png" alt="Про100" width="1536" height="1024" decoding="async">
+        <img class="home-brand-logo" src="/styloteka-logo.png" alt="STYLOTEKA" width="2172" height="724" decoding="async">
       </span>
     </header>
 

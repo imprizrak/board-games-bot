@@ -533,6 +533,12 @@ def home_brand_logo():
     return send_from_directory(".", "pro100-logo.png", mimetype="image/png")
 
 
+@app.route("/styloteka-logo.png")
+def styloteka_brand_logo():
+    """Serve the centered Styloteka home-page wordmark."""
+    return send_from_directory(".", "styloteka-logo.png", mimetype="image/png")
+
+
 
 # Styloteka offline-first PWA: local tools and cached public library; no payment writes offline.
 @app.route("/offline")
