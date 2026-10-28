@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Styloteka">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="preload" as="image" href="/styloteka-logo.webp" type="image/webp" fetchpriority="high">
 <script src="/offline-bridge.js" defer></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6314,7 +6315,10 @@ document.addEventListener('click', event => {
   <div class="steam-view">
     <header class="home-brand-title" aria-label="STYLOTEKA">
       <span class="home-brand-content">
-        <img class="home-brand-logo" src="/styloteka-logo.png" alt="STYLOTEKA" width="2172" height="724" decoding="async">
+        <picture class="home-brand-picture">
+          <source srcset="/styloteka-logo.webp" type="image/webp">
+          <img class="home-brand-logo" src="/styloteka-logo.png" alt="STYLOTEKA" width="2172" height="724" decoding="async" loading="eager" fetchpriority="high">
+        </picture>
       </span>
     </header>
 
@@ -7486,6 +7490,142 @@ button,.btn{font-family:inherit}
   }
 </style>
 
+<!-- Styloteka v5.3.7: readable type, consistent touch targets, lighter rendering. -->
+<style id="styloteka-ui-polish">
+  :root { --ui-control-h: 46px; }
+  body { background-attachment: scroll !important; }
+  button, a, input, select, textarea { touch-action: manipulation; }
+  .home-brand-picture {
+    display: block;
+    flex: 0 1 auto;
+    max-width: 100%;
+    line-height: 0;
+  }
+
+  /* Headings and names need room for Ukrainian and long game titles. */
+  h1, h2, h3, .steam-section-title, .sheet h2,
+  .event-card .ev-title, .next-event-title {
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+  .card-title, .home-game-title, .home-game-meta,
+  .event-pick-row-title, .event-pick-row-meta {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .card-title {
+    font-family: 'Exo 2', 'Segoe UI', Arial, sans-serif !important;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.34;
+    min-height: 48px;
+  }
+  .home-game-title { font-size: 13px; line-height: 1.35; }
+  .home-game-meta { font-size: 11px; line-height: 1.45; }
+  .event-card .ev-title { font-size: clamp(15px, 4vw, 18px); }
+  .sheet h2 { font-size: clamp(16px, 4.4vw, 19px); }
+  .event-pick-row-title { font-size: 13px; line-height: 1.4; }
+  .event-pick-row-meta { font-size: 11px; line-height: 1.4; }
+  .home-eyebrow, .mmorpg-xp-head,
+  .mmorpg-xp-head strong { font-size: 10px; line-height: 1.3; }
+  .home-welcome-main, .home-tool-btn, .event-pick-row-main,
+  .shop-card, .event-card, .card { min-width: 0; }
+
+  /* Equalized action geometry across the six tabs and their sheets. */
+  .bottom-nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .bottom-nav button { width: 100%; max-width: 100%; box-sizing: border-box; }
+  .btn:not(.fab), .tool-tab-btn, .lib-subtab-btn,
+  .counters-subtab-btn, .quick-start-btn, .steam-small-btn,
+  .event-games-open, .event-pick-btn,
+  .event-checkin-actions button, .event-quests-person button,
+  .shop-detail-actions button, .shop-confirm-actions button,
+  .shop-filter-line button, .library-reset {
+    min-height: var(--ui-control-h) !important;
+    border-radius: 15px !important;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    line-height: 1.3;
+    font-size: clamp(12px, 3.25vw, 14px);
+    overflow-wrap: anywhere;
+  }
+  .btn:not(.fab), .event-games-open, .event-pick-btn,
+  .quick-start-btn, .steam-small-btn,
+  .shop-detail-actions button, .shop-confirm-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    text-align: center;
+  }
+  .home-tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-tool-btn {
+    width: 100%;
+    min-height: 58px !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 11px 12px;
+    line-height: 1.35;
+    font-size: 12.5px;
+    border-radius: 15px;
+    text-align: left;
+  }
+  .home-tool-icon { flex: 0 0 31px; }
+  .shop-chip { min-height: 40px; padding: 9px 12px; }
+  .close-btn, .admin-user-detail-close, .admin-users-refresh {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-grid;
+    place-items: center;
+  }
+  .btn svg, .tool-tab-btn svg, .home-tool-btn svg,
+  .event-games-open svg { flex-shrink: 0; }
+
+  /* 16px avoids iPhone's automatic zoom when an input gets focus. */
+  input:not([type="range"]), select, textarea { font-size: 16px !important; }
+  input, select, textarea { max-width: 100%; }
+
+  /* Each blur layer requires expensive compositing on mobile. Keep the
+     real frosted blur on floating navigation and overlays; regular buttons
+     retain their glass gradients, rim highlights, and tap response. */
+  .btn:not([style*="background"]),
+  .tool-tab-btn, .lib-subtab-btn, .counters-subtab-btn,
+  .quick-start-btn, .steam-small-btn, .home-tool-btn,
+  .event-games-open, .event-pick-btn, .event-checkin-actions button,
+  .admin-users-open-btn, .admin-users-refresh, .shop-chip,
+  .shop-filter-line button, .library-reset,
+  .shop-detail-actions button, .shop-confirm-actions button {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .bottom-nav {
+    -webkit-backdrop-filter: blur(20px) saturate(155%) !important;
+    backdrop-filter: blur(20px) saturate(155%) !important;
+  }
+  .fab {
+    -webkit-backdrop-filter: blur(14px) saturate(145%) !important;
+    backdrop-filter: blur(14px) saturate(145%) !important;
+  }
+  .sheet, .admin-user-detail-sheet, .event-pick-sheet {
+    -webkit-backdrop-filter: blur(16px) saturate(125%) !important;
+    backdrop-filter: blur(16px) saturate(125%) !important;
+  }
+
+  @media (max-width: 359px) {
+    .home-tools-grid { grid-template-columns: minmax(0, 1fr); }
+    .home-tool-btn { min-height: 52px !important; }
+    .card-title { font-size: 13px; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .bottom-nav, .fab, .sheet, .admin-user-detail-sheet, .event-pick-sheet {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+  }
+</style>
+
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
 <div class="view" id="view-community">
   <header>Спільнота</header>
@@ -7556,7 +7696,7 @@ button,.btn{font-family:inherit}
   <div class="admin-user-detail-sheet">
     <div class="admin-user-detail-head">
       <strong>👤 Картка користувача</strong>
-      <button type="button" class="admin-user-detail-close" onclick="closeAdminUserDetail()">×</button>
+      <button type="button" class="admin-user-detail-close" onclick="closeAdminUserDetail()" aria-label="Закрити">×</button>
     </div>
     <div id="adminUserDetailContent"><div class="profile-loading">Завантажую профіль…</div></div>
   </div>
@@ -7604,7 +7744,7 @@ button,.btn{font-family:inherit}
 <!-- Бібліотека +: картка рекомендації. Працює повністю локально. -->
 <div class="modal" id="libraryPickModal">
   <div class="sheet library-pick-sheet" role="dialog" aria-modal="true" aria-labelledby="libraryPickTitle">
-    <button type="button" class="close-btn" onclick="closeModal('libraryPickModal')" aria-label="Закрити"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button type="button" class="close-btn" aria-label="Закрити" onclick="closeModal('libraryPickModal')" aria-label="Закрити"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <div class="library-pick-art" id="libraryPickArt" aria-hidden="true">🎲</div>
     <div class="library-pick-eyebrow" id="libraryPickEyebrow">Знайшли для тебе</div>
     <h2 id="libraryPickTitle">Випадкова гра</h2>
@@ -7620,7 +7760,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка перегляду гри -->
 <div class="modal" id="viewModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('viewModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('viewModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <div class="game-detail-hero">
       <div class="game-detail-cover" id="viewCoverHero">🎲</div>
       <div class="game-detail-head">
@@ -7644,7 +7784,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка редагування гри -->
 <div class="modal" id="editModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('editModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('editModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Редагувати гру</h2>
 
     <label>Назва гри</label>
@@ -7674,7 +7814,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка додавання гри -->
 <div class="modal" id="addModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('addModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('addModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Додати настільну гру</h2>
     <div class="game-submit-note" id="gameSubmitNote">Учасники можуть запропонувати гру. Вона з’явиться у бібліотеці після перевірки адміністратором.</div>
 
@@ -7705,7 +7845,7 @@ button,.btn{font-family:inherit}
 <!-- Модерація запропонованих ігор -->
 <div class="modal" id="gameModerationModal">
   <div class="sheet game-moderation-sheet">
-    <button class="close-btn" onclick="closeModal('gameModerationModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('gameModerationModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Модерація ігор</h2>
     <div class="game-moderation-help">Тут показуються ігри, які запропонували учасники. Можна схвалити, відредагувати або відхилити.</div>
     <div id="gameModerationList" class="game-moderation-list"><div class="empty">Завантажую…</div></div>
@@ -7715,7 +7855,7 @@ button,.btn{font-family:inherit}
 <!-- Редагування заявки на гру -->
 <div class="modal" id="gameSubmissionEditModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('gameSubmissionEditModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('gameSubmissionEditModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Редагувати заявку</h2>
     <label>Назва гри</label><input type="text" id="modGameName">
     <label>Опис</label><textarea id="modGameDescription" rows="3"></textarea>
@@ -7730,7 +7870,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка чарника персонажа -->
 <div class="modal" id="characterModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('characterModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('characterModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2 id="charModalTitle">Новий персонаж</h2>
 
     <label>Ім'я персонажа</label>
@@ -7846,7 +7986,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка додавання до вішліста -->
 <div class="modal" id="wishlistModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('wishlistModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('wishlistModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Додати у вішліст</h2>
 
     <label>Назва гри</label>
@@ -7862,7 +8002,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка додавання запису в історію -->
 <div class="modal" id="historyModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('historyModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('historyModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Записати ігровий вечір</h2>
 
     <label>Назва гри</label>
@@ -7899,7 +8039,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка додавання учасника вручну (для адмінів) -->
 <div class="modal" id="addParticipantModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('addParticipantModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('addParticipantModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2>Додати учасника</h2>
 
     <label>Ім'я</label>
@@ -7949,7 +8089,7 @@ button,.btn{font-family:inherit}
 <!-- QR ticket and admission scanner (v5.1) -->
 <div class="modal event-checkin-modal" id="eventCheckinModal" onclick="if(event.target===this) closeModal('eventCheckinModal')">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('eventCheckinModal')" aria-label="Закрити">×</button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('eventCheckinModal')" aria-label="Закрити">×</button>
     <h2 id="eventCheckinHeading">🎫 Вхід на подію</h2>
     <div id="eventCheckinContent" aria-live="polite"></div>
   </div>
@@ -7957,7 +8097,7 @@ button,.btn{font-family:inherit}
 
 <div class="modal" id="eventModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2 id="eventModalHeading">Нова подія</h2>
 
     <label>Назва</label>
@@ -8024,7 +8164,7 @@ button,.btn{font-family:inherit}
 <!-- Публічний профіль учасника -->
 <div class="modal" id="memberProfileModal">
   <div class="sheet">
-    <button class="close-btn" onclick="closeModal('memberProfileModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <button class="close-btn" aria-label="Закрити" onclick="closeModal('memberProfileModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <div id="memberProfileContent"></div>
   </div>
 </div>
@@ -8276,7 +8416,24 @@ let activeGenreFilter = null;
 let gamesLoadPromise = null;
 let gamesLoadedAt = 0;
 
+function showCachedGamesWhileRefreshing() {
+  if (allGames.length) return;
+  try {
+    let cached = JSON.parse(sessionStorage.getItem('styloteka_games_cache_v1') || '[]');
+    if (!Array.isArray(cached) || !cached.length) {
+      const saved = JSON.parse(localStorage.getItem('styloteka_public_games_offline_v45') || 'null');
+      cached = saved && Date.now() - Number(saved.savedAt || 0) < 24 * 60 * 60_000
+        ? saved.items : [];
+    }
+    if (!Array.isArray(cached) || !cached.length) return;
+    allGames = cached;
+    renderGamesGrid();
+    renderHomeNewGames(cached);
+  } catch (_) { /* Cache is an optional first-frame enhancement. */ }
+}
+
 async function loadGames(force = false) {
+  if (!force) showCachedGamesWhileRefreshing();
   const fresh = allGames.length && (Date.now() - gamesLoadedAt < 60_000);
   if (!force && fresh) {
     renderGamesGrid();
@@ -8695,7 +8852,7 @@ function renderGameModeration() {
   }
   root.innerHTML = gameModerationItems.map(item => {
     const author = item.submitted_by_display_name || (item.submitted_by_username ? '@'+item.submitted_by_username : 'Учасник');
-    const cover = item.cover_url ? `<img src="${escapeHtml(item.cover_url)}" alt="${escapeHtml(item.name||'')}">` : '<div class="game-moderation-placeholder">🎲</div>';
+    const cover = item.cover_url ? `<img src="${escapeHtml(item.cover_url)}" alt="${escapeHtml(item.name||'')}" loading="lazy" decoding="async">` : '<div class="game-moderation-placeholder">🎲</div>';
     const rules = item.rules_url ? `<a href="${escapeHtml(item.rules_url)}" target="_blank" rel="noopener">Правила ↗</a>` : '<span>Без правил</span>';
     const when = item.created_at ? new Date(item.created_at).toLocaleString('uk-UA') : '';
     return `<article class="game-moderation-card">
@@ -10811,7 +10968,7 @@ function renderHomeNextEvent(events) {
   const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
   const going = rsvps.filter(r => (r.status || 'going') === 'going');
   const cover = ev.cover_url
-    ? `<img class="next-event-cover" src="${escapeHtml(ev.cover_url)}" alt="${escapeHtml(ev.title || '')}" decoding="async">`
+    ? `<img class="next-event-cover" src="${escapeHtml(ev.cover_url)}" alt="${escapeHtml(ev.title || '')}" loading="lazy" decoding="async">`
     : '';
   root.innerHTML = `<button type="button" class="next-event-card" id="homeNextEventBtn" style="width:100%; padding:0; color:inherit; text-align:left;">
     ${cover}
@@ -10939,7 +11096,7 @@ function renderCommunityMembers(members) {
   root.innerHTML = list.length ? list.map((m, index) => {
     const name = m.display_name || m.username || 'Гравець';
     const avatar = m.photo_url
-      ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}">`
+      ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}" loading="lazy" decoding="async">`
       : escapeHtml(profileInitials(name));
     const frameClass = cosmeticFrameClass(m.cosmetics?.frame_id || '');
     const badge = m.cosmetics?.badge_label || '';
@@ -10961,7 +11118,7 @@ function openPublicMember(index) {
   const root = document.getElementById('memberProfileContent');
   const name = m.display_name || m.username || 'Гравець';
   const avatar = m.photo_url
-    ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}">`
+    ? `<img src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(name)}" loading="lazy" decoding="async">`
     : escapeHtml(profileInitials(name));
   const frameClass = cosmeticFrameClass(m.cosmetics?.frame_id || '');
   const badge = m.cosmetics?.badge_label || '';
@@ -11012,7 +11169,7 @@ function renderGameDetailStats(game) {
   const tagsRoot = document.getElementById('viewTags');
   if (coverRoot) {
     coverRoot.innerHTML = game.cover_url
-      ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}">`
+      ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" decoding="async">`
       : '🎲';
   }
   if (tagsRoot) tagsRoot.textContent = game.tags || 'Настільна гра';
@@ -11872,7 +12029,7 @@ function renderEvents(events) {
       : '';
 
     const cover = ev.cover_url
-      ? `<div class="event-cover-wrap"><img class="event-cover" src="${escapeHtml(ev.cover_url)}" alt="Обкладинка події ${escapeHtml(ev.title || '')}"></div>`
+      ? `<div class="event-cover-wrap"><img class="event-cover" src="${escapeHtml(ev.cover_url)}" alt="Обкладинка події ${escapeHtml(ev.title || '')}" loading="lazy" decoding="async"></div>`
       : '';
 
     card.innerHTML = `
@@ -12339,7 +12496,9 @@ function initMasterclass() {
 
 document.querySelectorAll('.lib-subtab-btn').forEach(btn => btn.addEventListener('click', () => { if (btn.dataset.lib === 'stats') loadStats(); }));
 
-loadMyProfile();
+// The home view already fetches a profile summary. Fetch the full profile
+// only when the profile tab is actually opened (or a deep link requests it).
+if (document.getElementById('view-profile')?.classList.contains('active')) loadMyProfile();
 
 
 
@@ -13116,7 +13275,12 @@ async function applyInitialDeepLink() {
   } catch (_) {}
 }
 applyInitialDeepLink();
-checkMyAchievements(); // background achievement check
+// Achievement checks are non-critical and should not contend with first paint.
+if (typeof window.requestIdleCallback === 'function') {
+  window.requestIdleCallback(() => checkMyAchievements(), {timeout: 4000});
+} else {
+  setTimeout(() => checkMyAchievements(), 1200);
+}
 
 
 /* ==================== ПІДЗЕМЕЛЛЯ: МІНІГРА ==================== */

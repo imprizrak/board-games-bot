@@ -520,10 +520,10 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 МБ
 
 @app.route("/")
 def index():
-    response = send_from_directory(".", "index.html", conditional=False)
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Revalidate on every open, but allow a 304 for unchanged HTML.
+    # This keeps fresh deployments visible without downloading the whole UI again.
+    response = send_from_directory(".", "index.html", conditional=True)
+    response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
     return response
 
 
@@ -537,6 +537,12 @@ def home_brand_logo():
 def styloteka_brand_logo():
     """Serve the centered Styloteka home-page wordmark."""
     return send_from_directory(".", "styloteka-logo.png", mimetype="image/png")
+
+
+@app.route("/styloteka-logo.webp")
+def styloteka_brand_logo_webp():
+    """Serve the much smaller responsive wordmark where WebP is supported."""
+    return send_from_directory(".", "styloteka-logo.webp", mimetype="image/webp")
 
 
 
