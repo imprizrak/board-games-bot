@@ -7132,7 +7132,12 @@ button,.btn{font-family:inherit}
   :root {
     color-scheme: dark;
     --bg: #020817;
-    --bg-texture: radial-gradient(ellipse 85% 62% at 50% 37%, #081a35 0%, #041128 57%, #020817 100%);
+    --bg-texture: linear-gradient(180deg,
+      #000000 0%,
+      #01040b 15%,
+      #020817 36%,
+      #041128 64%,
+      #07172e 100%);
     --card-bg: #0a172a;
     --hub-bg: #020817;
     --hub-panel: #0b192d;
@@ -7149,9 +7154,11 @@ button,.btn{font-family:inherit}
     --parchment-border: #74b9e9;
   }
 
-  html { background: #020817; }
+  html { background: #07172e; }
   body {
-    background: var(--bg-texture), var(--bg) !important;
+    background: var(--bg-texture), #07172e !important;
+    background-size: 100% 100svh, auto !important;
+    background-repeat: no-repeat !important;
     background-attachment: fixed !important;
     color: var(--text);
     font-family: 'Exo 2', 'Segoe UI', Arial, sans-serif !important;
@@ -8324,8 +8331,8 @@ tg.expand();
 // The close/menu button circles are owned by Telegram and follow its own theme.
 const telegramChromeColors = {
   setHeaderColor: '#000000',
-  setBackgroundColor: '#020817',
-  setBottomBarColor: '#020817',
+  setBackgroundColor: '#07172e',
+  setBottomBarColor: '#07172e',
 };
 for (const [action, color] of Object.entries(telegramChromeColors)) {
   try {
