@@ -10,7 +10,7 @@ HTML = (ROOT / "index.html").read_text(encoding="utf-8")
 
 class MidnightFrostTests(TestCase):
     def test_night_palette_is_last_theme_override(self):
-        self.assertIn('<meta name="theme-color" content="#020817">', HTML)
+        self.assertIn('<meta name="theme-color" content="#000000">', HTML)
         self.assertIn('<style id="styloteka-midnight-frost">', HTML)
         theme = HTML.split('<style id="styloteka-midnight-frost">', 1)[1].split("</style>", 1)[0]
         self.assertIn('--bg: #020817;', theme)
@@ -25,7 +25,10 @@ class MidnightFrostTests(TestCase):
         self.assertIn('family=Unbounded:', HTML)
         self.assertIn("font-family: 'Exo 2'", HTML)
         self.assertIn("font-family: 'Unbounded'", HTML)
-        self.assertIn("tg[action]('#020817')", HTML)
+        self.assertIn("setHeaderColor: '#000000'", HTML)
+        self.assertIn("setBackgroundColor: '#020817'", HTML)
+        self.assertIn("setBottomBarColor: '#020817'", HTML)
+        self.assertIn('tg[action](color)', HTML)
 
     def test_no_legacy_yellow_text_accents_in_controls(self):
         self.assertIn('color: #bce8ff !important;', HTML)

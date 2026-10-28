@@ -11,9 +11,9 @@ GLASS = HTML.split('<style id="styloteka-liquid-glass">', 1)[1].split("</style>"
 class LiquidGlassThemeTests(TestCase):
     def test_floating_navigation_and_touch_states(self):
         self.assertIn('bottom: var(--glass-bottom-gap) !important;', GLASS)
-        self.assertIn('border-radius: 26px !important;', GLASS)
+        self.assertIn('border-radius: 27px !important;', GLASS)
         self.assertIn('.bottom-nav button.active', GLASS)
-        self.assertIn('backdrop-filter: blur(28px)', GLASS)
+        self.assertIn('backdrop-filter: blur(16px)', GLASS)
         self.assertIn('.bottom-nav button:active', GLASS)
         self.assertIn('grid-template-columns:repeat(6,minmax(0,1fr))', HTML)
 

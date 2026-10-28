@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Styloteka — настільні ігри</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#020817">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Styloteka">
@@ -8320,10 +8320,16 @@ button,.btn{font-family:inherit}
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
-// Match Telegram's surrounding chrome to the midnight-blue Mini App theme.
-for (const action of ['setHeaderColor', 'setBackgroundColor', 'setBottomBarColor']) {
+// Keep the native Telegram title bar black, as in the classic dark Mini App header.
+// The close/menu button circles are owned by Telegram and follow its own theme.
+const telegramChromeColors = {
+  setHeaderColor: '#000000',
+  setBackgroundColor: '#020817',
+  setBottomBarColor: '#020817',
+};
+for (const [action, color] of Object.entries(telegramChromeColors)) {
   try {
-    if (typeof tg[action] === 'function') tg[action]('#020817');
+    if (typeof tg[action] === 'function') tg[action](color);
   } catch (error) {
     console.debug(`Telegram ${action} unsupported on this client`, error);
   }
