@@ -755,7 +755,8 @@ document.addEventListener('click', event => {
     display: none;
     align-items: flex-end;
     justify-content: center;
-    z-index: 20;
+    /* Modal forms must sit above the floating tab bar (z-index: 100). */
+    z-index: 200;
   }
   .modal.open { display: flex; }
   .sheet {
@@ -6933,7 +6934,8 @@ button,.btn{font-family:inherit}
   border-radius:24px 24px 0 0!important;
   padding-left:var(--ui-page-pad)!important;
   padding-right:var(--ui-page-pad)!important;
-  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))!important;
+  padding-bottom:calc(32px + max(env(safe-area-inset-bottom,0px), var(--tg-safe-bottom,0px)))!important;
+  scroll-padding-bottom:calc(16px + max(env(safe-area-inset-bottom,0px), var(--tg-safe-bottom,0px)));
 }
 .sheet h2{padding-right:46px;margin-right:0;line-height:1.24;text-wrap:balance}
 
