@@ -15,7 +15,7 @@ class LiquidGlassThemeTests(TestCase):
         self.assertIn('.bottom-nav button.active', GLASS)
         self.assertIn('backdrop-filter: blur(16px)', GLASS)
         self.assertIn('.bottom-nav button:active', GLASS)
-        self.assertIn('grid-template-columns:repeat(6,minmax(0,1fr))', HTML)
+        self.assertIn('grid-template-columns:repeat(5,minmax(0,1fr))', HTML)
 
     def test_controls_are_glass_but_game_cards_stay_clear(self):
         self.assertIn('.btn:not([style*="background"])', GLASS)

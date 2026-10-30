@@ -35,18 +35,18 @@ class UIPolishTests(TestCase):
             with self.subTest(foreground=foreground, background=background):
                 self.assertGreaterEqual(contrast(foreground, background), 4.5)
 
-    def test_all_six_nav_tabs_point_to_views(self):
+    def test_all_five_nav_tabs_point_to_views(self):
         nav = HTML.split('<div class="bottom-nav">', 1)[1].split('</div>', 1)[0]
         targets = re.findall(r'<button class="nav-btn[^"]*" data-view="([^"]+)"', nav)
-        self.assertEqual(len(targets), 6)
-        self.assertEqual(len(set(targets)), 6)
+        self.assertEqual(len(targets), 5)
+        self.assertEqual(len(set(targets)), 5)
         for target in targets:
             self.assertIn(f'id="{target}"', HTML)
 
     def test_uniform_controls_and_performance_guards(self):
         self.assertIn('--ui-control-h: 46px;', POLISH)
         self.assertIn('min-height: var(--ui-control-h) !important;', POLISH)
-        self.assertIn('grid-template-columns: repeat(6, minmax(0, 1fr));', POLISH)
+        self.assertIn('grid-template-columns: repeat(5, minmax(0, 1fr));', POLISH)
         self.assertIn('input:not([type="range"]), select, textarea { font-size: 16px !important; }', POLISH)
         self.assertIn('backdrop-filter: none !important;', POLISH)
         self.assertIn('background-attachment: scroll !important;', POLISH)
