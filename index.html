@@ -5831,6 +5831,54 @@ if (!window.Telegram?.WebApp) {
   </div>
 </div>
 
+<!-- ==================== ВКЛАДКА: ВІКТОРИНИ ==================== -->
+<div class="view" id="view-quizzes">
+  <header>Вікторини з настільних ігор</header>
+  <section class="quiz-intro">
+    <span class="quiz-eyebrow">✦ КЛУБ ЗНАВЦІВ</span>
+    <h2>Знаєш правила? Отримуй стілси ⭐</h2>
+    <p>Обирай гру з бібліотеки, відповідай на питання про правила, мету й тактику. За правильну відповідь — <b>2 стілси</b>, до <b>10 стілсів на день</b>. Кожне питання можна пройти один раз.</p>
+    <div class="quiz-daily" id="quizDailyProgress" aria-live="polite">Завантажуємо прогрес…</div>
+  </section>
+  <section id="quizGameSelection">
+    <div class="quiz-section-head"><h3>Обери настільну гру</h3><span id="quizGamesCount"></span></div>
+    <div class="quiz-game-grid" id="quizGameGrid"><div class="quiz-empty">Завантаження вікторин…</div></div>
+    <button type="button" id="quizAdminOpen" class="quiz-admin-open" onclick="quizToggleAdmin()" hidden>＋ Додати перевірене питання</button>
+  </section>
+  <section class="quiz-play" id="quizPlayArea" hidden>
+    <button type="button" class="quiz-back" onclick="quizBack()">← До вибору ігор</button>
+    <div class="quiz-play-meta"><span id="quizPlayGame"></span><span id="quizPlayProgress"></span></div>
+    <div class="quiz-question" id="quizQuestionCard" aria-live="polite"></div>
+    <div class="quiz-answer-result" id="quizAnswerResult" aria-live="polite" hidden></div>
+    <button type="button" class="quiz-next" id="quizNextButton" onclick="quizNextQuestion()" hidden>Наступне питання →</button>
+  </section>
+  <section class="quiz-admin" id="quizAdminPanel" hidden>
+    <div class="quiz-section-head"><h3>Нове питання</h3><button type="button" onclick="quizToggleAdmin()" aria-label="Закрити">✕</button></div>
+    <form id="quizQuestionForm" onsubmit="quizSaveQuestion(event)">
+      <label for="quizAdminGame">Гра з бібліотеки</label><select id="quizAdminGame" required></select>
+      <label for="quizAdminCategory">Тема</label>
+      <select id="quizAdminCategory" required>
+        <option value="rules">Правила гри</option><option value="goal">Мета гри</option>
+        <option value="strategy">Як виграти</option><option value="tips">Лайфхаки</option>
+      </select>
+      <label for="quizAdminQuestion">Питання</label><textarea id="quizAdminQuestion" maxlength="500" minlength="12" required></textarea>
+      <label for="quizAdminOption0">4 варіанти відповіді</label>
+      <input id="quizAdminOption0" maxlength="180" required placeholder="Варіант 1">
+      <input id="quizAdminOption1" maxlength="180" required placeholder="Варіант 2">
+      <input id="quizAdminOption2" maxlength="180" required placeholder="Варіант 3">
+      <input id="quizAdminOption3" maxlength="180" required placeholder="Варіант 4">
+      <label for="quizAdminCorrect">Правильна відповідь</label>
+      <select id="quizAdminCorrect"><option value="0">Варіант 1</option><option value="1">Варіант 2</option><option value="2">Варіант 3</option><option value="3">Варіант 4</option></select>
+      <label for="quizAdminExplanation">Пояснення правила або тактики</label>
+      <textarea id="quizAdminExplanation" minlength="10" maxlength="1000" required placeholder="Чому саме так?"></textarea>
+      <label for="quizAdminSource">Джерело / посилання на правила (за можливості)</label>
+      <input id="quizAdminSource" type="url" placeholder="https://...">
+      <button type="submit" class="quiz-next" id="quizAdminSubmit">Додати питання до вікторини</button>
+      <div id="quizAdminFeedback" aria-live="polite"></div>
+    </form>
+  </section>
+</div>
+
 <!-- ==================== ВКЛАДКА: БІБЛІОТЕКА ==================== -->
 <div class="view" id="view-library">
   <header>Бібліотека настільних ігор</header>
@@ -7141,6 +7189,78 @@ button,.btn{font-family:inherit}
   </div>
 </div>
 
+<!-- Styloteka v5.3.15: quick-loading quiz cards, six equal tabs. -->
+<style id="styloteka-quizzes-theme">
+  .bottom-nav { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .bottom-nav button span:last-child { font-size: clamp(8.2px, 2.15vw, 10.5px) !important; }
+  #view-quizzes { padding-bottom: calc(var(--ui-nav-h, 76px) + 34px); }
+  #view-quizzes [hidden] { display: none !important; }
+  #view-quizzes .quiz-intro {
+    border: 1px solid #375d81; border-radius: 23px; padding: 20px;
+    background: linear-gradient(140deg, #142e4b 0%, #0a1b34 70%, #071427 100%);
+    box-shadow: 0 12px 30px rgba(0,3,15,.2); margin: 12px 0 22px;
+  }
+  .quiz-eyebrow { color: #a5d9ff; font-size: 10px; font-weight: 800; letter-spacing: .15em; }
+  .quiz-intro h2 { font-size: clamp(19px,5vw,25px); line-height: 1.18; margin: 9px 0 10px; color: #f0f9ff; }
+  .quiz-intro p { color: #b8cee0; font-size: 13px; line-height: 1.55; margin: 0; }
+  .quiz-intro b { color: #e3f5ff; }
+  .quiz-daily { color:#e4f6ff; font-weight:800; margin-top:15px; padding-top:12px; border-top:1px solid #385b7a; font-size:13px; }
+  .quiz-section-head { display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 12px; }
+  .quiz-section-head h3 { font-size:16px; margin:0; color:#eff7ff; }
+  .quiz-section-head span { color:#9abbd5; font-size:12px; }
+  .quiz-game-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+  .quiz-game { appearance:none;display:flex;flex-direction:column;text-align:left;width:100%;overflow:hidden;
+    border:1px solid #3a6288; border-radius:20px; background:#10243c; color:#edf7ff;
+    padding:0; min-width:0; min-height:230px; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,.2); }
+  .quiz-game:active { transform:scale(.985); }
+  .quiz-game:focus-visible,.quiz-answer-option:focus-visible { outline:2px solid #a7e6ff;outline-offset:2px; }
+  .quiz-game-image { height:128px; width:100%; background:#07192e;display:grid;place-items:center;overflow:hidden;font-size:46px; }
+  .quiz-game-image img { width:100%;height:100%;object-fit:contain;display:block; }
+  .quiz-game-content { padding:12px; flex:1;display:flex;flex-direction:column;gap:7px; }
+  .quiz-game-content strong { font-size:15px;line-height:1.25;overflow-wrap:anywhere; }
+  .quiz-game-content small { font-size:11px;color:#a9c7df;line-height:1.4; }
+  .quiz-game-content em { font-size:11px;font-weight:800;font-style:normal;color:#b5e5ff;margin-top:auto; }
+  .quiz-game.completed { opacity:.67; }
+  .quiz-empty { grid-column:1/-1;border:1px dashed #446582;border-radius:17px;color:#b8cfe1;
+    font-size:13px;line-height:1.6;padding:22px;text-align:center; }
+  .quiz-admin-open,.quiz-back { border:1px solid #51799a;border-radius:14px;padding:11px 14px;
+    color:#d8edff;background:#132c47;font:inherit;font-weight:750;margin-top:18px;min-height:44px; }
+  .quiz-back { margin:0 0 18px; }
+  .quiz-play { max-width:680px;margin:0 auto; }
+  .quiz-play-meta { display:flex;justify-content:space-between;gap:10px;color:#c3def2;font-weight:750;font-size:13px;margin-bottom:12px; }
+  .quiz-question { padding:21px 17px;border:1px solid #385f84;border-radius:21px;
+    background:linear-gradient(150deg,#142d49,#071a30); }
+  .quiz-category { display:inline-block;color:#a9daf6;letter-spacing:.08em;font-weight:800;font-size:10px;text-transform:uppercase; }
+  .quiz-question h3 { font-size:19px;line-height:1.4;color:#f1f9ff;margin:11px 0 22px;overflow-wrap:anywhere; }
+  .quiz-answer-options { display:grid;gap:10px; }
+  .quiz-answer-option { display:flex;justify-content:flex-start;align-items:center;text-align:left;width:100%;
+    padding:12px 14px;min-height:52px;border:1px solid #3f6386;border-radius:14px;
+    background:#1b3652;color:#e8f6ff;font:inherit;font-size:14px;font-weight:750;line-height:1.35;cursor:pointer; }
+  .quiz-answer-option:disabled { opacity:.68;cursor:default; }
+  .quiz-answer-option.right { border-color:#69c9af;background:#17473f;opacity:1; }
+  .quiz-answer-option.wrong { border-color:#e0969c;background:#512d42;opacity:1; }
+  .quiz-answer-result { margin:14px 0;padding:16px;border:1px solid #496c8f;background:#0f2945;
+    color:#daeefb;border-radius:16px;line-height:1.6;font-size:13px; }
+  .quiz-answer-result strong { display:block;font-size:16px;color:#f2faff;margin-bottom:6px; }
+  .quiz-next { width:100%;min-height:48px;margin-top:12px;padding:12px 16px;border:1px solid #a5d5fc;
+    background:linear-gradient(140deg,#286091,#153b62);color:#f1faff;border-radius:14px;font:inherit;font-weight:800; }
+  .quiz-next:disabled { opacity:.6; }
+  .quiz-admin { margin-top:16px;background:#0c2239;border:1px solid #375e80;border-radius:20px;padding:17px; }
+  .quiz-admin label { display:block;color:#c7e6f9;font-size:12px;font-weight:750;margin:13px 0 6px; }
+  .quiz-admin input,.quiz-admin select,.quiz-admin textarea { width:100%;box-sizing:border-box;min-height:44px;
+    border:1px solid #456b8e;border-radius:12px;background:#09213c;color:#effaff;padding:10px 12px;
+    font:inherit;font-size:14px; }
+  .quiz-admin textarea { min-height:82px;resize:vertical; }
+  .quiz-admin input + input { margin-top:8px; }
+  #quizAdminFeedback { font-size:12px;line-height:1.5;margin-top:9px;color:#ccefff; }
+  @media (max-width:350px) {
+    .quiz-game-grid { grid-template-columns:1fr; }
+    .quiz-game { min-height:0; }
+    .bottom-nav button .icon svg { width:20px!important;height:20px!important; }
+    .bottom-nav button span:last-child { font-size:8px!important; }
+  }
+</style>
+
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
 <div class="bottom-nav">
   <button class="nav-btn active" data-view="view-home">
@@ -7150,6 +7270,10 @@ button,.btn{font-family:inherit}
   <button class="nav-btn" data-view="view-library">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5c-1.5-1-4-1.5-6-1v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V5.5c-2-.5-4.5 0-6 1Z"/><path d="M12 6.5v13"/></svg></span>
     <span>Бібліотека</span>
+  </button>
+  <button class="nav-btn" data-view="view-quizzes">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span>
+    <span>Вікторини</span>
   </button>
   <button class="nav-btn" data-view="view-events">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
@@ -10238,6 +10362,7 @@ function showMainView(viewId) {
   if (viewId === 'view-home') loadHomeHub();
   if (viewId === 'view-community') loadCommunity();
   if (viewId === 'view-library') loadGames();
+  if (viewId === 'view-quizzes') loadQuizzes();
   if (viewId === 'view-profile') loadMyProfile();
   if (viewId === 'view-admin-users') loadAdminUsers();
   if (viewId === 'view-events') loadEvents();
@@ -12718,6 +12843,198 @@ if (typeof window.requestIdleCallback === 'function') {
 
 // Keep the legacy profile-cache variable for the existing shop reset action.
 let dungeonProfileCache = null;
+
+/* ==================== ВІКТОРИНИ З БІБЛІОТЕКИ ==================== */
+const quizCategoryLabels = {rules:'Правила',goal:'Мета гри',strategy:'Як виграти',tips:'Лайфхаки'};
+let quizCatalogData = null;
+let quizCurrentGameId = null;
+let quizCurrentQuestion = null;
+let quizSubmitting = false;
+
+async function loadQuizzes() {
+  const grid = document.getElementById('quizGameGrid');
+  if (!grid) return;
+  if (!quizCatalogData) grid.innerHTML = '<div class="quiz-empty">Завантажуємо запитання…</div>';
+  try {
+    const res = await fetch('/api/quizzes/catalog', {headers:telegramAuthHeaders(),cache:'no-store'});
+    if (!res.ok) throw new Error(res.status === 401 ? 'Відкрий вікторини у Telegram, щоб заробляти стілси.' : 'Вікторини ще налаштовуються. Потрібна база запитань.');
+    quizCatalogData = await res.json();
+    const data = quizCatalogData;
+    const progress = document.getElementById('quizDailyProgress');
+    if (progress) progress.textContent = `⭐ Сьогодні зароблено: ${data.earned_today || 0} із ${data.daily_limit || 10} стілсів`;
+    const games = data.games || [];
+    const count = document.getElementById('quizGamesCount');
+    if (count) count.textContent = `${games.length} ігор`;
+    grid.innerHTML = games.length ? games.map(g => {
+      const remaining = Math.max(0, Number(g.total) - Number(g.completed));
+      const name = escapeHtml(g.name || 'Гра');
+      const cover = g.cover_url ? `<img src="${escapeHtml(g.cover_url)}" alt="" loading="lazy" decoding="async">` : '🎲';
+      const tags = (g.categories || []).map(c => quizCategoryLabels[c] || '').filter(Boolean).join(' · ');
+      return `<button type="button" class="quiz-game ${remaining ? '' : 'completed'}" onclick="quizStart(${Number(g.id)})" aria-label="Вікторина: ${name}">
+        <span class="quiz-game-image">${cover}</span>
+        <span class="quiz-game-content"><strong>${name}</strong><small>${escapeHtml(tags)}</small>
+        <em>${remaining ? `Доступно ${remaining} із ${g.total}` : '✓ Усі питання пройдені'}</em></span></button>`;
+    }).join('') : '<div class="quiz-empty">Для ігор бібліотеки ще немає перевірених запитань. Адміністратор може додати їх за правилами настільних ігор.</div>';
+    const adminBtn = document.getElementById('quizAdminOpen');
+    if (adminBtn) adminBtn.hidden = !data.can_manage;
+    if (data.can_manage) {
+      const gameSelect = document.getElementById('quizAdminGame');
+      if (gameSelect) {
+        const currentValue = gameSelect.value;
+        gameSelect.innerHTML = (data.library_games || []).map(g => `<option value="${Number(g.id)}">${escapeHtml(g.name)}</option>`).join('');
+        if ([...gameSelect.options].some(o => o.value === currentValue)) gameSelect.value = currentValue;
+      }
+    }
+  } catch (err) {
+    grid.innerHTML = `<div class="quiz-empty">${escapeHtml(err.message || 'Немає зв’язку. Спробуй пізніше.')}</div>`;
+  }
+}
+
+async function quizStart(gameId) {
+  quizCurrentGameId = Number(gameId);
+  document.getElementById('quizGameSelection').hidden = true;
+  document.getElementById('quizAdminPanel').hidden = true;
+  document.getElementById('quizPlayArea').hidden = false;
+  const game = (quizCatalogData?.games || []).find(g => Number(g.id) === quizCurrentGameId);
+  document.getElementById('quizPlayGame').textContent = game?.name || 'Настільна гра';
+  if (Number(quizCatalogData?.earned_today || 0) >= 10) {
+    document.getElementById('quizPlayProgress').textContent = 'Денний ліміт';
+    document.getElementById('quizQuestionCard').innerHTML = '<div class="quiz-empty">⭐ Сьогодні ти вже заробив 10 стілсів. Нові нагороди — завтра. Повертайся до вікторин після опівночі за Києвом.</div>';
+    document.getElementById('quizAnswerResult').hidden = true;
+    document.getElementById('quizNextButton').hidden = true;
+    return;
+  }
+  await quizNextQuestion();
+}
+
+function quizBack() {
+  quizCurrentGameId = null;
+  quizCurrentQuestion = null;
+  document.getElementById('quizPlayArea').hidden = true;
+  document.getElementById('quizGameSelection').hidden = false;
+  loadQuizzes();
+}
+
+async function quizNextQuestion() {
+  const qbox = document.getElementById('quizQuestionCard');
+  const resultBox = document.getElementById('quizAnswerResult');
+  const nextBtn = document.getElementById('quizNextButton');
+  resultBox.hidden = true;
+  nextBtn.hidden = true;
+  quizCurrentQuestion = null;
+  qbox.innerHTML = '<div class="quiz-empty">Шукаємо наступне питання…</div>';
+  try {
+    const res = await fetch(`/api/quizzes/next?game_id=${quizCurrentGameId}`, {headers:telegramAuthHeaders(),cache:'no-store'});
+    if (!res.ok) throw new Error('Не вдалося завантажити питання.');
+    const payload = await res.json();
+    quizCurrentQuestion = payload.question;
+    document.getElementById('quizPlayProgress').textContent = `Залишилося ${payload.remaining || 0} із ${payload.total || 0}`;
+    if (!quizCurrentQuestion) {
+      qbox.innerHTML = '<div class="quiz-empty">🎉 Для цієї гри ти вже пройшов усі питання! Можеш обрати іншу настілку.</div>';
+      return;
+    }
+    const q = quizCurrentQuestion;
+    qbox.innerHTML = `<span class="quiz-category">${escapeHtml(quizCategoryLabels[q.category] || 'Вікторина')}</span>
+      <h3>${escapeHtml(q.question)}</h3><div class="quiz-answer-options">${(q.options || []).map((option,i) =>
+        `<button type="button" class="quiz-answer-option" data-option="${i}" onclick="quizAnswer(${i})">${i+1}. ${escapeHtml(option)}</button>`).join('')}</div>`;
+  } catch (err) {
+    qbox.innerHTML = `<div class="quiz-empty">${escapeHtml(err.message || 'Помилка завантаження.')}</div>`;
+    nextBtn.hidden = false;
+    nextBtn.textContent = 'Спробувати ще →';
+  }
+}
+
+async function quizAnswer(answerIndex) {
+  if (quizSubmitting || !quizCurrentQuestion) return;
+  quizSubmitting = true;
+  const q = quizCurrentQuestion;
+  const options = [...document.querySelectorAll('#quizQuestionCard .quiz-answer-option')];
+  options.forEach(btn => btn.disabled = true);
+  const resultBox = document.getElementById('quizAnswerResult');
+  const nextBtn = document.getElementById('quizNextButton');
+  try {
+    const res = await fetch('/api/quizzes/answer', {
+      method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({question_id:q.id,answer_index:answerIndex})
+    });
+    const answer = await res.json();
+    if (answer.status === 'daily_limit') {
+      resultBox.innerHTML = '<strong>⭐ Денний ліміт досягнуто</strong>Ти вже заробив 10 стілсів. Нові нагороди будуть доступні завтра.';
+      nextBtn.hidden = true;
+    } else if (answer.status === 'already_answered') {
+      resultBox.innerHTML = '<strong>Це питання вже пройдено</strong>Повторно стілси не нараховуються.';
+      nextBtn.hidden = false;
+    } else if (res.ok && answer.status === 'answered') {
+      options.forEach((btn, i) => {
+        if (i === Number(answer.correct_index)) btn.classList.add('right');
+        else if (i === answerIndex && !answer.correct) btn.classList.add('wrong');
+      });
+      const rightAnswer = q.options[Number(answer.correct_index)] || '';
+      resultBox.innerHTML = `<strong>${answer.correct ? '✅ Правильно! +2 стілси ⭐' : '💡 Цього разу без нагороди'}</strong>
+        ${answer.correct ? '' : `Правильна відповідь: ${escapeHtml(rightAnswer)}.<br>`}
+        ${escapeHtml(answer.explanation || '')}
+        <div style="margin-top:7px;color:#afdaef">Сьогодні ще можна заробити: ${Math.max(0,Number(answer.remaining_today)||0)*2} стілсів.</div>`;
+      nextBtn.hidden = false;
+      if (answer.correct) {
+        const homeBalance = document.getElementById('homeGoldBalance');
+        if (homeBalance) homeBalance.textContent = String(answer.balance || 0);
+      }
+      if (Number(answer.remaining_today) <= 0) {
+        nextBtn.hidden = true;
+        resultBox.innerHTML += '<div style="margin-top:9px">🎉 Денну нагороду отримано повністю. Нові стілси — завтра!</div>';
+      }
+    } else {
+      throw new Error('Помилка перевірки відповіді. Спробуй ще раз.');
+    }
+    resultBox.hidden = false;
+    if (!nextBtn.hidden) nextBtn.textContent = 'Наступне питання →';
+  } catch (err) {
+    resultBox.textContent = err.message || 'Немає зв’язку із сервером.';
+    resultBox.hidden = false;
+    options.forEach(btn => btn.disabled = false);
+  } finally {
+    quizSubmitting = false;
+  }
+}
+
+function quizToggleAdmin() {
+  if (!quizCatalogData?.can_manage) return;
+  const panel = document.getElementById('quizAdminPanel');
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function quizSaveQuestion(event) {
+  event.preventDefault();
+  if (!quizCatalogData?.can_manage) return;
+  const button = document.getElementById('quizAdminSubmit');
+  const feedback = document.getElementById('quizAdminFeedback');
+  const value = id => document.getElementById(id).value.trim();
+  button.disabled = true;
+  feedback.textContent = 'Зберігаємо…';
+  try {
+    const res = await fetch('/api/quizzes/questions', {
+      method:'POST', headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({
+        game_id:Number(value('quizAdminGame')),category:value('quizAdminCategory'),
+        question:value('quizAdminQuestion'),
+        options:[0,1,2,3].map(i => value('quizAdminOption'+i)),
+        correct_index:Number(value('quizAdminCorrect')),
+        explanation:value('quizAdminExplanation'),source_url:value('quizAdminSource')
+      })
+    });
+    if (!res.ok) throw new Error('Не вдалося додати питання. Перевір дані та унікальність запитання.');
+    feedback.textContent = '✓ Питання додано до гри.';
+    const oldGame = value('quizAdminGame');
+    document.getElementById('quizQuestionForm').reset();
+    document.getElementById('quizAdminGame').value = oldGame;
+    loadQuizzes();
+  } catch (err) {
+    feedback.textContent = err.message || 'Немає зв’язку.';
+  } finally {
+    button.disabled = false;
+  }
+}
 
 </script>
 

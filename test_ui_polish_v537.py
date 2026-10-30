@@ -35,11 +35,11 @@ class UIPolishTests(TestCase):
             with self.subTest(foreground=foreground, background=background):
                 self.assertGreaterEqual(contrast(foreground, background), 4.5)
 
-    def test_all_five_nav_tabs_point_to_views(self):
+    def test_all_six_nav_tabs_point_to_views(self):
         nav = HTML.split('<div class="bottom-nav">', 1)[1].split('</div>', 1)[0]
         targets = re.findall(r'<button class="nav-btn[^"]*" data-view="([^"]+)"', nav)
-        self.assertEqual(len(targets), 5)
-        self.assertEqual(len(set(targets)), 5)
+        self.assertEqual(len(targets), 6)
+        self.assertEqual(len(set(targets)), 6)
         for target in targets:
             self.assertIn(f'id="{target}"', HTML)
 

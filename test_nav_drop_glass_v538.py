@@ -20,7 +20,7 @@ class NavDropGlassTests(unittest.TestCase):
         self.assertIn("height: 54px !important", GLASS)
         self.assertIn("min-height: 54px !important", GLASS)
         self.assertIn("grid-template-columns: repeat(5, minmax(0, 1fr))", POLISH)
-        self.assertEqual(len(re.findall(r'class="nav-btn(?: active)?" data-view=', HTML)), 5)
+        self.assertEqual(len(re.findall(r'class="nav-btn(?: active)?" data-view=', HTML)), 6)
 
     def test_clear_layer_uses_tints_not_opaque_background(self):
         self.assertIn("--glass-nav-clear:", GLASS)

@@ -73,6 +73,9 @@ DUNGEON_SETTLE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/settle_dungeon_run"
 GAME_SUBMISSIONS_REST = f"{SUPABASE_URL}/rest/v1/game_submissions"
 COIN_RUSH_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_coin_catcher_run"
 TREASURE_MEMORY_CLAIM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/claim_treasure_memory_run"
+QUIZ_QUESTIONS_REST = f"{SUPABASE_URL}/rest/v1/styloteka_quiz_questions"
+QUIZ_ATTEMPTS_REST = f"{SUPABASE_URL}/rest/v1/styloteka_quiz_attempts"
+QUIZ_ANSWER_RPC = f"{SUPABASE_URL}/rest/v1/rpc/styloteka_answer_quiz"
 STORAGE = f"{SUPABASE_URL}/storage/v1/object"
 
 
@@ -603,6 +606,183 @@ def get_games():
     )
     resp.raise_for_status()
     return jsonify(resp.json())
+
+
+# ==================== ВІКТОРИНИ З НАСТІЛЬНИХ ІГОР ====================
+QUIZ_CATEGORIES = {"rules", "goal", "strategy", "tips"}
+QUIZ_DAILY_CORRECT_LIMIT = 5
+
+
+def _quiz_supabase_rows(url, params):
+    response = requests.get(url, headers=HEADERS, params=params, timeout=15)
+    response.raise_for_status()
+    return response.json() or []
+
+
+@app.route("/api/quizzes/catalog", methods=["GET"])
+def quizzes_catalog():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    user_id = int(user["id"])
+    try:
+        games = _quiz_supabase_rows(REST, {"select": "id,name,cover_url,tags", "order": "name.asc", "limit": 1000})
+        questions = _quiz_supabase_rows(QUIZ_QUESTIONS_REST, {
+            "select": "id,game_id,category", "active": "eq.true", "limit": 2000,
+        })
+        attempts = _quiz_supabase_rows(QUIZ_ATTEMPTS_REST, {
+            "select": "question_id,reward_stils,answered_at",
+            "telegram_user_id": f"eq.{user_id}", "limit": 2000,
+        })
+    except Exception:
+        logging.exception("Quiz catalog unavailable (run QUIZZES_SETUP.sql first)")
+        return jsonify({"error": "quiz_service_unavailable"}), 503
+
+    done = {int(a["question_id"]) for a in attempts}
+    today = datetime.now(ZoneInfo("Europe/Kyiv")).date()
+    earned_today = 0
+    for attempt in attempts:
+        try:
+            timestamp = datetime.fromisoformat(str(attempt["answered_at"]).replace("Z", "+00:00"))
+            if timestamp.astimezone(ZoneInfo("Europe/Kyiv")).date() == today:
+                earned_today += max(0, int(attempt.get("reward_stils") or 0))
+        except (ValueError, TypeError):
+            continue
+
+    game_map = {str(game["id"]): {
+        "id": game["id"], "name": game["name"],
+        "cover_url": game.get("cover_url"), "tags": game.get("tags"),
+        "total": 0, "completed": 0, "categories": [],
+    } for game in games}
+    for question in questions:
+        game = game_map.get(str(question["game_id"]))
+        if not game:
+            continue
+        game["total"] += 1
+        if int(question["id"]) in done:
+            game["completed"] += 1
+        if question["category"] not in game["categories"]:
+            game["categories"].append(question["category"])
+
+    can_manage = bool(_telegram_user_is_group_admin(user_id))
+    return jsonify({
+        "games": [game for game in game_map.values() if game["total"]],
+        "daily_limit": QUIZ_DAILY_CORRECT_LIMIT * 2,
+        "earned_today": min(10, earned_today),
+        "can_manage": can_manage,
+        "library_games": ([{"id": g["id"], "name": g["name"]} for g in games]
+                          if can_manage else []),
+    })
+
+
+@app.route("/api/quizzes/next", methods=["GET"])
+def quizzes_next():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    try:
+        game_id = int(request.args.get("game_id") or 0)
+        if game_id < 1:
+            raise ValueError()
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid_game"}), 400
+    try:
+        questions = _quiz_supabase_rows(QUIZ_QUESTIONS_REST, {
+            "select": "id,game_id,category,question,options", "active": "eq.true",
+            "game_id": f"eq.{game_id}", "order": "id.asc", "limit": 500,
+        })
+        attempts = _quiz_supabase_rows(QUIZ_ATTEMPTS_REST, {
+            "select": "question_id", "telegram_user_id": f"eq.{int(user['id'])}", "limit": 2000,
+        })
+    except Exception:
+        logging.exception("Quiz question retrieval failed")
+        return jsonify({"error": "quiz_service_unavailable"}), 503
+    done = {int(a["question_id"]) for a in attempts}
+    remaining = [q for q in questions if int(q["id"]) not in done]
+    return jsonify({"question": remaining[0] if remaining else None,
+                    "remaining": len(remaining), "total": len(questions)})
+
+
+@app.route("/api/quizzes/answer", methods=["POST"])
+def quizzes_answer():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "invalid_answer"}), 400
+    try:
+        question_id = int(data.get("question_id"))
+        answer_index = int(data.get("answer_index"))
+        if question_id <= 0 or answer_index not in (0, 1, 2, 3):
+            raise ValueError()
+    except (ValueError, TypeError):
+        return jsonify({"error": "invalid_answer"}), 400
+    try:
+        result = requests.post(
+            QUIZ_ANSWER_RPC,
+            headers={**HEADERS, "Content-Type": "application/json"},
+            json={"p_user_id": int(user["id"]), "p_question_id": question_id,
+                  "p_answer_index": answer_index},
+            timeout=20,
+        )
+        result.raise_for_status()
+        payload = result.json()
+        if isinstance(payload, list):
+            payload = payload[0] if payload else {}
+    except Exception:
+        logging.exception("Quiz answer RPC failed")
+        return jsonify({"error": "quiz_service_unavailable"}), 503
+    if payload.get("status") == "answered":
+        return jsonify(payload), 200
+    if payload.get("status") in ("already_answered", "daily_limit"):
+        return jsonify(payload), 409
+    return jsonify(payload), 400
+
+
+@app.route("/api/quizzes/questions", methods=["POST"])
+def quizzes_add_question():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({"error": "telegram_auth_required"}), 401
+    if not _telegram_user_is_group_admin(int(user["id"])):
+        return jsonify({"error": "admin_only"}), 403
+    if request.content_length and request.content_length > 12000:
+        return jsonify({"error": "question_too_large"}), 413
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "invalid_question"}), 400
+    try:
+        game_id = int(data.get("game_id"))
+        correct_index = int(data.get("correct_index"))
+    except (ValueError, TypeError):
+        return jsonify({"error": "invalid_question"}), 400
+    category = str(data.get("category") or "").strip()
+    question = str(data.get("question") or "").strip()
+    options = data.get("options")
+    explanation = str(data.get("explanation") or "").strip()
+    source_url = str(data.get("source_url") or "").strip()
+    if (game_id <= 0 or category not in QUIZ_CATEGORIES or not 12 <= len(question) <= 500
+            or not isinstance(options, list) or len(options) != 4
+            or any(not isinstance(x, str) or not 1 <= len(x.strip()) <= 180 for x in options)
+            or correct_index not in (0, 1, 2, 3) or not 10 <= len(explanation) <= 1000
+            or len(source_url) > 500
+            or (source_url and not source_url.startswith(("https://", "http://")))):
+        return jsonify({"error": "invalid_question"}), 400
+    try:
+        resp = requests.post(
+            QUIZ_QUESTIONS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            json={"game_id": game_id, "category": category, "question": question,
+                  "options": [x.strip() for x in options], "correct_index": correct_index,
+                  "explanation": explanation, "source_url": source_url or None},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return jsonify({"status": "created"}), 201
+    except Exception:
+        logging.exception("Quiz question creation failed")
+        return jsonify({"error": "quiz_question_save_failed"}), 503
 
 
 # Додавання гри — тільки адміністратор/власник підключеної Telegram-групи.
