@@ -10749,6 +10749,7 @@ function renderGameDetailStats(game) {
 document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
   if (btn.dataset.view === 'view-home') loadHomeHub();
   if (btn.dataset.view === 'view-library') loadGames();
+  if (btn.dataset.view === 'view-quizzes') loadQuizzes();
   if (btn.dataset.view === 'view-community') loadCommunity();
 }));
 
@@ -12854,13 +12855,21 @@ let quizSubmitting = false;
 async function loadQuizzes() {
   const grid = document.getElementById('quizGameGrid');
   if (!grid) return;
-  if (!quizCatalogData) grid.innerHTML = '<div class="quiz-empty">Завантажуємо запитання…</div>';
+  grid.innerHTML = '<div class="quiz-empty">Завантажуємо запитання…</div>';
+  const progress = document.getElementById('quizDailyProgress');
+  if (progress) progress.textContent = 'Перевіряємо щоденний прогрес…';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 18000);
   try {
-    const res = await fetch('/api/quizzes/catalog', {headers:telegramAuthHeaders(),cache:'no-store'});
-    if (!res.ok) throw new Error(res.status === 401 ? 'Відкрий вікторини у Telegram, щоб заробляти стілси.' : 'Вікторини ще налаштовуються. Потрібна база запитань.');
+    const res = await fetch('/api/quizzes/catalog', {headers:telegramAuthHeaders(),cache:'no-store',signal:controller.signal});
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Відкрий вікторини в Telegram, щоб заробляти стілси.');
+      if (res.status === 404) throw new Error('Сервер ще не оновлено: потрібен app.py із підтримкою вікторин.');
+      if (res.status === 503) throw new Error('База вікторин недоступна. Перевір підключення й налаштування QUIZZES_SETUP.sql у Supabase.');
+      throw new Error(`Не вдалося завантажити вікторини (помилка ${res.status}).`);
+    }
     quizCatalogData = await res.json();
     const data = quizCatalogData;
-    const progress = document.getElementById('quizDailyProgress');
     if (progress) progress.textContent = `⭐ Сьогодні зароблено: ${data.earned_today || 0} із ${data.daily_limit || 10} стілсів`;
     const games = data.games || [];
     const count = document.getElementById('quizGamesCount');
@@ -12886,7 +12895,13 @@ async function loadQuizzes() {
       }
     }
   } catch (err) {
-    grid.innerHTML = `<div class="quiz-empty">${escapeHtml(err.message || 'Немає зв’язку. Спробуй пізніше.')}</div>`;
+    const message = err.name === 'AbortError'
+      ? 'Час очікування вичерпано. Перевір інтернет або стан сервера.'
+      : (err.message || 'Немає зв’язку. Спробуй пізніше.');
+    if (progress) progress.textContent = '⚠️ Прогрес поки недоступний';
+    grid.innerHTML = `<div class="quiz-empty">${escapeHtml(message)}<br><button type="button" class="quiz-admin-open" onclick="loadQuizzes()">↻ Спробувати ще раз</button></div>`;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

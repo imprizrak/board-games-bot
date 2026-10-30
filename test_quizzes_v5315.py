@@ -76,6 +76,13 @@ class QuizFeatureTests(unittest.TestCase):
         self.assertIn('function quizSaveQuestion(event)', HTML)
         self.assertIn('grid-template-columns: repeat(6, minmax(0, 1fr)) !important;', HTML)
 
+    def test_clicking_quiz_tab_starts_loading_and_errors_can_be_retried(self):
+        self.assertIn("if (btn.dataset.view === 'view-quizzes') loadQuizzes();", HTML)
+        self.assertIn('signal:controller.signal', HTML)
+        self.assertIn('setTimeout(() => controller.abort(), 18000)', HTML)
+        self.assertIn('onclick="loadQuizzes()"', HTML)
+        self.assertIn('⚠️ Прогрес поки недоступний', HTML)
+
     def test_legacy_minigames_stay_removed_and_profiles_preserved(self):
         self.assertNotIn('id="view-coins"', HTML)
         self.assertNotIn('id="view-treasure"', HTML)
