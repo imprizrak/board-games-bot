@@ -3326,14 +3326,14 @@ if (!window.Telegram?.WebApp) {
   }
 
 
-  /* Date picker must appear above the already-open event modal */
+  /* The date picker is a second modal opened over #eventModal (z-index: 200).
+     Keep the backdrop and calendar together in a higher stacking context. */
   #eventDatePickerModal {
-    z-index: 60;
+    z-index: 1200 !important;
   }
 
   #eventDatePickerModal .date-wheel-sheet {
     position: relative;
-    z-index: 61;
   }
 
 
@@ -3365,11 +3365,10 @@ if (!window.Telegram?.WebApp) {
     line-height: 1;
   }
 
-  #eventDatePickerModal {
-    z-index: 70 !important;
-  }
   #eventDatePickerModal .event-calendar-sheet {
-    z-index: 71;
+    position: relative;
+    max-height: min(91dvh, 620px) !important;
+    overflow-y: auto !important;
   }
 
   .event-calendar-sheet {
@@ -5712,7 +5711,7 @@ if (!window.Telegram?.WebApp) {
 .ev-price{margin-top:8px;font-size:12px;font-weight:800;color:#d3efff;line-height:1.5}
 .ev-payment-check{border:1px solid rgba(226,193,103,.35);background:rgba(226,193,103,.08);color:#d3efff;min-height:42px;padding:8px 12px;border-radius:12px;font:inherit;font-size:12px;font-weight:800}
 .ev-payment-check:active{transform:scale(.99)}
-#eventPriceMode{display:block;width:100%;min-height:44px;border-radius:12px}
+#eventPriceMode,#eventPaymentMethod{display:block;width:100%;min-height:44px;border-radius:12px}
 #eventPriceAmountRow input{width:100%;box-sizing:border-box}
 
 
@@ -7612,7 +7611,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка створення події (тільки для адмінів) -->
 
 <!-- Календар вибору дати -->
-<div class="modal" id="eventDatePickerModal">
+<div class="modal" id="eventDatePickerModal" role="dialog" aria-modal="true" aria-label="Оберіть дату події" onclick="if(event.target===this) closeModal('eventDatePickerModal')">
   <div class="sheet event-calendar-sheet">
     <div class="event-calendar-top">
       <button type="button" class="event-calendar-text-btn" onclick="closeModal('eventDatePickerModal')">Скасувати</button>
@@ -7663,21 +7662,30 @@ button,.btn{font-family:inherit}
 
     <label>Місце події (необов'язково)</label>
     <input type="text" id="eventLocation" placeholder="Назва місця або повна адреса">
-    <div class="event-form-hint">Наприклад: Spielwiese Berlin, Kopernikusstraße 24, Berlin. Після створення бот покаже точку на Google Maps.</div>
+    <div class="event-form-hint">🔒 Адресу побачать лише підтверджені учасники. Бот надішле її в особисті повідомлення.</div>
 
     <label>Настільні ігри (можна обрати декілька)</label>
     <div class="event-game-choice-list" id="eventGameChoices"></div>
-    <div class="event-form-hint">Познач одну або кілька ігор, у які плануєте грати.</div>
+    <div class="event-form-hint">🔒 Перелік ігор надсилатиметься особисто після підтвердження участі.</div>
 
     <label for="eventPriceMode">Вартість участі</label>
     <select id="eventPriceMode" onchange="setEventPriceMode(this.value)">
       <option value="free">🆓 Безкоштовно</option>
-      <option value="paid">💳 Платна подія (monobank)</option>
+      <option value="paid">🧾 Платна подія (квитанція)</option>
     </select>
     <div id="eventPriceAmountRow" style="display:none;">
       <label for="eventPriceUah">Сума за одного учасника, грн</label>
       <input type="number" id="eventPriceUah" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="Наприклад, 150.00">
-      <div class="event-form-hint">Запис тільки після підтвердження платежу банком. Для платних подій потрібен еквайринг monobank.</div>
+      <label for="eventPaymentMethod">Спосіб підтвердження оплати</label>
+      <select id="eventPaymentMethod" onchange="setEventPaymentMethod(this.value)">
+        <option value="receipt">🧾 Квитанцію перевіряє адміністратор</option>
+        <option value="monobank">💳 Автоматично через monobank (якщо налаштовано)</option>
+      </select>
+      <div id="eventPaymentDetailsRow">
+        <label for="eventPaymentDetails">Реквізити та інструкція з оплати</label>
+        <textarea id="eventPaymentDetails" rows="3" maxlength="1000" placeholder="Номер картки / IBAN, одержувач, призначення платежу"></textarea>
+        <div class="event-form-hint">Після оплати людина додає квитанцію. Ти перевіряєш її, і тільки тоді місце підтверджується.</div>
+      </div>
     </div>
 
     <label for="eventQuestsUrl">Подія в Quests Inc (необов'язково)</label>
@@ -7696,11 +7704,12 @@ button,.btn{font-family:inherit}
     <input type="number" id="eventCapacity" min="0" max="99" value="0" inputmode="numeric">
 
     <label>Опис (необов'язково)</label>
-    <textarea id="eventDescription" rows="2" placeholder="Деталі, місце, що принести"></textarea>
+    <textarea id="eventDescription" rows="2" placeholder="Публічний опис події (без адреси та назв ігор)"></textarea>
+    <div class="event-form-hint">⚠️ Публічний опис бачитиме вся група. Не вписуй сюди приватну адресу чи програму ігор.</div>
 
     <label>Обкладинка події (необов'язково)</label>
     <input type="file" id="eventCover" accept="image/*">
-    <div class="event-form-hint">Якщо свою обкладинку не додати, для Telegram-анонсу використається обкладинка першої обраної гри.</div>
+    <div class="event-form-hint">Для конфіденційності додай нейтральну обкладинку: фото конкретної гри може розкрити приватну програму.</div>
     <img id="eventCoverPreview" class="event-cover-preview" alt="Попередній перегляд обкладинки">
     <button type="button" class="event-cover-remove-btn" id="eventCoverRemoveBtn" style="display:none;" onclick="removeCurrentEventCover()">Видалити обкладинку</button>
 
@@ -8522,22 +8531,22 @@ async function loadEvents(mode = eventsMode) {
   eventsMode = mode === 'history' ? 'history' : 'upcoming';
   document.querySelectorAll('.events-subtab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.eventsMode === eventsMode));
   try {
-    const res = await fetch(`/api/events?scope=${encodeURIComponent(eventsMode)}`);
+    const res = await fetch(`/api/events?scope=${encodeURIComponent(eventsMode)}`,{headers:telegramAuthHeaders(),cache:'no-store'});
     if (!res.ok) throw new Error('events_http_' + res.status);
     const responseData = await res.json();
     lastEventsData = Array.isArray(responseData) ? responseData : [];
     try {
       const publicSnapshot = lastEventsData.map(ev => ({
         id:ev.id,title:ev.title,event_date:ev.event_date,event_time:ev.event_time,
-        description:ev.description,game_name:ev.game_name,game_names:ev.game_names,
-        cover_url:ev.cover_url,location_text:ev.location_text,price_kop:ev.price_kop,
+        description:ev.description,
+        cover_url:ev.cover_url,price_kop:ev.price_kop,payment_method:ev.payment_method,
         max_participants:ev.max_participants,status:ev.status
       }));
-      localStorage.setItem('styloteka_public_events_offline_v45_'+eventsMode, JSON.stringify({savedAt:Date.now(),items:publicSnapshot}));
+      localStorage.setItem('styloteka_public_events_offline_v5319_'+eventsMode, JSON.stringify({savedAt:Date.now(),items:publicSnapshot}));
     } catch (_) {}
   } catch (e) {
     try {
-      const saved = JSON.parse(localStorage.getItem('styloteka_public_events_offline_v45_'+eventsMode)||'null');
+      const saved = JSON.parse(localStorage.getItem('styloteka_public_events_offline_v5319_'+eventsMode)||'null');
       lastEventsData = Array.isArray(saved?.items) ? saved.items : [];
     } catch (_) { lastEventsData = []; }
   }
@@ -8686,7 +8695,6 @@ function openEventDatePicker() {
 
   const modal = document.getElementById('eventDatePickerModal');
   if (modal) {
-    modal.style.zIndex = '70';
     modal.classList.add('open');
   }
 }
@@ -11554,7 +11562,8 @@ function renderEvents(events) {
     ).join('') || `<div class="ev-no-participants">${historyMode ? 'Учасників не було' : 'Поки ніхто не записався'}</div>`;
 
     const isPaid=(Number(ev.price_kop)||0)>0;
-    let voteLabel = isPaid ? '💳 Я йду — оплатити' : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись');
+    const receiptMode=isPaid&&ev.payment_method==='receipt';
+    let voteLabel = isPaid ? (receiptMode?'🧾 Я йду — квитанція':'💳 Я йду — оплатити') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись');
     let voteClass = '';
     let voteNote = '';
 
@@ -11627,14 +11636,16 @@ function renderEvents(events) {
         ${isAdmin ? '<button type="button" class="event-open-scanner">📷 Відмітити прихід</button>' : ''}
         ${isAdmin && ev.quests_event_url ? '<button type="button" class="event-open-quests">🔗 Гості Quests</button>' : ''}
       </div>` : ''}
-      <button type="button" class="event-games-open" aria-label="Переглянути і вибрати настільні ігри на подію">🎲 ${historyMode ? 'Переглянути ігри заходу' : 'Обрати ігри для заходу'} <span aria-hidden="true">→</span></button>
+      ${(mine?.status==='going'||isAdmin)?`<button type="button" class="event-games-open" aria-label="Вибрати настільні ігри">🎲 Обрати ігри <span aria-hidden="true">→</span></button>`:'<div class="event-form-hint">🔒 Адреса й ігри доступні після підтвердження участі.</div>'}
+      ${(mine?.status==='going'||isAdmin)?'<button type="button" class="event-private-open btn" style="margin-top:8px">📩 Адреса та програма · особисто</button>':''}
+      ${isAdmin&&isPaid&&ev.payment_method==='receipt'?'<button type="button" class="event-receipts-admin btn" style="margin-top:8px">🧾 Перевірити квитанції</button>':''}
       <div class="ev-participants-label">${historyMode ? `Були присутні (${going.length})` : 'Учасники та черга'}</div>
       <div class="ev-participants">${participantHtml}</div>
 
       ${!historyMode ? `
         <div class="ev-buttons">
           <button class="ev-rsvp-btn ${voteClass}" data-id="${ev.id}" ${mine ? 'disabled' : ''}>${voteLabel}</button>
-          ${isPaid && !mine ? `<button class="ev-payment-check" type="button">↻ Перевірити оплату</button>` : ''}
+          ${isPaid && !mine && !receiptMode ? `<button class="ev-payment-check" type="button">↻ Перевірити оплату</button>` : ''}
           ${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}
         </div>
         ${voteNote ? `<div class="ev-my-vote">${voteNote}</div>` : ''}
@@ -11643,6 +11654,8 @@ function renderEvents(events) {
     `;
 
     card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
+    card.querySelector('.event-private-open')?.addEventListener('click',()=>openPrivateEventDetails(ev.id));
+    card.querySelector('.event-receipts-admin')?.addEventListener('click',()=>openAdminEventReceipts(ev));
     card.querySelector('.event-open-ticket')?.addEventListener('click', () => openEventTicket(ev));
     card.querySelector('.event-open-scanner')?.addEventListener('click', () => openEventCheckinScanner(ev));
     card.querySelector('.event-open-quests')?.addEventListener('click', () => openEventQuestsParticipants(ev));
@@ -11650,7 +11663,7 @@ function renderEvents(events) {
 
     if (!historyMode) {
       if (!mine) {
-        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => isPaid?startMonobankEventPayment(ev.id):toggleRsvp(ev.id));
+        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => receiptMode?openEventReceiptModal(ev):isPaid?startMonobankEventPayment(ev.id):toggleRsvp(ev.id));
       }
 
       card.querySelector('.ev-admin-edit')?.addEventListener('click', () => openEditEventModal(ev));
@@ -11757,6 +11770,11 @@ function setEventPriceMode(mode){
   const field=document.getElementById('eventPriceUah');
   if(row)row.style.display=mode==='paid'?'block':'none';
   if(field)field.required=mode==='paid';
+  setEventPaymentMethod(document.getElementById('eventPaymentMethod')?.value||'receipt');
+}
+function setEventPaymentMethod(method){
+  const details=document.getElementById('eventPaymentDetailsRow');
+  if(details)details.style.display=(document.getElementById('eventPriceMode')?.value==='paid'&&method==='receipt')?'block':'none';
 }
 
 function eventPriceLabel(ev){
@@ -11814,6 +11832,8 @@ function openEditEventModal(ev) {
   const paid=(Number(ev.price_kop)||0)>0;
   document.getElementById('eventPriceMode').value=paid?'paid':'free';
   document.getElementById('eventPriceUah').value=paid?(Number(ev.price_kop)/100).toFixed(2):'';
+  document.getElementById('eventPaymentMethod').value=ev.payment_method==='monobank'?'monobank':'receipt';
+  document.getElementById('eventPaymentDetails').value=ev.payment_details||'';
   setEventPriceMode(paid?'paid':'free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = String(Number(ev.max_participants) || 0);
@@ -11846,6 +11866,8 @@ function openEventModal() {
   setEventQuestsVisibility();
   document.getElementById('eventPriceMode').value='free';
   document.getElementById('eventPriceUah').value='';
+  document.getElementById('eventPaymentMethod').value='receipt';
+  document.getElementById('eventPaymentDetails').value='';
   setEventPriceMode('free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = '0';
@@ -11870,6 +11892,9 @@ async function submitEvent() {
   const priceMode=document.getElementById('eventPriceMode').value;
   const priceUah=document.getElementById('eventPriceUah').value;
   if(priceMode==='paid'&&!(Number(priceUah)>=1)) {tg.showAlert('Введи вартість події (щонайменше 1 грн).');return;}
+  const payMethod=document.getElementById('eventPaymentMethod').value;
+  const payDetails=document.getElementById('eventPaymentDetails').value.trim();
+  if(priceMode==='paid'&&payMethod==='receipt'&&!payDetails){tg.showAlert('Вкажи реквізити для оплати.');return;}
   const formData = new FormData();
   formData.append('_tg_init_data', telegramInitData);
   formData.append('title', title);
@@ -11880,6 +11905,8 @@ async function submitEvent() {
   formData.append('game_names_json', JSON.stringify(selectedGames));
   formData.append('price_mode',priceMode);
   formData.append('price_uah',priceMode==='paid'?priceUah:'0');
+  formData.append('payment_method',priceMode==='paid'?payMethod:'free');
+  formData.append('payment_details',priceMode==='paid'&&payMethod==='receipt'?payDetails:'');
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
   const questsEventUrl = document.getElementById('eventQuestsUrl').value.trim();
@@ -11945,6 +11972,110 @@ async function submitEvent() {
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
+}
+
+// Private details and receipt moderation are opened in the existing safe sheet.
+function eventActionSheet(title, bodyHtml){
+  document.getElementById('eventCheckinHeading').textContent=title;
+  const content=document.getElementById('eventCheckinContent');
+  content.innerHTML=bodyHtml;
+  document.getElementById('eventCheckinModal').classList.add('open');
+  return content;
+}
+
+async function openPrivateEventDetails(eventId){
+  const content=eventActionSheet('🔒 Деталі для учасника','Завантаження деталей…');
+  try{
+    const r=await fetch(`/api/events/${Number(eventId)}/private-details`,{headers:telegramAuthHeaders(),cache:'no-store'});
+    const x=await r.json();
+    if(!r.ok)throw Error(x.error==='confirmed_attendee_required'?'Спочатку підтвердь участь.':'Не вдалося завантажити деталі.');
+    const names=Array.isArray(x.game_names)&&x.game_names.length?x.game_names:(x.game_name?[x.game_name]:[]);
+    const loc=x.location_text||'Організатор ще не вказав адресу';
+    const mapUrl=String(x.location_map_url||'');
+    content.innerHTML=`<p><strong>${escapeHtml(x.title||'Подія')}</strong></p>
+      <p>📍 ${escapeHtml(loc)}</p>
+      ${mapUrl.startsWith('https://')?`<p><a href="${escapeHtml(mapUrl)}" target="_blank" rel="noopener">Відкрити маршрут</a></p>`:''}
+      <p>🎲 ${names.length?names.map(escapeHtml).join(' · '):'Обери ігри з бібліотеки Styloteka'}</p>
+      <button type="button" class="btn" id="resendEventDetails">📩 Надіслати мені в Telegram</button>
+      <p class="event-form-hint">Якщо бот не може написати тобі, відкрий його приватний чат і натисни Start.</p>`;
+    content.querySelector('#resendEventDetails')?.addEventListener('click',async()=>{
+      const rr=await fetch(`/api/events/${Number(eventId)}/private-details/send`,{method:'POST',headers:telegramAuthHeaders()});
+      const status=await rr.json().catch(()=>({}));
+      tg.showAlert(status.sent?'✅ Деталі надіслано особисто.':'Спочатку відкрий приватний чат із ботом і натисни Start, потім повтори.');
+    });
+  }catch(e){content.textContent=e.message||'Не вдалося відкрити деталі.';}
+}
+
+async function openEventReceiptModal(ev){
+  if(!telegramInitData){tg.showAlert('Для оплати відкрий Styloteka через Telegram.');return;}
+  const content=eventActionSheet('🧾 Оплата участі','Завантаження реквізитів…');
+  try{
+    const r=await fetch(`/api/events/${Number(ev.id)}/receipt`,{headers:telegramAuthHeaders(),cache:'no-store'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error('Не вдалося отримати реквізити події.');
+    const status=d.status||'not_submitted';
+    const message=status==='pending'?'⏳ Квитанція на перевірці. Поки не підтверджено, місце не зайняте.':
+      status==='approved'?'✅ Оплату підтверджено! Ти у списку учасників.':
+      status==='rejected'?'❌ Квитанцію відхилено. Ти можеш надіслати нову.':'';
+    content.innerHTML=`<p><strong>${escapeHtml(d.title||ev.title||'Подія')}</strong></p>
+      <p>💳 До оплати: <strong>${(Number(d.price_kop||0)/100).toFixed(2)} грн</strong></p>
+      <p class="event-form-hint">Переказуй кошти за цими реквізитами, збережи квитанцію і завантаж її нижче.</p>
+      <pre style="white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border-radius:12px;background:rgba(255,255,255,.07)">${escapeHtml(d.payment_details||'Реквізити не вказано')}</pre>
+      <p>${escapeHtml(message)}</p>
+      ${status==='not_submitted'||status==='rejected'?`<label for="eventReceiptFile">Фото або PDF квитанції (до 5 МБ)</label>
+        <input id="eventReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+        <button type="button" id="sendEventReceipt" class="btn">Надіслати квитанцію адміністратору</button>`:''}
+      <p class="event-form-hint">Адресу та ігри бот надішле в особистий чат лише після підтвердження. Для цього відкрий приватний чат бота та натисни Start.</p>`;
+    content.querySelector('#sendEventReceipt')?.addEventListener('click',async()=>{
+      const file=content.querySelector('#eventReceiptFile')?.files?.[0];
+      if(!file){tg.showAlert('Додай фото або PDF квитанції.');return;}
+      if(file.size>5*1024*1024){tg.showAlert('Розмір квитанції має бути до 5 МБ.');return;}
+      const btn=content.querySelector('#sendEventReceipt');btn.disabled=true;
+      try{
+        const form=new FormData();form.append('_tg_init_data',telegramInitData);form.append('receipt',file);
+        const upload=await fetch(`/api/events/${Number(ev.id)}/receipt`,{method:'POST',headers:telegramAuthHeaders(),body:form});
+        const result=await upload.json().catch(()=>({}));
+        if(!upload.ok)throw Error(result.error==='receipt_already_submitted'?'Квитанцію вже відправлено.':'Не вдалося надіслати квитанцію.');
+        tg.showAlert('✅ Квитанцію передано адміністратору. Очікуй перевірки.');
+        await openEventReceiptModal(ev);
+      }catch(e){tg.showAlert(e.message);}finally{if(btn.isConnected)btn.disabled=false;}
+    });
+  }catch(e){content.textContent=e.message||'Помилка завантаження.';}
+}
+
+async function openAdminEventReceipts(ev){
+  const content=eventActionSheet('🧾 Перевірка оплат · '+(ev.title||'Подія'),'Завантаження квитанцій…');
+  try{
+    const r=await fetch(`/api/admin/event-receipts?event_id=${Number(ev.id)}`,{headers:telegramAuthHeaders(),cache:'no-store'});
+    const x=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error('Не вдалося отримати заявки.');
+    const items=Array.isArray(x.receipts)?x.receipts:[];
+    content.innerHTML=items.length?items.map(item=>`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.15)">
+      <div><strong>${escapeHtml(item.display_name||item.username||'Учасник')}</strong> · ${escapeHtml(item.status==='pending'?'⏳ На перевірці':item.status==='approved'?'✅ Підтверджено':'❌ Відхилено')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button type="button" class="event-receipt-file" data-receipt="${Number(item.id)}">📄 Відкрити квитанцію</button>
+        ${item.status==='pending'?`<button type="button" data-review="approved" data-receipt="${Number(item.id)}">✅ Підтвердити</button>
+        <button type="button" data-review="rejected" data-receipt="${Number(item.id)}">❌ Відхилити</button>`:''}
+      </div></div>`).join(''):'<p>Заявок на оплату ще немає.</p>';
+    content.querySelectorAll('.event-receipt-file').forEach(btn=>btn.addEventListener('click',async()=>{
+      const rr=await fetch(`/api/admin/event-receipts/${Number(btn.dataset.receipt)}/file`,{headers:telegramAuthHeaders()});
+      if(!rr.ok){tg.showAlert('Не вдалося отримати файл.');return;}
+      const blob=await rr.blob();const url=URL.createObjectURL(blob);window.open(url,'_blank','noopener');
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }));
+    content.querySelectorAll('[data-review]').forEach(btn=>btn.addEventListener('click',async()=>{
+      const decision=btn.dataset.review,receiptId=Number(btn.dataset.receipt);
+      if(decision==='approved'&&!window.confirm('Ти перевірив(ла) надходження коштів і підтверджуєш оплату?'))return;
+      btn.disabled=true;
+      try{
+        const rr=await fetch(`/api/admin/event-receipts/${receiptId}/review`,{method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({decision})});
+        const y=await rr.json().catch(()=>({}));
+        if(!rr.ok)throw Error(y.error==='event_full'?'Немає вільних місць.':'Не вдалося змінити статус.');
+        tg.showAlert(decision==='approved'?(y.private_message_sent?'✅ Учасника підтверджено, деталі надіслано.':'✅ Учасника підтверджено. Особисте повідомлення не доставлено — треба натиснути Start у чаті бота.'):'Квитанцію відхилено.');
+        loadEvents();await openAdminEventReceipts(ev);
+      }catch(e){tg.showAlert(e.message);}finally{if(btn.isConnected)btn.disabled=false;}
+    }));
+  }catch(e){content.textContent=e.message||'Помилка.';}
 }
 
 async function startMonobankEventPayment(eventId){
@@ -12821,7 +12952,11 @@ async function applyInitialDeepLink() {
     showMainView('view-events');
     await loadEvents();
     if(window.__deepLinkedEventId){
-      if(paymentDeepLink)await startMonobankEventPayment(window.__deepLinkedEventId);
+      if(paymentDeepLink){
+        const event=lastEventsData.find(e=>String(e.id)===String(window.__deepLinkedEventId));
+        if(event?.payment_method==='receipt')await openEventReceiptModal(event);
+        else await startMonobankEventPayment(window.__deepLinkedEventId);
+      }
       else checkMonobankEventPayment(window.__deepLinkedEventId,true);
     }
     requestAnimationFrame(() => {

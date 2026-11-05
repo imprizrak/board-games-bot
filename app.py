@@ -54,6 +54,9 @@ WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
 EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
 EVENT_GROUP_POSTS_REST = f"{SUPABASE_URL}/rest/v1/event_group_posts"
+EVENT_RECEIPTS_REST = f"{SUPABASE_URL}/rest/v1/event_payment_receipts"
+EVENT_RECEIPTS_RPC = f"{SUPABASE_URL}/rest/v1/rpc/styloteka_review_event_receipt"
+RECEIPT_BUCKET = "event-receipts"
 MONOBANK_EVENT_PAYMENTS_REST = f"{SUPABASE_URL}/rest/v1/event_monobank_payments"
 MONOBANK_CONFIRM_RPC = f"{SUPABASE_URL}/rest/v1/rpc/confirm_event_monobank_payment"
 MONOBANK_RESERVE_RPC = f"{SUPABASE_URL}/rest/v1/rpc/reserve_event_monobank_payment"
@@ -4044,6 +4047,23 @@ def _event_price_kop(data):
     return int(kop)
 
 
+def _event_payment_config(data, price_kop, existing=None):
+    if not price_kop:
+        return 'free', ''
+    explicit = str(data.get('payment_method') or '').strip().lower()
+    if not explicit:
+        explicit = (existing or {}).get('payment_method') or 'receipt'
+    if explicit not in ('receipt','monobank'):
+        raise ValueError('invalid_payment_method')
+    details = str(data.get('payment_details') if 'payment_details' in data
+                  else (existing or {}).get('payment_details') or '').strip()
+    if explicit == 'receipt' and not details:
+        raise ValueError('payment_details_required')
+    if len(details) > 1000:
+        raise ValueError('payment_details_too_long')
+    return explicit, details if explicit == 'receipt' else ''
+
+
 def _mono_headers():
     return {"X-Token": MONOBANK_ACQUIRING_TOKEN, "Content-Type": "application/json"}
 
@@ -4128,6 +4148,8 @@ def _sync_monobank_payment(row):
             raise ValueError('payment_confirmation_'+str(result.get('error') or 'failed'))
         # Оновлюємо лічильник на вже опублікованому пості після підтвердженої оплати.
         refresh_event_group_posts_async(row.get('event_id'))
+        if result.get('rsvp_status', 'going') == 'going':
+            _send_private_event_details(int(row['event_id']), int(row['telegram_user_id']))
         return result
     status=str(state.get('status') or 'created')
     if status in {'expired','failure','reversed'}:
@@ -4163,6 +4185,182 @@ def _lookup_invoice_by_id(invoice_id):
     return (r.json() or [None])[0]
 
 
+# ==================== MANUAL RECEIPT REVIEW ====================
+RECEIPT_MAX_BYTES = 5 * 1024 * 1024
+
+
+def _receipt_file_type(raw):
+    if raw.startswith(b'\xff\xd8\xff'):
+        return 'image/jpeg', 'jpg'
+    if raw.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'image/png', 'png'
+    if raw.startswith(b'RIFF') and raw[8:12] == b'WEBP':
+        return 'image/webp', 'webp'
+    if raw.startswith(b'%PDF-'):
+        return 'application/pdf', 'pdf'
+    return None, None
+
+
+def _my_receipt(event_id, telegram_id):
+    r = requests.get(EVENT_RECEIPTS_REST, headers=HEADERS, params={
+        'event_id': f'eq.{int(event_id)}',
+        'telegram_user_id': f'eq.{int(telegram_id)}',
+        'select': 'id,event_id,status,created_at,updated_at,reviewed_at', 'limit': 1,
+    }, timeout=20)
+    r.raise_for_status()
+    return (r.json() or [None])[0]
+
+
+@app.route('/api/events/<int:event_id>/receipt', methods=['GET'])
+def my_event_receipt_status(event_id):
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error': 'telegram_auth_required'}), 401
+    try:
+        event = get_event_snapshot(event_id)
+        if not event: return jsonify({'error': 'event_not_found'}), 404
+        if event.get('payment_method') != 'receipt' or int(event.get('price_kop') or 0) <= 0:
+            return jsonify({'error': 'not_receipt_event'}), 409
+        receipt = _my_receipt(event_id, user['id'])
+        return jsonify({'receipt': receipt, 'status': receipt['status'] if receipt else 'not_submitted', 'price_kop': int(event.get('price_kop') or 0), 'payment_details': event.get('payment_details') or '', 'title': event.get('title') or ''})
+    except requests.RequestException:
+        logging.exception('Cannot read receipt status')
+        return jsonify({'error': 'receipt_status_unavailable'}), 503
+
+
+@app.route('/api/events/<int:event_id>/receipt', methods=['POST'])
+def submit_event_receipt(event_id):
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error': 'telegram_auth_required'}), 401
+    uid, username, display_name = _payment_identity(user)
+    file = request.files.get('receipt')
+    if not file:
+        return jsonify({'error': 'receipt_required'}), 400
+    raw = file.stream.read(RECEIPT_MAX_BYTES + 1)
+    if not raw or len(raw) > RECEIPT_MAX_BYTES:
+        return jsonify({'error': 'receipt_too_large_or_empty'}), 400
+    mimetype, extension = _receipt_file_type(raw)
+    if not mimetype:
+        return jsonify({'error': 'receipt_invalid_format'}), 400
+    try:
+        event = get_event_snapshot(event_id)
+        if not event: return jsonify({'error': 'event_not_found'}), 404
+        if event.get('status') != 'scheduled':
+            return jsonify({'error': 'event_closed'}), 409
+        if event.get('payment_method') != 'receipt' or int(event.get('price_kop') or 0) <= 0:
+            return jsonify({'error': 'not_receipt_event'}), 409
+        current = _my_receipt(event_id, uid)
+        if current and current['status'] != 'rejected':
+            return jsonify({'error': 'receipt_already_submitted', 'status': current['status']}), 409
+        _sync_paid_event_member_profile(uid, username, display_name)
+        path = f'{event_id}/{uid}/{uuid.uuid4().hex}.{extension}'
+        uploaded = requests.post(f'{STORAGE}/{RECEIPT_BUCKET}/{path}',
+            headers={**HEADERS, 'Content-Type': mimetype}, data=raw, timeout=60)
+        uploaded.raise_for_status()
+        fields = {'receipt_path': path, 'receipt_mime': mimetype, 'status': 'pending',
+                  'username': username, 'display_name': display_name,
+                  'reviewed_by': None, 'reviewed_at': None,
+                  'updated_at': datetime.now(timezone.utc).isoformat()}
+        try:
+            if current:
+                db = requests.patch(EVENT_RECEIPTS_REST,
+                    headers={**HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+                    params={'id': f'eq.{current["id"]}', 'status': 'eq.rejected'},
+                    json=fields, timeout=20)
+            else:
+                db = requests.post(EVENT_RECEIPTS_REST,
+                    headers={**HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=representation'},
+                    json={'event_id': event_id, 'telegram_user_id': uid, **fields},timeout=20)
+            db.raise_for_status()
+            if not db.json():
+                raise RuntimeError('receipt_status_changed')
+        except Exception:
+            requests.delete(f'{STORAGE}/{RECEIPT_BUCKET}',
+                headers={**HEADERS, 'Content-Type': 'application/json'},
+                json={'prefixes': [path]}, timeout=15)
+            raise
+        return jsonify({'status': 'pending', 'receipt_id': db.json()[0]['id']}), 201
+    except (requests.RequestException, RuntimeError):
+        logging.exception('Receipt upload failed for event %s', event_id)
+        return jsonify({'error': 'receipt_upload_unavailable'}), 503
+
+
+@app.route('/api/admin/event-receipts', methods=['GET'])
+def admin_event_receipts():
+    denied = _admin_required_response()
+    if denied: return denied
+    params = {'select': 'id,event_id,telegram_user_id,username,display_name,status,created_at,reviewed_at',
+              'order': 'created_at.desc', 'limit': 200}
+    if request.args.get('event_id'):
+        try: params['event_id'] = f'eq.{int(request.args["event_id"])}'
+        except ValueError: return jsonify({'error': 'invalid_event_id'}), 400
+    if request.args.get('status') in ('pending','approved','rejected'):
+        params['status'] = f'eq.{request.args["status"]}'
+    try:
+        r = requests.get(EVENT_RECEIPTS_REST, headers=HEADERS, params=params, timeout=20)
+        r.raise_for_status()
+        return jsonify({'receipts': r.json()})
+    except requests.RequestException:
+        logging.exception('Receipt moderation list unavailable')
+        return jsonify({'error': 'receipt_review_unavailable'}), 503
+
+
+@app.route('/api/admin/event-receipts/<int:receipt_id>/file', methods=['GET'])
+def admin_view_event_receipt_file(receipt_id):
+    denied = _admin_required_response()
+    if denied: return denied
+    try:
+        r = requests.get(EVENT_RECEIPTS_REST,headers=HEADERS,params={
+            'id': f'eq.{receipt_id}', 'select':'receipt_path,receipt_mime', 'limit':1},timeout=20)
+        r.raise_for_status()
+        rows = r.json()
+        if not rows: return jsonify({'error':'receipt_not_found'}), 404
+        path = rows[0]['receipt_path']
+        f = requests.get(f'{STORAGE}/{RECEIPT_BUCKET}/{quote(path, safe="/")}',
+                         headers=HEADERS,timeout=30)
+        f.raise_for_status()
+        ext = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp',
+               'application/pdf':'pdf'}.get(rows[0]['receipt_mime'],'bin')
+        return send_file(io.BytesIO(f.content),mimetype=rows[0]['receipt_mime'],
+                         as_attachment=True,download_name=f'quittance-{receipt_id}.{ext}')
+    except requests.RequestException:
+        return jsonify({'error': 'receipt_file_unavailable'}), 503
+
+
+@app.route('/api/admin/event-receipts/<int:receipt_id>/review', methods=['POST'])
+def admin_review_event_receipt(receipt_id):
+    denied = _admin_required_response()
+    if denied: return denied
+    user = _request_telegram_user()
+    data = request.get_json(silent=True) or {}
+    decision = str(data.get('decision') or '').strip()
+    if decision not in ('approved','rejected'):
+        return jsonify({'error':'invalid_decision'}), 400
+    try:
+        r = requests.post(EVENT_RECEIPTS_RPC,headers={**HEADERS,'Content-Type':'application/json'},
+            json={'p_receipt_id': receipt_id, 'p_admin_id': int(user['id']),
+                  'p_decision': decision},timeout=25)
+        r.raise_for_status()
+        result = r.json() or {}
+        if result.get('error'):
+            return jsonify(result),409
+        event_id = int(result['event_id'])
+        if decision == 'approved':
+            refresh_event_group_posts_async(event_id)
+        # Deliver meeting address and organizer's games ONLY after a verified paid RSVP.
+        if decision == 'approved':
+            result['private_message_sent'] = _send_private_event_details(event_id, int(result['telegram_user_id']))
+        else:
+            telegram_api_post('sendMessage',{
+                'chat_id': int(result['telegram_user_id']),
+                'text': '❌ Квитанцію не підтверджено. Відкрий подію в Styloteka та надішли нову.'})
+        return jsonify(result)
+    except (requests.RequestException,KeyError,ValueError):
+        logging.exception('Receipt review unavailable')
+        return jsonify({'error':'receipt_review_unavailable'}), 503
+
+
 @app.route('/api/events/<int:event_id>/payment/start',methods=['POST'])
 def start_event_payment(event_id):
     user=_request_telegram_user()
@@ -4177,6 +4375,8 @@ def start_event_payment(event_id):
             return jsonify({'error':'event_closed'}),409
         price=int(event.get('price_kop') or 0)
         if price<=0: return jsonify({'error':'free_event'}),409
+        if event.get('payment_method') == 'receipt':
+            return jsonify({'error':'receipt_payment_required'}),409
         existing=get_event_rsvp_response(event_id,username,uid)
         if existing and existing.get('status') in ('going','waitlist'):
             return jsonify({'status':'already_registered','rsvp_status':existing.get('status')}),200
@@ -4798,6 +4998,149 @@ def remove_event_rsvp(event_id, username):
     return old_status is not None
 
 
+# ==================== PRIVATE DETAILS FOR CONFIRMED ATTENDEES ====================
+PRIVATE_EVENT_FIELDS = ('location_text', 'location_map_url', 'location_lat',
+                        'location_lng', 'game_name', 'game_names',
+                        'member_game_picks', 'quests_event_url')
+
+
+def _event_confirmed_for_user(event_id, user, rows=None):
+    """Grant details by immutable verified Telegram ID, never by an unverified username."""
+    if not user:
+        return False
+    try:
+        user_id = int(user['id'])
+        if rows is None:
+            result = requests.get(RSVPS_REST, headers=HEADERS, params={
+                'event_id': f'eq.{int(event_id)}', 'telegram_user_id': f'eq.{user_id}',
+                'status': 'eq.going', 'select': 'id', 'limit': 1}, timeout=20)
+            result.raise_for_status()
+            return bool(result.json())
+        return any(r.get('status') == 'going' and
+                   r.get('telegram_user_id') is not None and
+                   int(r['telegram_user_id']) == user_id for r in rows)
+    except (requests.RequestException, ValueError, TypeError, KeyError):
+        logging.exception('Cannot verify private event access')
+        return False
+
+
+def _public_event_description(event):
+    """Avoid accidentally echoing the private address and chosen game names."""
+    description = str(event.get('description') or '')
+    private_strings = [event.get('location_text'), event.get('location_map_url'),
+                       event.get('game_name')]
+    private_strings += list(event.get('game_names') or [])
+    for value in sorted({str(v).strip() for v in private_strings if v}, key=len, reverse=True):
+        if len(value) >= 3:
+            description = description.replace(value, '[деталі після підтвердження]')
+    return description
+
+
+def _event_redacted(event):
+    """Avoid sending private event details to anonymous/unconfirmed API clients."""
+    public = dict(event)
+    for field in PRIVATE_EVENT_FIELDS:
+        public.pop(field, None)
+    public.pop('payment_details', None)
+    public['description'] = _public_event_description(event)
+    public.pop('quests_sync_status', None)
+    public.pop('quests_profiles_visible', None)
+    public.pop('quests_profiles_complete', None)
+    return public
+
+
+def _private_event_text(event):
+    dt = str(event.get('event_date') or '')
+    if event.get('event_time'):
+        dt += ' о ' + str(event['event_time'])[:5]
+    text = ['✅ Твою участь у події підтверджено!',
+            '🎉 ' + str(event.get('title') or 'Подія'),
+            '🗓 ' + dt]
+    location = str(event.get('location_text') or '').strip()
+    if location:
+        text.append('📍 Адреса: ' + location)
+    map_url = str(event.get('location_map_url') or '').strip()
+    if map_url and map_url.startswith('https://') and map_url != location:
+        text.append('🗺 Маршрут: ' + map_url)
+    games = event.get('game_names') or ([event['game_name']] if event.get('game_name') else [])
+    if games:
+        text.append('🎲 Заплановані настільні ігри: ' + ', '.join(map(str, games)))
+    else:
+        text.append('🎲 Вибір настільних ігор — у застосунку Styloteka.')
+    text.append('🔒 Ці подробиці доступні лише підтвердженим учасникам.')
+    return '\n'.join(text)
+
+
+def _send_private_event_details(event_id, telegram_user_id):
+    """Send details in PRIVATE CHAT only after verified membership. Never group chat."""
+    if not API_TOKEN or not telegram_user_id:
+        return False
+    try:
+        event = get_event_snapshot(event_id)
+        if not event or not _event_confirmed_for_user(event_id, {'id': telegram_user_id}, event.get('rsvps')):
+            return False
+        app_link = _event_mini_app_link(event_id)
+        payload = {'chat_id': int(telegram_user_id), 'text': _private_event_text(event)}
+        if app_link:
+            payload['reply_markup'] = {'inline_keyboard': [[{
+                'text': '🎲 Обрати ігри у Styloteka', 'url': app_link}]]}
+        ok, err = telegram_api_post('sendMessage', payload)
+        if not ok:
+            logging.warning('Private event details not delivered to Telegram user %s: %s',
+                            telegram_user_id, err)
+        return bool(ok)
+    except Exception:
+        logging.exception('Private event details failed for event %s', event_id)
+        return False
+
+
+def _notify_confirmed_event_attendees(event_id):
+    """Refresh private details after organizer edits venue, time, or game selection."""
+    try:
+        event = get_event_snapshot(event_id)
+        if not event:
+            return
+        recipients = {int(r['telegram_user_id']) for r in event.get('rsvps', [])
+                      if r.get('status') == 'going' and r.get('telegram_user_id')}
+        for telegram_id in recipients:
+            _send_private_event_details(event_id, telegram_id)
+    except Exception:
+        logging.exception('Failed to notify confirmed participants of changed event %s', event_id)
+
+
+@app.route('/api/events/<int:event_id>/private-details', methods=['GET'])
+def private_event_details(event_id):
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error': 'telegram_auth_required'}), 401
+    try:
+        if not (_telegram_user_is_group_admin(user['id']) or
+                _event_confirmed_for_user(event_id, user)):
+            return jsonify({'error': 'confirmed_attendee_required'}), 403
+        event = get_event_snapshot(event_id)
+        if not event:
+            return jsonify({'error': 'event_not_found'}), 404
+        return jsonify({'event_id': event_id, 'title': event.get('title'),
+                        'event_date': event.get('event_date'), 'event_time': event.get('event_time'),
+                        'location_text': event.get('location_text'),
+                        'location_map_url': event.get('location_map_url'),
+                        'game_names': event.get('game_names') or [],
+                        'game_name': event.get('game_name')})
+    except requests.RequestException:
+        return jsonify({'error': 'event_details_unavailable'}), 503
+
+
+@app.route('/api/events/<int:event_id>/private-details/send', methods=['POST'])
+def resend_private_event_details(event_id):
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error': 'telegram_auth_required'}), 401
+    if not _event_confirmed_for_user(event_id, user):
+        return jsonify({'error': 'confirmed_attendee_required'}), 403
+    sent = _send_private_event_details(event_id, int(user['id']))
+    return jsonify({'status': 'sent' if sent else 'telegram_chat_not_started', 'sent': sent})
+
+
 # ==================== ПОДІЇ ====================
 @app.route("/api/events", methods=["GET"])
 def get_events():
@@ -4888,6 +5231,11 @@ def get_events():
         e["registration_count"] = stylo_count + quests_count
         e["member_game_picks"] = picks_by_event.get(int(e["id"]), [])
 
+    user = _request_telegram_user()
+    is_admin = bool(user and _telegram_user_is_group_admin(user.get('id')))
+    if not is_admin:
+        events = [e if _event_confirmed_for_user(e['id'], user, e['rsvps'])
+                  else _event_redacted(e) for e in events]
     return jsonify(events)
 
 
@@ -5087,7 +5435,8 @@ def _event_games_membership(event_id, user):
     vote = get_event_rsvp_response(event_id, username, user_id)
     if not vote:
         return False
-    return (vote.get("status") or "going") in {"going", "waitlist"}
+    return (vote.get("status") or "going") == "going" and (
+        vote.get("telegram_user_id") is not None and int(vote["telegram_user_id"]) == user_id)
 
 
 @app.route("/api/events/<int:event_id>/member-games", methods=["GET"])
@@ -5096,8 +5445,13 @@ def member_event_games_get(event_id):
         event = _event_for_member_games(event_id)
         if not event:
             return jsonify({"error": "event_not_found"}), 404
-        picks = _get_event_game_picks(event_id)
         user = _request_telegram_user()
+        if not user:
+            return jsonify({'error':'telegram_auth_required'}),401
+        is_admin = _telegram_user_is_group_admin(user['id'])
+        if not is_admin and not _event_games_membership(event_id, user):
+            return jsonify({'error':'confirmed_attendee_required'}),403
+        picks = _get_event_game_picks(event_id)
         return jsonify({
             "event": event,
             "picks": picks,
@@ -5169,7 +5523,8 @@ def member_event_games_remove(event_id, game_id):
             return jsonify({"error": "event_not_found"}), 404
         if event.get("status") != "scheduled":
             return jsonify({"error": "event_closed"}), 409
-        # Видалити можна тільки власну пропозицію. RSVP уже може бути скасований адміном.
+        if not _event_games_membership(event_id, user):
+            return jsonify({'error': 'confirmed_attendee_required'}), 403
         response = requests.delete(
             EVENT_GAME_PICKS_REST,
             headers=HEADERS,
@@ -5239,7 +5594,14 @@ def add_event():
     if quests_checked > quests_count:
         return jsonify({'error':'quests_checkins_exceed_registration'}),400
 
+    try:
+        pay_method, pay_details = _event_payment_config(data, price_kop)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
     payload = {
+        "payment_method": pay_method,
+        "payment_details": pay_details,
         "quests_event_url": quests_url,
         "quests_count": quests_count,
         "quests_checked_in_count": quests_checked,
@@ -5297,18 +5659,6 @@ def add_event():
     event_id = created_rows[0].get("id") if created_rows else None
 
     event_photo = uploaded_cover_url
-    if not event_photo and primary_game:
-        try:
-            gresp = requests.get(
-                REST,
-                headers=HEADERS,
-                params={"name": f"eq.{primary_game}", "select": "cover_url", "limit": 1},
-                timeout=15,
-            )
-            if gresp.ok and gresp.json():
-                event_photo = gresp.json()[0].get("cover_url")
-        except Exception:
-            logging.exception("Не вдалось знайти обкладинку гри для сповіщення")
 
     notify_lines = [f"📅 Нова подія: {data.get('title', '')}"]
     date_time = data.get("event_date", "")
@@ -5317,35 +5667,25 @@ def add_event():
     if date_time:
         notify_lines.append(date_time)
     notify_lines.append(f"💳 Вартість: {price_kop/100:.2f} грн" if price_kop else "🆓 Безкоштовно")
-    if game_names:
-        notify_lines.append(f"🎲 Ігри: {', '.join(game_names)}")
-    location_text = location.get("location_text") or ""
-    if location_text:
-        notify_lines.append(f"📍 {location_text}")
+    notify_lines.append("🔒 Адресу та ігри надішлемо учасникам особисто після підтвердження запису.")
 
     max_participants = max(0, int(data.get("max_participants") or 0))
     if max_participants:
         notify_lines.append(f"👥 Місць: {max_participants}")
-    if data.get("description"):
-        notify_lines.append(data.get("description"))
+    public_description = _public_event_description(payload)
+    if public_description:
+        notify_lines.append(public_description)
 
     notify_subscribers_async("\n".join(notify_lines), photo_url=event_photo)
 
     if event_id:
         notify_groups_async(event_id, photo_url=event_photo)
 
-    game_label = ", ".join(game_names) if game_names else ""
     log_activity(
-        "event_created",
-        f"Створено нову подію: {data.get('title', '')}",
-        (
-            f"Ігри: {game_label}" + (f" · 📍 {location.get('location_text')}" if location.get("location_text") else "")
-            if game_label
-            else (location.get("location_text") or data.get("description", ""))
-        ),
-        actor_name=data.get("created_by", ""),
-        image_url=event_photo,
-        metadata={"event_id": event_id, "games": game_names},
+        'event_created', f"Створено нову подію: {data.get('title', '')}",
+        'Деталі місця та ігор надсилаються лише підтвердженим учасникам.',
+        actor_name=data.get('created_by', ''), image_url=event_photo,
+        metadata={'event_id': event_id},
     )
 
     return jsonify({"status": "ok", "event_id": event_id})
@@ -5428,6 +5768,23 @@ def edit_event(event_id):
             price_kop = _event_price_kop(data)
         except ValueError as exc:
             return jsonify({"error":str(exc)}),400
+    if 'payment_method' not in data and 'price_mode' not in data and 'price_uah' not in data:
+        pay_method = current_event.get('payment_method') or ('monobank' if price_kop else 'free')
+        pay_details = current_event.get('payment_details') or ''
+    else:
+        try:
+            pay_method, pay_details = _event_payment_config(data, price_kop, current_event)
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+    if pay_method != (current_event.get('payment_method') or ('monobank' if current_event.get('price_kop') else 'free')):
+        try:
+            for table in (RSVPS_REST, MONOBANK_EVENT_PAYMENTS_REST, EVENT_RECEIPTS_REST):
+                linked=requests.get(table,headers=HEADERS,params={
+                    'event_id':f'eq.{event_id}','select':'id','limit':1},timeout=15)
+                linked.raise_for_status()
+                if linked.json():return jsonify({'error':'event_payment_method_locked'}),409
+        except requests.RequestException:
+            return jsonify({'error':'payment_check_unavailable'}),503
     old_capacity=int(current_event.get('max_participants') or 0)
     if price_kop>0 and max_participants>0 and (old_capacity<=0 or max_participants<old_capacity):
         try:
@@ -5450,6 +5807,10 @@ def edit_event(event_id):
                 "event_id":f"eq.{event_id}","select":"id","limit":1},timeout=20)
             paid_checks.raise_for_status()
             if paid_checks.json():return jsonify({"error":"event_price_locked_after_invoice"}),409
+            receipt_checks=requests.get(EVENT_RECEIPTS_REST,headers=HEADERS,params={
+                'event_id':f'eq.{event_id}','select':'id','limit':1},timeout=20)
+            receipt_checks.raise_for_status()
+            if receipt_checks.json():return jsonify({'error':'event_price_locked_after_registration'}),409
         except requests.RequestException:
             return jsonify({"error":"payment_check_unavailable"}),503
     try:
@@ -5475,6 +5836,8 @@ def edit_event(event_id):
         return jsonify({'error':'quests_checkins_exceed_registration'}),400
 
     payload = {
+        "payment_method": pay_method,
+        "payment_details": pay_details,
         "quests_event_url": quests_url,
         "quests_count": quests_count,
         "quests_checked_in_count": quests_checked,
@@ -5547,20 +5910,18 @@ def edit_event(event_id):
     updated_event = updated_rows[0] if updated_rows else {**current_event, **payload}
 
     log_activity(
-        "event_updated",
-        f"Оновлено подію: {title}",
-        (
-            f"Ігри: {', '.join(game_names)}" +
-            (f" · 📍 {location.get('location_text')}" if location.get("location_text") else "")
-            if game_names
-            else (location.get("location_text") or payload.get("description", ""))
-        ),
-        actor_name=str(data.get("updated_by") or data.get("created_by") or ""),
-        image_url=cover_url,
-        metadata={"event_id": event_id, "games": game_names},
+        'event_updated', f'Оновлено подію: {title}',
+        'Адреса й ігри залишаються доступними лише підтвердженим учасникам.',
+        actor_name=str(data.get('updated_by') or data.get('created_by') or ''),
+        image_url=cover_url, metadata={'event_id': event_id},
     )
 
     refresh_event_group_posts_async(event_id)
+    if (location.get('location_text') != current_event.get('location_text') or
+        game_names != (current_event.get('game_names') or []) or
+        str(new_event_time or '') != str(current_event.get('event_time') or '') or
+        str(event_date or '') != str(current_event.get('event_date') or '')):
+        Thread(target=_notify_confirmed_event_attendees, args=(event_id,), daemon=True).start()
     return jsonify({"status": "updated", "event": updated_event})
 
 
@@ -5577,6 +5938,13 @@ def delete_event(event_id):
         linked.raise_for_status()
         if linked.json():
             return jsonify({'error':'event_has_payment_history'}),409
+    except requests.RequestException:
+        return jsonify({'error':'payment_check_unavailable'}),503
+    try:
+        linked_receipts = requests.get(EVENT_RECEIPTS_REST,headers=HEADERS,
+            params={'event_id': f'eq.{event_id}', 'select':'id','limit':1},timeout=20)
+        linked_receipts.raise_for_status()
+        if linked_receipts.json(): return jsonify({'error':'event_has_receipts'}),409
     except requests.RequestException:
         return jsonify({'error':'payment_check_unavailable'}),503
     try:
@@ -5635,7 +6003,9 @@ def rsvp_event(event_id):
         return jsonify({"status": "not_found"}), 404
 
     refresh_event_group_posts_async(event_id)
-    return jsonify({"status": status})
+    if status == 'going':
+        _send_private_event_details(event_id, user_id)
+    return jsonify({'status': status})
 
 
 @app.route("/api/events/<int:event_id>/rsvp/<username>", methods=["DELETE"])
@@ -5912,25 +6282,16 @@ def telegram_keyboard_payload(event_id, map_url=""):
     event = get_event_snapshot(event_id)
     price = int((event or {}).get('price_kop') or 0)
     if price > 0:
+        receipt_mode=(event or {}).get('payment_method')=='receipt'
         pay_link=_event_mini_app_link(event_id, payment=True)
-        rows=[[{'text':f'💳 Я йду · {price/100:.2f} грн', 'url':pay_link}]] if pay_link else []
+        rows=[[{'text':f'{"🧾" if receipt_mode else "💳"} Я йду · {price/100:.2f} грн', 'url':pay_link}]] if pay_link else []
         rows.append([{'text':'❌ Не йду', 'callback_data':f'ev_no:{event_id}'}])
     else:
         rows = [[
             {"text": "✅ Я йду", "callback_data": f"ev_go:{event_id}"},
             {"text": "❌ Не йду", "callback_data": f"ev_no:{event_id}"},
         ]]
-    if event and event.get('status') == 'scheduled':
-        rows.extend(_event_game_poll_rows(event))
-    map_url = str(map_url or "").strip()
-    if map_url:
-        rows.append([{
-            "text": "📍 Маршрут",
-            "url": map_url,
-        }])
-    quests_url = str((event or {}).get("quests_event_url") or "").strip()
-    if quests_url:
-        rows.append([{"text": "🔗 Учасники Quests Inc", "url": quests_url}])
+    # Public group: never show maps, game votes, or private external registration links.
     app_link = _event_mini_app_link(event_id)
     if app_link:
         rows.append([{"text": "📅 Відкрити подію в Styloteka", "url": app_link}])
@@ -6339,25 +6700,16 @@ def event_group_keyboard(event_id, map_url=""):
     event = get_event_snapshot(event_id)
     price = int((event or {}).get('price_kop') or 0)
     if price > 0:
+        receipt_mode=(event or {}).get('payment_method')=='receipt'
         url=_event_mini_app_link(event_id,payment=True)
-        rows=[[InlineKeyboardButton(text=f'💳 Я йду · {price/100:.2f} грн',url=url)]] if url else []
+        rows=[[InlineKeyboardButton(text=f'{"🧾" if receipt_mode else "💳"} Я йду · {price/100:.2f} грн',url=url)]] if url else []
         rows.append([InlineKeyboardButton(text='❌ Не йду',callback_data=f'ev_no:{event_id}')])
     else:
         rows = [[
             InlineKeyboardButton(text="✅ Я йду", callback_data=f"ev_go:{event_id}"),
             InlineKeyboardButton(text="❌ Не йду", callback_data=f"ev_no:{event_id}"),
         ]]
-    if event and event.get('status') == 'scheduled':
-        rows.extend([[InlineKeyboardButton(**button) for button in buttons]
-                     for buttons in _event_game_poll_rows(event)])
-    map_url = str(map_url or "").strip()
-    if map_url:
-        rows.append([
-            InlineKeyboardButton(text="📍 Маршрут", url=map_url)
-        ])
-    quests_url = str((event or {}).get("quests_event_url") or "").strip()
-    if quests_url:
-        rows.append([InlineKeyboardButton(text="🔗 Учасники Quests Inc", url=quests_url)])
+    # Public group: game voting and directions are available privately to confirmed attendees.
     app_link = _event_mini_app_link(event_id)
     if app_link:
         rows.append([InlineKeyboardButton(text="📅 Відкрити подію в Styloteka", url=app_link)])
@@ -6399,16 +6751,7 @@ def _format_group_event_header(event):
     price = int(event.get("price_kop") or 0)
     lines.append(f"💳 Вартість: {price / 100:.2f} грн" if price else "🆓 Вартість: безкоштовно")
 
-    names = event.get("game_names") or []
-    names = [str(name).strip() for name in names if str(name).strip()] if isinstance(names, list) else []
-    if not names and event.get("game_name"):
-        names = [str(event.get("game_name")).strip()]
-    if names:
-        lines.append(f"🎲 Ігри: {', '.join(names)}")
-
-    location = _event_location_in_group(event)
-    if location:
-        lines.append(f"📍 {location}")
+    lines.append('🔒 Місце та настільні ігри — в особистому повідомленні після підтвердження участі.')
 
     cap = int(event.get("max_participants") or 0)
     places = f"👥 {len(going)}/{cap} місць" if cap else f"👥 Учасників: {len(going)}"
@@ -6430,13 +6773,11 @@ def _format_group_event_header(event):
 
 def format_group_event(event):
     lines = [_format_group_event_header(event)]
-    desc = str(event.get("description") or "").strip()
+    desc = _public_event_description(event).strip()
     if desc:
         lines.extend(["", desc])
     if event.get('status') == 'scheduled':
-        lines.extend(["", "🎲 Обери настільні ігри кнопками нижче після запису на подію. "
-                      "Варіанти — з усієї бібліотеки Styloteka. "
-                      "Можна голосувати за кілька ігор; повторне натискання прибирає голос."])
+        lines.extend(["", "🎲 Вибір настільних ігор відкриється в Styloteka після підтвердження участі."])
     lines.extend(["", "Натисни кнопку нижче, щоб записатися."])
     return "\n".join(lines)
 
@@ -6851,7 +7192,7 @@ async def callback_event_go(callback: CallbackQuery):
             await callback.answer("Подію не знайдено.", show_alert=True)
             return
         if int(event.get('price_kop') or 0)>0:
-            await callback.answer("Ця подія платна. Натисни «💳 Я йду — оплатити» у новому пості та оплати через monobank.",show_alert=True)
+            await callback.answer("Ця подія платна. Натисни «Я йду» в анонсі — відкриється форма оплати у Styloteka.",show_alert=True)
             return
         username, display_name = telegram_rsvp_identity(callback.from_user)
 
@@ -6881,8 +7222,10 @@ async def callback_event_go(callback: CallbackQuery):
                 show_alert=True,
             )
         else:
+            delivered = await asyncio.to_thread(_send_private_event_details, event_id, callback.from_user.id)
             await callback.answer(
-                "Відповідь збережена: ви йдете ✅",
+                '✅ Ти йдеш! Деталі надіслано в особисті повідомлення.' if delivered
+                else '✅ Ти йдеш! Відкрий чат із ботом, натисни Start і запроси деталі в застосунку.',
                 show_alert=True,
             )
 
