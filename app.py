@@ -4047,9 +4047,26 @@ def _event_price_kop(data):
     return int(kop)
 
 
+def _monobank_jar_link(value):
+    """Permit links to actual monobank jars only; never trust arbitrary payment URLs."""
+    value = str(value or '').strip()
+    if not value:
+        return ''
+    if value.lower().startswith('send.monobank.ua/jar/'):
+        value = 'https://' + value
+    if len(value) > 500 or any(ch.isspace() for ch in value):
+        raise ValueError('invalid_monobank_jar_link')
+    parsed = urlparse(value)
+    if (parsed.scheme != 'https' or parsed.netloc.lower() != 'send.monobank.ua'
+            or parsed.fragment or not re.fullmatch(r'/jar/[A-Za-z0-9_-]{4,100}/?', parsed.path)
+            or len(parsed.query) > 250):
+        raise ValueError('invalid_monobank_jar_link')
+    return value
+
+
 def _event_payment_config(data, price_kop, existing=None):
     if not price_kop:
-        return 'free', ''
+        return 'free', '', ''
     explicit = str(data.get('payment_method') or '').strip().lower()
     if not explicit:
         explicit = (existing or {}).get('payment_method') or 'receipt'
@@ -4057,11 +4074,15 @@ def _event_payment_config(data, price_kop, existing=None):
         raise ValueError('invalid_payment_method')
     details = str(data.get('payment_details') if 'payment_details' in data
                   else (existing or {}).get('payment_details') or '').strip()
-    if explicit == 'receipt' and not details:
-        raise ValueError('payment_details_required')
+    raw_link = (data.get('payment_link') if 'payment_link' in data
+                else (existing or {}).get('payment_link') or '')
+    link = _monobank_jar_link(raw_link) if explicit == 'receipt' else ''
+    # Backwards compatible: past manual-payment events may have only bank details.
+    if explicit == 'receipt' and not (details or link):
+        raise ValueError('payment_details_or_link_required')
     if len(details) > 1000:
         raise ValueError('payment_details_too_long')
-    return explicit, details if explicit == 'receipt' else ''
+    return explicit, details if explicit == 'receipt' else '', link
 
 
 def _mono_headers():
@@ -4222,7 +4243,7 @@ def my_event_receipt_status(event_id):
         if event.get('payment_method') != 'receipt' or int(event.get('price_kop') or 0) <= 0:
             return jsonify({'error': 'not_receipt_event'}), 409
         receipt = _my_receipt(event_id, user['id'])
-        return jsonify({'receipt': receipt, 'status': receipt['status'] if receipt else 'not_submitted', 'price_kop': int(event.get('price_kop') or 0), 'payment_details': event.get('payment_details') or '', 'title': event.get('title') or ''})
+        return jsonify({'receipt': receipt, 'status': receipt['status'] if receipt else 'not_submitted', 'price_kop': int(event.get('price_kop') or 0), 'payment_details': event.get('payment_details') or '', 'payment_link': event.get('payment_link') or '', 'title': event.get('title') or ''})
     except requests.RequestException:
         logging.exception('Cannot read receipt status')
         return jsonify({'error': 'receipt_status_unavailable'}), 503
@@ -5028,7 +5049,7 @@ def _public_event_description(event):
     """Avoid accidentally echoing the private address and chosen game names."""
     description = str(event.get('description') or '')
     private_strings = [event.get('location_text'), event.get('location_map_url'),
-                       event.get('game_name')]
+                       event.get('game_name'), event.get('payment_link')]
     private_strings += list(event.get('game_names') or [])
     for value in sorted({str(v).strip() for v in private_strings if v}, key=len, reverse=True):
         if len(value) >= 3:
@@ -5042,6 +5063,7 @@ def _event_redacted(event):
     for field in PRIVATE_EVENT_FIELDS:
         public.pop(field, None)
     public.pop('payment_details', None)
+    public.pop('payment_link', None)
     public['description'] = _public_event_description(event)
     public.pop('quests_sync_status', None)
     public.pop('quests_profiles_visible', None)
@@ -5595,13 +5617,14 @@ def add_event():
         return jsonify({'error':'quests_checkins_exceed_registration'}),400
 
     try:
-        pay_method, pay_details = _event_payment_config(data, price_kop)
+        pay_method, pay_details, pay_link = _event_payment_config(data, price_kop)
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
 
     payload = {
         "payment_method": pay_method,
         "payment_details": pay_details,
+        "payment_link": pay_link,
         "quests_event_url": quests_url,
         "quests_count": quests_count,
         "quests_checked_in_count": quests_checked,
@@ -5771,9 +5794,10 @@ def edit_event(event_id):
     if 'payment_method' not in data and 'price_mode' not in data and 'price_uah' not in data:
         pay_method = current_event.get('payment_method') or ('monobank' if price_kop else 'free')
         pay_details = current_event.get('payment_details') or ''
+        pay_link = current_event.get('payment_link') or ''
     else:
         try:
-            pay_method, pay_details = _event_payment_config(data, price_kop, current_event)
+            pay_method, pay_details, pay_link = _event_payment_config(data, price_kop, current_event)
         except ValueError as exc:
             return jsonify({'error': str(exc)}), 400
     if pay_method != (current_event.get('payment_method') or ('monobank' if current_event.get('price_kop') else 'free')):
@@ -5783,6 +5807,15 @@ def edit_event(event_id):
                     'event_id':f'eq.{event_id}','select':'id','limit':1},timeout=15)
                 linked.raise_for_status()
                 if linked.json():return jsonify({'error':'event_payment_method_locked'}),409
+        except requests.RequestException:
+            return jsonify({'error':'payment_check_unavailable'}),503
+    if pay_link != (current_event.get('payment_link') or ''):
+        try:
+            receipt_links = requests.get(EVENT_RECEIPTS_REST, headers=HEADERS,
+                params={'event_id': f'eq.{event_id}', 'select': 'id', 'limit': 1}, timeout=15)
+            receipt_links.raise_for_status()
+            if receipt_links.json():
+                return jsonify({'error':'event_payment_link_locked_after_receipt'}),409
         except requests.RequestException:
             return jsonify({'error':'payment_check_unavailable'}),503
     old_capacity=int(current_event.get('max_participants') or 0)
@@ -5838,6 +5871,7 @@ def edit_event(event_id):
     payload = {
         "payment_method": pay_method,
         "payment_details": pay_details,
+        "payment_link": pay_link,
         "quests_event_url": quests_url,
         "quests_count": quests_count,
         "quests_checked_in_count": quests_checked,

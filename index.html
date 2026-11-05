@@ -7682,9 +7682,12 @@ button,.btn{font-family:inherit}
         <option value="monobank">💳 Автоматично через monobank (якщо налаштовано)</option>
       </select>
       <div id="eventPaymentDetailsRow">
-        <label for="eventPaymentDetails">Реквізити та інструкція з оплати</label>
-        <textarea id="eventPaymentDetails" rows="3" maxlength="1000" placeholder="Номер картки / IBAN, одержувач, призначення платежу"></textarea>
-        <div class="event-form-hint">Після оплати людина додає квитанцію. Ти перевіряєш її, і тільки тоді місце підтверджується.</div>
+        <label for="eventPaymentLink">🔗 Посилання на банку monobank</label>
+        <input type="url" id="eventPaymentLink" inputmode="url" maxlength="500" autocomplete="off" placeholder="https://send.monobank.ua/jar/…">
+        <div class="event-form-hint">Учасник натисне «Оплатити через monobank» і відкриє саме цю банку. Суму внеску потрібно буде вказати вручну.</div>
+        <label for="eventPaymentDetails">Додаткова інструкція або реквізити (необов'язково)</label>
+        <textarea id="eventPaymentDetails" rows="3" maxlength="1000" placeholder="Наприклад: вкажи ім'я та назву події у коментарі"></textarea>
+        <div class="event-form-hint">Вкажи посилання на банку або інші реквізити. Після оплати людина надішле квитанцію, а ти підтвердиш її вручну.</div>
       </div>
     </div>
 
@@ -11776,6 +11779,17 @@ function setEventPaymentMethod(method){
   const details=document.getElementById('eventPaymentDetailsRow');
   if(details)details.style.display=(document.getElementById('eventPriceMode')?.value==='paid'&&method==='receipt')?'block':'none';
 }
+function normalizeEventJarLink(value){
+  let raw=String(value||'').trim();
+  if(!raw)return '';
+  if(/^send\.monobank\.ua\/jar\//i.test(raw))raw='https://'+raw;
+  try{
+    const u=new URL(raw);
+    if(u.protocol!=='https:'||u.host!=='send.monobank.ua'||u.hash||
+       !/^\/jar\/[A-Za-z0-9_-]{4,100}\/?$/.test(u.pathname)||u.search.length>251||raw.length>500)return '';
+    return raw;
+  }catch(_){return '';}
+}
 
 function eventPriceLabel(ev){
   const price=Number(ev?.price_kop)||0;
@@ -11834,6 +11848,7 @@ function openEditEventModal(ev) {
   document.getElementById('eventPriceUah').value=paid?(Number(ev.price_kop)/100).toFixed(2):'';
   document.getElementById('eventPaymentMethod').value=ev.payment_method==='monobank'?'monobank':'receipt';
   document.getElementById('eventPaymentDetails').value=ev.payment_details||'';
+  document.getElementById('eventPaymentLink').value=ev.payment_link||'';
   setEventPriceMode(paid?'paid':'free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = String(Number(ev.max_participants) || 0);
@@ -11868,6 +11883,7 @@ function openEventModal() {
   document.getElementById('eventPriceUah').value='';
   document.getElementById('eventPaymentMethod').value='receipt';
   document.getElementById('eventPaymentDetails').value='';
+  document.getElementById('eventPaymentLink').value='';
   setEventPriceMode('free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = '0';
@@ -11894,7 +11910,14 @@ async function submitEvent() {
   if(priceMode==='paid'&&!(Number(priceUah)>=1)) {tg.showAlert('Введи вартість події (щонайменше 1 грн).');return;}
   const payMethod=document.getElementById('eventPaymentMethod').value;
   const payDetails=document.getElementById('eventPaymentDetails').value.trim();
-  if(priceMode==='paid'&&payMethod==='receipt'&&!payDetails){tg.showAlert('Вкажи реквізити для оплати.');return;}
+  const linkInput=document.getElementById('eventPaymentLink').value.trim();
+  const payLink=linkInput?normalizeEventJarLink(linkInput):'';
+  if(priceMode==='paid'&&payMethod==='receipt'&&linkInput&&!payLink){
+    tg.showAlert('Вкажи правильне посилання на банку: https://send.monobank.ua/jar/…');return;
+  }
+  if(priceMode==='paid'&&payMethod==='receipt'&&!payDetails&&!payLink){
+    tg.showAlert('Додай посилання на банку monobank або реквізити для оплати.');return;
+  }
   const formData = new FormData();
   formData.append('_tg_init_data', telegramInitData);
   formData.append('title', title);
@@ -11907,6 +11930,7 @@ async function submitEvent() {
   formData.append('price_uah',priceMode==='paid'?priceUah:'0');
   formData.append('payment_method',priceMode==='paid'?payMethod:'free');
   formData.append('payment_details',priceMode==='paid'&&payMethod==='receipt'?payDetails:'');
+  formData.append('payment_link',priceMode==='paid'&&payMethod==='receipt'?payLink:'');
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
   const questsEventUrl = document.getElementById('eventQuestsUrl').value.trim();
@@ -12019,13 +12043,23 @@ async function openEventReceiptModal(ev){
       status==='rejected'?'❌ Квитанцію відхилено. Ти можеш надіслати нову.':'';
     content.innerHTML=`<p><strong>${escapeHtml(d.title||ev.title||'Подія')}</strong></p>
       <p>💳 До оплати: <strong>${(Number(d.price_kop||0)/100).toFixed(2)} грн</strong></p>
-      <p class="event-form-hint">Переказуй кошти за цими реквізитами, збережи квитанцію і завантаж її нижче.</p>
-      <pre style="white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border-radius:12px;background:rgba(255,255,255,.07)">${escapeHtml(d.payment_details||'Реквізити не вказано')}</pre>
+      <p class="event-form-hint">Вкажи саме цю суму під час переказу: банка monobank не підставляє ціну квитка автоматично.</p>
+      ${normalizeEventJarLink(d.payment_link)?`<a id="eventJarPay" class="btn" style="display:block;text-align:center;margin:12px 0" target="_blank" rel="noopener noreferrer" href="${escapeHtml(normalizeEventJarLink(d.payment_link))}">💜 Оплатити через банку monobank ↗</a>`:''}
+      ${d.payment_details?`<p class="event-form-hint">Додаткова інформація для переказу:</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border-radius:12px;background:rgba(255,255,255,.07)">${escapeHtml(d.payment_details)}</pre>`:''}
+      <p class="event-form-hint">Після оплати збережи квитанцію та надішли її адміністратору. Сам переказ не підтверджує запис автоматично.</p>
       <p>${escapeHtml(message)}</p>
       ${status==='not_submitted'||status==='rejected'?`<label for="eventReceiptFile">Фото або PDF квитанції (до 5 МБ)</label>
         <input id="eventReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
         <button type="button" id="sendEventReceipt" class="btn">Надіслати квитанцію адміністратору</button>`:''}
       <p class="event-form-hint">Адресу та ігри бот надішле в особистий чат лише після підтвердження. Для цього відкрий приватний чат бота та натисни Start.</p>`;
+    content.querySelector('#eventJarPay')?.addEventListener('click',(event)=>{
+      const link=normalizeEventJarLink(d.payment_link);
+      if(!link){event.preventDefault();return;}
+      if(typeof tg.openLink==='function'){
+        try{tg.openLink(link,{try_instant_view:false});event.preventDefault();}
+        catch(_){/* Browser can still open the safe anchor href. */}
+      }
+    });
     content.querySelector('#sendEventReceipt')?.addEventListener('click',async()=>{
       const file=content.querySelector('#eventReceiptFile')?.files?.[0];
       if(!file){tg.showAlert('Додай фото або PDF квитанції.');return;}

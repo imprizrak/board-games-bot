@@ -2,12 +2,18 @@
 -- Безпечна міграція: існуючі платні події лишаються на monobank.
 ALTER TABLE public.events
   ADD COLUMN IF NOT EXISTS payment_method text NOT NULL DEFAULT 'free',
-  ADD COLUMN IF NOT EXISTS payment_details text NOT NULL DEFAULT '';
+  ADD COLUMN IF NOT EXISTS payment_details text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS payment_link text NOT NULL DEFAULT '';
 UPDATE public.events SET payment_method = 'monobank'
  WHERE price_kop > 0 AND payment_method = 'free';
 ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_payment_method_check;
 ALTER TABLE public.events ADD CONSTRAINT events_payment_method_check
  CHECK (payment_method IN ('free', 'receipt', 'monobank'));
+ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_payment_link_format_check;
+ALTER TABLE public.events ADD CONSTRAINT events_payment_link_format_check
+ CHECK (payment_link = '' OR
+  (payment_method = 'receipt' AND length(payment_link) <= 500 AND
+   payment_link ~ '^https://send[.]monobank[.]ua/jar/[A-Za-z0-9_-]{4,100}/?([?][^#[:space:]]*)?$'));
 ALTER TABLE public.events DROP CONSTRAINT IF EXISTS events_payment_consistency_check;
 ALTER TABLE public.events ADD CONSTRAINT events_payment_consistency_check
  CHECK ((price_kop = 0 AND payment_method = 'free') OR
