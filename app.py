@@ -3890,19 +3890,21 @@ def notify_event_reminder_groups_sync(event):
         fresh_event = get_event_snapshot(event_id) or event
         text = format_group_event_reminder(fresh_event)
         keyboard = telegram_keyboard_payload(event_id, _event_google_maps_url(fresh_event))
-        group_ids = get_active_group_ids_sync()
-        if not group_ids:
+        group_targets = get_active_group_targets_sync()
+        if not group_targets:
             logging.warning("Немає активних Telegram-груп для нагадування про подію %s", event_id)
             return False
 
         photo_url = (fresh_event.get("cover_url") or "").strip()
         sent_any = False
-        for chat_id in group_ids:
+        for target in group_targets:
+            chat_id = target["chat_id"]
             ok = _send_group_event_text_sync(
                 chat_id, text, keyboard,
                 photo_url=photo_url,
                 summary="⏰ Нагадування: подія вже завтра!\n\n" + _format_group_event_header(fresh_event),
                 event_id=event_id, reminder=True,
+                message_thread_id=target.get("event_thread_id"),
             )
             if ok:
                 sent_any = True
@@ -5935,21 +5937,34 @@ def telegram_keyboard_payload(event_id, map_url=""):
     return {"inline_keyboard": rows}
 
 
-def get_active_group_ids_sync():
+def get_active_group_targets_sync():
+    """Active groups and their optional Telegram forum topic for event posts."""
     try:
         resp = requests.get(
             TELEGRAM_GROUPS_REST,
             headers=HEADERS,
-            params={"select": "chat_id", "active": "eq.true"},
+            params={"select": "chat_id,event_thread_id", "active": "eq.true"},
             timeout=20,
         )
         resp.raise_for_status()
-        ids = [int(row["chat_id"]) for row in resp.json() if row.get("chat_id")]
-        logging.info("Активні Telegram-групи для анонсів: %s", ids)
-        return ids
+        targets = []
+        for row in resp.json():
+            if not row.get("chat_id"):
+                continue
+            thread_id = row.get("event_thread_id")
+            targets.append({
+                "chat_id": int(row["chat_id"]),
+                "event_thread_id": int(thread_id) if thread_id is not None else None,
+            })
+        logging.info("Активні Telegram-групи та гілки для анонсів: %s", targets)
+        return targets
     except Exception:
         logging.exception("Не вдалось отримати Telegram-групи. Чи виконано SQL для telegram_groups?")
         return []
+
+
+def get_active_group_ids_sync():
+    return [target["chat_id"] for target in get_active_group_targets_sync()]
 
 
 def notify_subscribers_sync(text, photo_url=None):
@@ -6193,11 +6208,14 @@ def _prepare_group_event_post(text, summary, photo=False):
     return lead, _split_telegram_event_text(remaining, max_chars=3600)
 
 
-def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary="", event_id=None, reminder=False):
+def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary="", event_id=None,
+                                reminder=False, message_thread_id=None):
     """Photo + caption + buttons in ONE post; overflow follows without clipping."""
     photo_url = str(photo_url or "").strip()
     lead, followups = _prepare_group_event_post(text, summary, photo=bool(photo_url))
     first_payload = {"chat_id": chat_id, "reply_markup": keyboard}
+    if message_thread_id is not None:
+        first_payload["message_thread_id"] = int(message_thread_id)
     sent_as_photo = bool(photo_url)
     if photo_url:
         ok, result = telegram_api_post("sendPhoto", {
@@ -6222,6 +6240,8 @@ def _send_group_event_text_sync(chat_id, text, keyboard, photo_url=None, summary
     all_sent = True
     for index, part in enumerate(followups, start=1):
         payload = {"chat_id": chat_id, "text": part}
+        if message_thread_id is not None:
+            payload["message_thread_id"] = int(message_thread_id)
         if first_message_id:
             payload["reply_parameters"] = {
                 "message_id": first_message_id,
@@ -6249,20 +6269,22 @@ def notify_groups_sync(event_id, photo_url=None):
 
         text = format_group_event(event)
         keyboard = telegram_keyboard_payload(event_id, _event_google_maps_url(event))
-        group_ids = get_active_group_ids_sync()
+        group_targets = get_active_group_targets_sync()
 
-        if not group_ids:
+        if not group_targets:
             logging.warning(
                 "Немає активних Telegram-груп. Надішли /setgroup у потрібній групі."
             )
             return
 
-        for chat_id in group_ids:
+        for target in group_targets:
+            chat_id = target["chat_id"]
             ok = _send_group_event_text_sync(
                 chat_id, text, keyboard,
                 photo_url=photo_url or event.get("cover_url"),
                 summary=_format_group_event_header(event),
                 event_id=event_id,
+                message_thread_id=target.get("event_thread_id"),
             )
             if ok:
                 logging.info("Подію %s успішно опубліковано в групі %s", event_id, chat_id)
@@ -6531,10 +6553,72 @@ async def cmd_setgroup(message: Message):
             timeout=20,
         )
         resp.raise_for_status()
-        await message.answer("✅ Готово. Групу підключено. Для перевірки надішли /testgroup.")
+        await message.answer("✅ Групу підключено. Щоб анонси потрапляли в певну гілку, "
+                             "відкрий її й надішли /seteventtopic. Для перевірки — /testgroup.")
     except Exception:
         logging.exception("Не вдалось зареєструвати групу")
         await message.answer("Не вдалося зберегти групу. Перевір, чи виконано SQL-оновлення в Supabase.")
+
+
+@dp.message(Command("seteventtopic"))
+async def cmd_seteventtopic(message: Message):
+    """Bind event announcements to the forum topic where an admin sends this command."""
+    if message.chat.type != "supergroup" or not message.is_topic_message or message.message_thread_id is None:
+        await message.answer("Відкрий гілку «Анонси подій» і надішли /seteventtopic прямо в ній.")
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Призначати гілку для анонсів може лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+
+    try:
+        resp = requests.patch(
+            TELEGRAM_GROUPS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            params={"chat_id": f"eq.{message.chat.id}", "active": "eq.true"},
+            json={"event_thread_id": int(message.message_thread_id)},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        if not resp.json():
+            await message.answer("⚠️ Група ще не підключена. Надішли /setgroup і спробуй знову.")
+            return
+        await message.answer("✅ Готово! Нові анонси подій і нагадування надходитимуть у цю гілку. "
+                             "Перевір командою /testgroup.")
+    except Exception:
+        logging.exception("Не вдалося призначити гілку для анонсів")
+        await message.answer("Не вдалося зберегти гілку анонсів. Спробуй ще раз пізніше.")
+
+
+@dp.message(Command("unseteventtopic"))
+async def cmd_unseteventtopic(message: Message):
+    """Restore posting announcements to the group's main chat."""
+    if message.chat.type not in ("group", "supergroup"):
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Змінювати гілку для анонсів може лише адміністратор групи.")
+            return
+        resp = requests.patch(
+            TELEGRAM_GROUPS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            params={"chat_id": f"eq.{message.chat.id}", "active": "eq.true"},
+            json={"event_thread_id": None},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        if not resp.json():
+            await message.answer("⚠️ Група не підключена. Спочатку надішли /setgroup.")
+            return
+        await message.answer("✅ Гілку відв’язано. Наступні анонси будуть у загальній стрічці групи.")
+    except Exception:
+        logging.exception("Не вдалося відв’язати гілку анонсів")
+        await message.answer("Не вдалося змінити налаштування гілки.")
 
 
 @dp.message(Command("unsetgroup"))
@@ -6576,15 +6660,19 @@ async def cmd_testgroup(message: Message):
         await message.answer("Не вдалося перевірити права адміністратора.")
         return
 
-    active_ids = get_active_group_ids_sync()
-    if message.chat.id not in active_ids:
+    active_targets = get_active_group_targets_sync()
+    target = next((row for row in active_targets if row["chat_id"] == message.chat.id), None)
+    if target is None:
         await message.answer("⚠️ Ця група ще не підключена. Спочатку надішли /setgroup.")
         return
 
-    ok, result = telegram_api_post("sendMessage", {
+    payload = {
         "chat_id": message.chat.id,
         "text": "🧪 Тестове повідомлення. Автоматичні анонси подій працюють ✅",
-    })
+    }
+    if target.get("event_thread_id") is not None:
+        payload["message_thread_id"] = target["event_thread_id"]
+    ok, result = telegram_api_post("sendMessage", payload)
     if not ok:
         await message.answer(f"❌ Telegram не прийняв повідомлення: {result}")
 
