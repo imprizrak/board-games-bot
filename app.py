@@ -6333,12 +6333,12 @@ def telegram_keyboard_payload(event_id, map_url=""):
 
 
 def get_active_group_targets_sync():
-    """Active groups and their optional Telegram forum topic for event posts."""
+    """Active groups and separate event/game Telegram forum topics."""
     try:
         resp = requests.get(
             TELEGRAM_GROUPS_REST,
             headers=HEADERS,
-            params={"select": "chat_id,event_thread_id", "active": "eq.true"},
+            params={"select": "chat_id,event_thread_id,game_thread_id", "active": "eq.true"},
             timeout=20,
         )
         resp.raise_for_status()
@@ -6346,12 +6346,14 @@ def get_active_group_targets_sync():
         for row in resp.json():
             if not row.get("chat_id"):
                 continue
-            thread_id = row.get("event_thread_id")
+            event_thread_id = row.get("event_thread_id")
+            game_thread_id = row.get("game_thread_id")
             targets.append({
                 "chat_id": int(row["chat_id"]),
-                "event_thread_id": int(thread_id) if thread_id is not None else None,
+                "event_thread_id": int(event_thread_id) if event_thread_id is not None else None,
+                "game_thread_id": int(game_thread_id) if game_thread_id is not None else None,
             })
-        logging.info("Активні Telegram-групи та гілки для анонсів: %s", targets)
+        logging.info("Активні Telegram-групи та їхні гілки: %s", targets)
         return targets
     except Exception:
         logging.exception("Не вдалось отримати Telegram-групи. Чи виконано SQL для telegram_groups?")
@@ -6438,16 +6440,29 @@ def _game_group_announcement(name, description):
 
 
 def notify_game_groups_sync(name, description="", cover_url=None, game_id=None):
-    """Публікує разовий анонс тільки після фактичного створення гри."""
+    """Анонсує нову гру лише у прив’язаних гілках «Настілки», не в загальному чаті."""
     try:
-        group_ids = get_active_group_ids_sync()
-        if not group_ids:
+        targets = get_active_group_targets_sync()
+        if not targets:
             logging.info("Немає активних груп для анонсу нової гри")
             return
         announcement = _game_group_announcement(name, description)
         keyboard = game_group_keyboard_payload(game_id)
-        for chat_id in set(group_ids):
-            common = {"chat_id": chat_id, "disable_notification": False}
+        sent_chat_ids = set()
+        for target in targets:
+            chat_id = target["chat_id"]
+            game_thread_id = target.get("game_thread_id")
+            if game_thread_id is None:
+                logging.warning("Група %s не має гілки «Настілки». Надішли /setgamestopic у потрібній гілці.", chat_id)
+                continue
+            if chat_id in sent_chat_ids:
+                continue
+            sent_chat_ids.add(chat_id)
+            common = {
+                "chat_id": chat_id,
+                "message_thread_id": game_thread_id,
+                "disable_notification": False,
+            }
             if keyboard:
                 common["reply_markup"] = keyboard
             if cover_url:
@@ -6455,7 +6470,7 @@ def notify_game_groups_sync(name, description="", cover_url=None, game_id=None):
                     **common, "photo": cover_url, "caption": announcement,
                 })
                 if not ok:
-                    logging.warning("Фото нової гри для групи %s не надіслано (%s). Пробуємо текст.", chat_id, err)
+                    logging.warning("Фото нової гри для групи %s не надіслано (%s). Пробуємо текст у тій самій гілці.", chat_id, err)
                     ok, err = telegram_api_post("sendMessage", {
                         **common, "text": announcement,
                     })
@@ -6464,9 +6479,9 @@ def notify_game_groups_sync(name, description="", cover_url=None, game_id=None):
                     **common, "text": announcement,
                 })
             if ok:
-                logging.info("Анонс нової гри %r (ID %s) надіслано в %s", name, game_id, chat_id)
+                logging.info("Анонс нової гри %r (ID %s) надіслано в групу %s, гілку %s", name, game_id, chat_id, game_thread_id)
             else:
-                logging.error("Помилка анонсу нової гри %r для %s: %s", name, chat_id, err)
+                logging.error("Помилка анонсу нової гри %r для %s, гілка %s: %s", name, chat_id, game_thread_id, err)
     except Exception:
         logging.exception("Не вдалося опублікувати анонс нової гри")
 
@@ -6928,8 +6943,9 @@ async def cmd_setgroup(message: Message):
             timeout=20,
         )
         resp.raise_for_status()
-        await message.answer("✅ Групу підключено. Щоб анонси потрапляли в певну гілку, "
-                             "відкрий її й надішли /seteventtopic. Для перевірки — /testgroup.")
+        await message.answer("✅ Групу підключено. У гілці «Анонси подій» надішли /seteventtopic, "
+                             "у гілці «Настілки» — /setgamestopic. "
+                             "Перевірка: /testgroup та /testgamestopic.")
     except Exception:
         logging.exception("Не вдалось зареєструвати групу")
         await message.answer("Не вдалося зберегти групу. Перевір, чи виконано SQL-оновлення в Supabase.")
@@ -6967,6 +6983,98 @@ async def cmd_seteventtopic(message: Message):
     except Exception:
         logging.exception("Не вдалося призначити гілку для анонсів")
         await message.answer("Не вдалося зберегти гілку анонсів. Спробуй ще раз пізніше.")
+
+
+@dp.message(Command("setgamestopic"))
+async def cmd_setgamestopic(message: Message):
+    """Прив’язує гілку «Настілки» без пошуку message_thread_id вручну."""
+    if message.chat.type != "supergroup" or not message.is_topic_message or message.message_thread_id is None:
+        await message.answer("Відкрий гілку «Настілки» і надішли /setgamestopic прямо в ній.")
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Призначити гілку «Настілки» може лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+    try:
+        resp = requests.patch(
+            TELEGRAM_GROUPS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            params={"chat_id": f"eq.{message.chat.id}", "active": "eq.true"},
+            json={"game_thread_id": int(message.message_thread_id)},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        if not resp.json():
+            await message.answer("⚠️ Група ще не підключена. Надішли /setgroup у групі й спробуй знову.")
+            return
+        await message.answer("✅ Гілку «Настілки» підключено! Нові ігри публікуватимуться тут. "
+                             "Для перевірки надішли /testgamestopic.")
+    except Exception:
+        logging.exception("Не вдалося призначити гілку для нових ігор")
+        await message.answer("Не вдалося зберегти гілку «Настілки». Перевір налаштування або спробуй пізніше.")
+
+
+@dp.message(Command("unsetgamestopic"))
+async def cmd_unsetgamestopic(message: Message):
+    """Вимикає публікації про нові ігри без перенесення їх у загальну стрічку."""
+    if message.chat.type not in ("group", "supergroup"):
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Змінити гілку для ігор може лише адміністратор групи.")
+            return
+        resp = requests.patch(
+            TELEGRAM_GROUPS_REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=representation"},
+            params={"chat_id": f"eq.{message.chat.id}", "active": "eq.true"},
+            json={"game_thread_id": None},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        if not resp.json():
+            await message.answer("⚠️ Група не підключена. Спочатку надішли /setgroup.")
+            return
+        await message.answer("✅ Публікацію нових ігор вимкнено до наступної команди /setgamestopic.")
+    except Exception:
+        logging.exception("Не вдалося відв’язати гілку ігор")
+        await message.answer("Не вдалося змінити налаштування гілки «Настілки».")
+
+
+@dp.message(Command("testgamestopic"))
+async def cmd_testgamestopic(message: Message):
+    """Надсилає тест тільки у прив’язану гілку нових настільних ігор."""
+    if message.chat.type not in ("group", "supergroup"):
+        await message.answer("Надішли /testgamestopic у групі Styloteka.")
+        return
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
+            await message.answer("Перевіряти гілку ігор може лише адміністратор групи.")
+            return
+    except Exception:
+        await message.answer("Не вдалося перевірити права адміністратора.")
+        return
+    targets = get_active_group_targets_sync()
+    target = next((row for row in targets if row["chat_id"] == message.chat.id), None)
+    if not target:
+        await message.answer("⚠️ Група не підключена. Спочатку надішли /setgroup.")
+        return
+    thread_id = target.get("game_thread_id")
+    if thread_id is None:
+        await message.answer("⚠️ Гілку «Настілки» ще не підключено. Відкрий її й надішли /setgamestopic.")
+        return
+    ok, result = telegram_api_post("sendMessage", {
+        "chat_id": message.chat.id,
+        "message_thread_id": int(thread_id),
+        "text": "🧪 Перевірка: сповіщення про нові настільні ігри надходитимуть сюди ✅",
+    })
+    if not ok:
+        await message.answer(f"❌ Telegram не прийняв повідомлення: {str(result)[:400]}")
 
 
 @dp.message(Command("unseteventtopic"))
@@ -7013,7 +7121,7 @@ async def cmd_unsetgroup(message: Message):
             timeout=20,
         )
         resp.raise_for_status()
-        await message.answer("🔕 Автоматичні анонси подій у цій групі вимкнено.")
+        await message.answer("🔕 Сповіщення про події та нові ігри в цій групі вимкнено.")
     except Exception:
         logging.exception("Не вдалось вимкнути групу")
         await message.answer("Не вдалося змінити налаштування групи.")
