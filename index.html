@@ -552,7 +552,31 @@ if (!window.Telegram?.WebApp) {
   align-items: center;
   justify-content: center;
 }
-.event-card .ev-admin-edit svg { width: 13px; height: 13px; }
+  .event-card .ev-admin-edit svg { width: 13px; height: 13px; }
+  .event-card .ev-repeat-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--accent);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .event-card .ev-repeat-btn:active { transform: scale(.99); }
+  .event-repeat-hint {
+    margin: 2px 0 15px;
+    padding: 11px 12px;
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    background: rgba(212,175,55,.09);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+  }
 .event-cover-remove-btn {
   margin-top: 8px;
   width: 100%;
@@ -7646,6 +7670,10 @@ button,.btn{font-family:inherit}
   <div class="sheet">
     <button class="close-btn" aria-label="Закрити" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2 id="eventModalHeading">Нова подія</h2>
+    <div class="event-repeat-hint" id="eventRepeatHint" style="display:none;">
+      🔁 Створюється <b>нова</b> подія. Обов’язково обери її дату, перевір час, адресу та оплату.
+      Учасники, квитанції та записи з Quests не переноситимуться.
+    </div>
 
     <label>Назва</label>
     <input type="text" id="eventTitle" placeholder="Ігровий вечір">
@@ -11654,8 +11682,10 @@ function renderEvents(events) {
         ${voteNote ? `<div class="ev-my-vote">${voteNote}</div>` : ''}
         ${isAdmin && ev.game_name ? `<div class="ev-buttons" style="margin-top:8px;"><button class="ev-start-session-btn" type="button">▶ Почати ${escapeHtml(ev.game_name)}</button></div>` : ''}
       ` : ''}
+      ${historyMode && isAdmin ? '<button type="button" class="ev-repeat-btn">🔁 Повторити подію</button>' : ''}
     `;
 
+    card.querySelector('.ev-repeat-btn')?.addEventListener('click', () => openRepeatEventModal(ev));
     card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
     card.querySelector('.event-private-open')?.addEventListener('click',()=>openPrivateEventDetails(ev.id));
     card.querySelector('.event-receipts-admin')?.addEventListener('click',()=>openAdminEventReceipts(ev));
@@ -11719,6 +11749,7 @@ function renderEvents(events) {
 let editingEventId = null;
 let editingEventCoverUrl = '';
 let editingEventRemoveCover = false;
+let repeatSourceEventId = null;
 
 function setEventModalMode(editing) {
   const heading = document.getElementById('eventModalHeading');
@@ -11825,12 +11856,8 @@ function eventQuestsCountsHtml(ev, localCount){
   </div>`;
 }
 
-function openEditEventModal(ev) {
-  if (!isAdmin || !ev?.id) return;
-
-  editingEventId = Number(ev.id);
-  setEventModalMode(true);
-
+// Fill the shared creation/edit form without changing the saved event.
+function populateEventFormFromEvent(ev) {
   document.getElementById('eventTitle').value = ev.title || '';
   setEventDateField(String(ev.event_date || ''));
   document.getElementById('eventTime').value = ev.event_time ? String(ev.event_time).slice(0, 5) : '';
@@ -11861,9 +11888,44 @@ function openEditEventModal(ev) {
   document.getElementById('eventModal').classList.add('open');
 }
 
+function openEditEventModal(ev) {
+  if (!isAdmin || !ev?.id || ev.status === 'completed') return;
+  repeatSourceEventId = null;
+  document.getElementById('eventRepeatHint').style.display = 'none';
+  editingEventId = Number(ev.id);
+  setEventModalMode(true);
+  populateEventFormFromEvent(ev);
+}
 
+
+// Duplicate only the event configuration; never reuse old RSVPs, payments or check-ins.
+function openRepeatEventModal(ev) {
+  if (!isAdmin || !ev?.id || ev.status !== 'completed') return;
+  const sourceId = Number(ev.id);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) return;
+
+  // Reuse only the old event's editable fields, never its registration state.
+  editingEventId = null;
+  repeatSourceEventId = sourceId;
+  setEventModalMode(false);
+  populateEventFormFromEvent(ev);
+  document.getElementById('eventModalHeading').textContent = '🔁 Повторити подію';
+  document.getElementById('eventSubmitBtn').textContent = 'Створити повторну подію';
+  document.getElementById('eventRepeatHint').style.display = 'block';
+
+  // A new date is required; the old date is deliberately not preselected.
+  resetEventDatePickerField();
+  // A previous Quests event is distinct from the new event; never reuse its ID
+  // or its attendance counts, even if the board games and location are the same.
+  document.getElementById('eventQuestsUrl').value = '';
+  document.getElementById('eventQuestsCount').value = '0';
+  document.getElementById('eventQuestsCheckedInCount').value = '0';
+  setEventQuestsVisibility();
+}
 
 function openEventModal() {
+  repeatSourceEventId = null;
+  document.getElementById('eventRepeatHint').style.display = 'none';
   editingEventId = null;
   editingEventCoverUrl = '';
   editingEventRemoveCover = false;
@@ -11900,8 +11962,17 @@ async function submitEvent() {
   const title = document.getElementById('eventTitle').value.trim();
   const date = document.getElementById('eventDate').value.trim();
   if (!title || !date) {
-    tg.showAlert('Введи назву і дату події');
+    tg.showAlert(repeatSourceEventId ? 'Обери нову дату повторної події.' : 'Введи назву і дату події');
     return;
+  }
+  if (repeatSourceEventId) {
+    const selectedDate = parseEventDateValue(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!selectedDate || selectedDate < today) {
+      tg.showAlert('Для повторної події обери сьогоднішню або майбутню дату.');
+      return;
+    }
   }
 
   const selectedGames = getSelectedEventGames();
@@ -11949,8 +12020,11 @@ async function submitEvent() {
   formData.append('quests_count',questsEventUrl?questsCount:'0');
   formData.append('quests_checked_in_count',questsEventUrl?questsCheckedIn:'0');
   formData.append(isEditing ? 'updated_by' : 'created_by', username);
+  if (repeatSourceEventId && !isEditing) {
+    formData.append('repeat_source_event_id', String(repeatSourceEventId));
+  }
 
-  if (isEditing && editingEventRemoveCover) {
+  if ((isEditing || repeatSourceEventId) && editingEventRemoveCover) {
     formData.append('remove_cover', '1');
   }
 
@@ -11990,9 +12064,11 @@ async function submitEvent() {
 
     closeModal('eventModal');
     editingEventId = null;
+    repeatSourceEventId = null;
     editingEventCoverUrl = '';
     editingEventRemoveCover = false;
-    loadEvents();
+    document.getElementById('eventRepeatHint').style.display = 'none';
+    loadEvents(isEditing ? eventsMode : 'upcoming');
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }

@@ -5590,11 +5590,42 @@ def add_event():
         game_names = [legacy_game_name]
     primary_game = game_names[0] if game_names else legacy_game_name
 
+    # Repeating an archived event is always a NEW event, with a separate ID
+    # and no old RSVPs, receipts, payments, attendance or Telegram posts.
+    repeat_source = None
+    source_id_text = str(data.get('repeat_source_event_id') or '').strip()
+    if source_id_text:
+        if not source_id_text.isdecimal() or int(source_id_text) <= 0:
+            return jsonify({'error': 'invalid_repeat_source'}), 400
+        source_id = int(source_id_text)
+        try:
+            source_resp = requests.get(EVENTS_REST, headers=HEADERS, params={
+                'id': f'eq.{source_id}', 'select': 'id,status,cover_url', 'limit': 1,
+            }, timeout=20)
+            source_resp.raise_for_status()
+            source_rows = source_resp.json()
+        except requests.RequestException:
+            logging.exception('Cannot verify repeated event source %s', source_id)
+            return jsonify({'error': 'repeat_source_unavailable'}), 503
+        if not source_rows or source_rows[0].get('status') != 'completed':
+            return jsonify({'error': 'repeat_source_not_completed'}), 409
+        repeat_source = source_rows[0]
+        # A repeated event must be scheduled for today or a future date.
+        try:
+            repeat_date = datetime.strptime(str(data.get('event_date') or ''), '%Y-%m-%d').date()
+            if repeat_date < datetime.now(ZoneInfo(EVENT_TIMEZONE)).date():
+                return jsonify({'error': 'repeat_date_in_past'}), 400
+        except ValueError:
+            return jsonify({'error': 'invalid_repeat_date'}), 400
+
     uploaded_cover_url = (
         upload_file(cover_file, "event-covers")
         if cover_file and getattr(cover_file, "filename", "")
         else None
     )
+    if (repeat_source and not uploaded_cover_url
+            and str(data.get('remove_cover') or '').strip().lower() not in ('1','true','yes','on')):
+        uploaded_cover_url = repeat_source.get('cover_url')
 
     location = _normalize_event_location(data.get("location_text"))
 
