@@ -5762,7 +5762,7 @@ if (!window.Telegram?.WebApp) {
 
 
 <!-- ==================== ВКЛАДКА: ГОЛОВНА ==================== -->
-<div class="view active" id="view-home">
+<div class="view" id="view-home" aria-hidden="true">
   <div class="steam-view">
     <header class="home-brand-title" aria-label="STYLOTEKA">
       <span class="home-brand-content">
@@ -5855,7 +5855,7 @@ if (!window.Telegram?.WebApp) {
 </div>
 
 <!-- ==================== ВКЛАДКА: ВІКТОРИНИ ==================== -->
-<div class="view" id="view-quizzes">
+<div class="view" id="view-quizzes" aria-hidden="true">
   <header>Вікторини з настільних ігор</header>
   <section class="quiz-intro">
     <span class="quiz-eyebrow">✦ КЛУБ ЗНАВЦІВ</span>
@@ -5995,7 +5995,6 @@ if (!window.Telegram?.WebApp) {
 <!-- ==================== ВКЛАДКА: ІГРОВІ ДОДАТКИ ==================== -->
 <div class="view" id="view-tools">
   <header>Ігрові інструменти</header>
-  <button class="tools-return" type="button" onclick="showMainView('view-home')">← Повернутися на головну</button>
 
   <div class="tools-tabs">
     <button class="tool-tab-btn active" data-tool="dice">
@@ -6099,7 +6098,7 @@ if (!window.Telegram?.WebApp) {
 </div>
 
 <!-- ==================== ВКЛАДКА: ПОДІЇ ==================== -->
-<div class="view" id="view-events">
+<div class="view active" id="view-events">
   <header>Ігрові вечори</header>
   <div class="events-subtabs" role="tablist" aria-label="Події">
     <button type="button" class="events-subtab-btn active" data-events-mode="upcoming">Майбутні</button>
@@ -7126,7 +7125,7 @@ button,.btn{font-family:inherit}
 </style>
 
 <!-- ==================== ВКЛАДКА: СПІЛЬНОТА ==================== -->
-<div class="view" id="view-community">
+<div class="view" id="view-community" aria-hidden="true">
   <header>Спільнота</header>
   <div class="community-wrap">
     <section class="steam-section" style="margin-top:4px;">
@@ -7146,7 +7145,7 @@ button,.btn{font-family:inherit}
 </div>
 
 <!-- ==================== ВКЛАДКА: ПРОФІЛЬ ==================== -->
-<div class="view" id="view-profile">
+<div class="view" id="view-profile" aria-hidden="true">
   <header>Профіль</header>
   <div class="profile-wrap">
     <div class="group-admin-only admin-users-entry" style="display:none;">
@@ -7160,7 +7159,7 @@ button,.btn{font-family:inherit}
 </div>
 
 <!-- ==================== АДМІН: КОРИСТУВАЧІ ==================== -->
-<div class="view" id="view-admin-users">
+<div class="view" id="view-admin-users" aria-hidden="true">
   <header>Користувачі</header>
   <div class="admin-users-wrap">
     <button type="button" class="mini-game-back" onclick="showMainView('view-profile')">← До профілю</button>
@@ -7285,30 +7284,18 @@ button,.btn{font-family:inherit}
 </style>
 
 <!-- ==================== НИЖНЄ МЕНЮ ==================== -->
-<div class="bottom-nav">
-  <button class="nav-btn active" data-view="view-home">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 3l8.5 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>
-    <span>Головна</span>
-  </button>
-  <button class="nav-btn" data-view="view-library">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5c-1.5-1-4-1.5-6-1v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V5.5c-2-.5-4.5 0-6 1Z"/><path d="M12 6.5v13"/></svg></span>
-    <span>Бібліотека</span>
-  </button>
-  <button class="nav-btn" data-view="view-quizzes">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span>
-    <span>Вікторини</span>
-  </button>
-  <button class="nav-btn" data-view="view-events">
+<div class="bottom-nav" role="navigation" aria-label="Основні розділи">
+  <button class="nav-btn active" data-view="view-events" aria-label="Події" aria-current="page">
     <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
     <span>Події</span>
   </button>
-  <button class="nav-btn" data-view="view-community">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 19c.5-3.6 2.4-5.4 5.5-5.4s5 1.8 5.5 5.4"/><path d="M14.2 15c3.4-.7 5.5.7 6.3 3.8"/></svg></span>
-    <span>Спільнота</span>
+  <button class="nav-btn" data-view="view-library" aria-label="Бібліотека">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5c-1.5-1-4-1.5-6-1v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V5.5c-2-.5-4.5 0-6 1Z"/><path d="M12 6.5v13"/></svg></span>
+    <span>Бібліотека</span>
   </button>
-  <button class="nav-btn" data-view="view-profile">
-    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/></svg></span>
-    <span>Профіль</span>
+  <button class="nav-btn" data-view="view-tools" aria-label="Інструменти">
+    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.4 3.5a4.6 4.6 0 0 0 5.8 5.8l-7.9 7.9a3.2 3.2 0 1 1-4.5-4.5l7.9-7.9a4.6 4.6 0 0 0-1.3-1.3Z"/><circle cx="7" cy="17" r=".85" fill="currentColor" stroke="none"/><path d="M15 14.5a4.6 4.6 0 0 1 5.5 5.5l-4.1-4.1"/></svg></span>
+    <span>Інструменти</span>
   </button>
 </div>
 
@@ -7731,6 +7718,10 @@ button,.btn{font-family:inherit}
       <div class="event-form-hint">Кількість поки вводить адміністратор. Автоматичне оновлення та профілі можливі після перевірки доступу до Quests Inc.</div>
     </div>
 
+    <label for="eventAttendanceReward">🪙 Стілси за фактичне відвідування</label>
+    <input type="number" id="eventAttendanceReward" min="0" max="500" step="1" inputmode="numeric" value="50">
+    <div class="event-form-hint">За замовчуванням +50 стілсів. Винагорода нараховується лише після сканування QR-квитка адміністратором, один раз на подію. 0 — без винагороди.</div>
+
     <label>Максимум учасників (0 = без ліміту)</label>
     <input type="number" id="eventCapacity" min="0" max="99" value="0" inputmode="numeric">
 
@@ -7826,12 +7817,7 @@ function applyAdminPermissionsUi() {
 
 /* ==================== НАВІГАЦІЯ ВКЛАДКАМИ ==================== */
 document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById(btn.dataset.view).classList.add("active");
-  });
+  btn.addEventListener("click", () => showMainView(btn.dataset.view));
 });
 
 document.querySelectorAll(".tool-tab-btn").forEach(btn => {
@@ -10392,27 +10378,24 @@ let homeHistoryCache = [];
 let homeActivityCache = [];
 let communityMembersCache = [];
 
+// v5.3.25: Three public sections. Legacy screens are intentionally not navigable.
+const MAIN_VIEWS = new Set(['view-events', 'view-library', 'view-tools']);
 function showMainView(viewId) {
-  if (!document.getElementById(viewId)) viewId = 'view-home';
+  if (!MAIN_VIEWS.has(viewId) || !document.getElementById(viewId)) viewId = 'view-events';
   if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === viewId));
-  const navView = viewId === 'view-admin-users' ? 'view-profile' : viewId;
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === navView));
-  if (viewId === 'view-home') loadHomeHub();
-  if (viewId === 'view-community') loadCommunity();
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const isActive = b.dataset.view === viewId;
+    b.classList.toggle('active', isActive);
+    if (isActive) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
   if (viewId === 'view-library') loadGames();
-  if (viewId === 'view-quizzes') loadQuizzes();
-  if (viewId === 'view-profile') loadMyProfile();
-  if (viewId === 'view-admin-users') loadAdminUsers();
   if (viewId === 'view-events') loadEvents();
   window.scrollTo({top:0, behavior:'auto'});
 }
 
-function openToolsHub() {
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-tools'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-home'));
-  window.scrollTo({top:0, behavior:'auto'});
-}
+function openToolsHub() { showMainView('view-tools'); }
 
 function openLibraryMode(mode = 'games') {
   showMainView('view-library');
@@ -10785,16 +10768,11 @@ function renderGameDetailStats(game) {
 
 
 
-document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
-  if (btn.dataset.view === 'view-home') loadHomeHub();
-  if (btn.dataset.view === 'view-library') loadGames();
-  if (btn.dataset.view === 'view-quizzes') loadQuizzes();
-  if (btn.dataset.view === 'view-community') loadCommunity();
-}));
+// All three main tab loads are handled by showMainView.
 
 
 // Запускаємо після завершення синхронної ініціалізації всього скрипта.
-setTimeout(() => loadHomeHub(), 0);
+// Home hub removed from navigation; no background home fetch on startup.
 
 async function downloadCharacterPdf() {
   const formData = collectCharacterFormData();
@@ -10982,8 +10960,7 @@ function openToolPanel(tool, mode = null) {
     tool = 'dice';
     mode = null;
   }
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'view-home'));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-tools'));
+  showMainView('view-tools');
   document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
   document.querySelectorAll('.tool-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tool));
   if (tool === 'counters' && mode) {
@@ -11495,7 +11472,8 @@ async function openEventTicket(ev) {
     root.innerHTML=`<p>Покажи цей QR-код організатору на вході. У кожної людини власний квиток.</p>
        <img class="event-checkin-qr" alt="QR-квиток для входу" src="${uri}">
        <div class="event-checkin-token">Код: ${escapeHtml(data.ticket)}</div>
-       <div class="event-checkin-result">${data.checked_in?'✅ Твій прихід уже підтверджено.':'⏳ Очікує сканування організатором.'}</div>`;
+       <div class="event-checkin-result">${data.checked_in?'✅ Твій прихід уже підтверджено.':'⏳ Очікує сканування організатором.'}
+       ${Number(data.reward_stils)>0?`<div class="event-checkin-reward">🪙 ${data.checked_in?`За прихід нараховується +${Number(data.reward_stils)} стілсів.`:`Після сканування QR отримаєш +${Number(data.reward_stils)} стілсів.`}</div>`:''}</div>`;
   } catch(err) {root.textContent=err.message||'QR-квиток недоступний.';}
 }
 
@@ -11543,7 +11521,10 @@ async function confirmEventCheckin() {
       method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({ticket:token})});
     const data=await res.json().catch(()=>({}));
     if(!res.ok){const errors={invalid_ticket:'Невідомий або чужий QR-квиток.',not_registered:'Людина ще не має підтвердженого місця.',event_closed:'Подія вже закрита.',group_admin_required:'Лише адміністратор може підтвердити прихід.'};throw Error(errors[data.status||data.error]||'Не вдалося відмітити прихід.');}
-    root.textContent=(data.status==='already_checked_in'?'ℹ️ Уже відмічено: ':'✅ Прихід підтверджено: ')+(data.display_name||'Гравець');
+    const who=data.display_name||'Гравець';
+    root.textContent = data.status==='already_checked_in'
+      ? `ℹ️ Уже відмічено: ${who}. Повторної винагороди немає.`
+      : `✅ Прихід підтверджено: ${who}.${Number(data.reward_stils)>0?` 🪙 +${Number(data.reward_stils)} стілсів зараховано!`:''}`;
     input.value='';
     await loadEvents();
   }catch(err){root.textContent=err.message||'Помилка сканування.';}
@@ -11637,6 +11618,7 @@ function renderEvents(events) {
           <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</div>
           <div class="ev-title">${escapeHtml(ev.title || '')}</div>
           <div class="ev-price">${eventPriceLabel(ev)}${isPaid?' · запис лише після оплати':''}</div>
+          ${Number(ev.attendance_reward_stils ?? 50) > 0 ? `<div class="ev-reward">🪙 +${Number(ev.attendance_reward_stils ?? 50)} стілсів за підтверджений прихід</div>` : ''}
           ${eventGamesHtml(ev)}
           ${eventMemberGamesSummary(ev)}
           ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
@@ -11879,6 +11861,7 @@ function populateEventFormFromEvent(ev) {
   setEventPriceMode(paid?'paid':'free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = String(Number(ev.max_participants) || 0);
+  document.getElementById('eventAttendanceReward').value = String(ev.attendance_reward_stils ?? 50);
 
   renderEventGameChoices(eventGameNames(ev));
   resetEventCoverPreview();
@@ -11949,6 +11932,7 @@ function openEventModal() {
   setEventPriceMode('free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = '0';
+  document.getElementById('eventAttendanceReward').value = '50';
   renderEventGameChoices();
   resetEventCoverPreview();
   initEventCoverPreview();
@@ -12002,6 +11986,11 @@ async function submitEvent() {
   formData.append('payment_method',priceMode==='paid'?payMethod:'free');
   formData.append('payment_details',priceMode==='paid'&&payMethod==='receipt'?payDetails:'');
   formData.append('payment_link',priceMode==='paid'&&payMethod==='receipt'?payLink:'');
+  const rewardInput = document.getElementById('eventAttendanceReward').value.trim();
+  if (!/^\d{1,3}$/.test(rewardInput) || Number(rewardInput) > 500) {
+    tg.showAlert('Стілси за відвідування: ціле число від 0 до 500.');return;
+  }
+  formData.append('attendance_reward_stils', rewardInput);
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
   const questsEventUrl = document.getElementById('eventQuestsUrl').value.trim();
@@ -12057,7 +12046,7 @@ async function submitEvent() {
       return;
     }
     if (!res.ok) {
-      const errors={event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
+      const errors={attendance_reward_locked_after_checkin:'Не можна змінювати винагороду після першої відмітки відвідування.',invalid_attendance_reward_stils:'Вкажи ціле число стілсів від 0 до 500.',event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
       tg.showAlert(errors[data.error] || data.error || (isEditing ? 'Не вдалося зберегти зміни.' : 'Не вдалося створити подію.'));
       return;
     }
@@ -13030,9 +13019,7 @@ async function loadMyProfile() {
   }
 }
 
-document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
-  if (btn.dataset.view === 'view-profile') loadMyProfile();
-}));
+// Profile removed from visible navigation.
 
 
 async function applyInitialDeepLink() {
@@ -13052,9 +13039,10 @@ async function applyInitialDeepLink() {
       if (game) openViewModal(game);
       return;
     }
-    if (requestedView === 'profile') {
-      showMainView('view-profile');
-      await loadMyProfile();
+    if (requestedView === 'tools') { showMainView('view-tools'); return; }
+    if (requestedView === 'library') { showMainView('view-library'); return; }
+    if (requestedView === 'profile' || requestedView === 'home' || requestedView === 'community' || requestedView === 'quizzes') {
+      showMainView('view-events');
       return;
     }
     if (requestedView !== 'events') return;
@@ -13298,5 +13286,357 @@ async function quizSaveQuestion(event) {
 
 </script>
 
+<style id="styloteka-responsive-v5323">
+/* =============================================================
+   STYLOTEKA 5.3.23 — MOBILE FIT / TYPOGRAPHY / TAP TARGETS
+   Final cascade layer. Keeps the app's dark glass visual identity.
+   Deliberately contains no JS/API/payment behavior changes.
+   ============================================================= */
+:root {
+  --ui-page-pad: clamp(12px, 3.8vw, 20px);
+  --ui-nav-h: 86px;
+  --ui-touch: 44px;
+}
+html, body { max-width: 100%; min-width: 0; overflow-x: clip; }
+html { scroll-padding-bottom: calc(var(--ui-nav-h) + env(safe-area-inset-bottom, 0px) + 18px); }
+body { padding-bottom: calc(var(--ui-nav-h) + env(safe-area-inset-bottom, 0px) + 22px); }
+.view, .steam-view, .steam-section, .steam-section > *, .grid,
+.events-list, .event-card, .profile-wrap, .community-wrap, .sheet,
+.admin-users-wrap, .wishlist-list, .history-list, .lib-mode,
+.library-discovery, .tool-panel, .quiz-play, .quiz-admin, .quiz-intro {
+  min-width: 0; max-width: 100%;
+}
+.view > header, .steam-view > header { overflow-wrap: anywhere; text-wrap: balance; }
+img, video, canvas { max-width: 100%; }
+button, [role="button"], a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #9ddcff;
+  outline-offset: 3px;
+}
+/* Dynamic names, long links and localized labels must not push out grids. */
+:is(.event-card, .history-item, .wish-item, .profile-wrap, .community-wrap,
+    .admin-users-wrap, .profile-shop-sheet, .shop-deluxe, .quiz-play, .quiz-admin)
+:is(h2, h3, h4, p, small, strong, label, .ev-title, .ev-date, .ev-description,
+    .ev-price, .ev-game, .event-form-hint, .profile-name, .profile-username,
+    .admin-user-name, .admin-user-handle, .quiz-question, .quiz-answer-option) {
+  overflow-wrap: anywhere;
+}
+/* Six navigation destinations: two-line labels instead of 8px clipped text. */
+.bottom-nav {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  height: calc(var(--ui-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
+  min-height: calc(var(--ui-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 6px max(4px, env(safe-area-inset-right, 0px))
+    env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px)) !important;
+  align-items: stretch;
+}
+.bottom-nav button {
+  min-width: 0 !important;
+  min-height: 76px !important;
+  height: 76px !important;
+  padding: 6px 1px 8px !important;
+  grid-template-rows: 29px minmax(24px, auto) !important;
+  align-content: center;
+  gap: 3px !important;
+  overflow: visible;
+}
+.bottom-nav button .icon { width: 29px; height: 29px; }
+.bottom-nav button span:last-child {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal !important;
+  text-overflow: clip;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: clamp(9.5px, 2.65vw, 11px) !important;
+  line-height: 1.17 !important;
+  max-height: 26px;
+  width: 100%;
+  padding-inline: 1px;
+  text-align: center;
+}
+.bottom-nav button.active { border-radius: 15px; }
+.fab { bottom: calc(var(--ui-nav-h) + env(safe-area-inset-bottom, 0px) + 14px) !important; }
+/* Tabs can wrap labels without making other cells shrink or overflow. */
+.lib-subtabs { gap: 8px; }
+.lib-subtab-btn {
+  min-width: 0; min-height: 46px;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  line-height: 1.25 !important;
+  padding: 10px 7px !important;
+  font-size: clamp(12px, 3.15vw, 14px) !important;
+}
+.events-subtabs { gap: 9px; }
+.events-subtab-btn {
+  min-width: 0; min-height: 46px;
+  padding: 10px 12px; line-height: 1.25;
+  white-space: normal; overflow-wrap: anywhere;
+}
+.lib-genre-row, .tools-tabs, .counters-subtabs, .shop-chips {
+  scroll-padding-inline: 10px;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.lib-genre-chip, .tool-tab-btn { flex-shrink: 0; }
+.lib-search-input, .shop-search-input { min-width: 0; width: 100%; }
+/* Catalog cards: titles and tags can grow without being cut off. */
+#gamesGrid, .quiz-game-grid, .profile-stats-grid,
+.profile-achievements, .shop-products, .profile-shop-grid {
+  min-width: 0;
+}
+#gamesGrid .card, .quiz-game, .shop-card, .profile-shop-item {
+  min-width: 0; max-width: 100%;
+}
+#gamesGrid .library-card-info { min-width: 0; gap: 10px; }
+#gamesGrid .card-title, #gamesGrid .card-tags,
+.quiz-game-content strong, .profile-shop-name, .shop-card .profile-shop-desc {
+  max-width: 100%; overflow-wrap: anywhere;
+}
+.quiz-game-content, .quiz-game-image { min-width: 0; }
+.quiz-play-meta, .quiz-section-head {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 6px 12px; min-width: 0;
+}
+.quiz-play-meta > *, .quiz-section-head > * { min-width: 0; overflow-wrap: anywhere; }
+.quiz-answer-option { overflow-wrap: anywhere; white-space: normal; }
+.quiz-admin label { line-height: 1.45; }
+.quiz-admin :is(input, textarea, select) { min-width: 0; max-width: 100%; font-size: 16px !important; }
+/* Events: prevent lengthy titles and CTA labels from colliding. */
+.event-card { min-width: 0; padding: clamp(12px, 3.5vw, 17px); }
+.event-card .ev-top-row > div:first-child { flex: 1 1 0; min-width: 0; }
+.event-card .ev-title { font-size: clamp(17px, 4.5vw, 21px); line-height: 1.3; overflow-wrap: anywhere; }
+.event-card .ev-date, .event-card .ev-price, .event-card .ev-description,
+.event-card .ev-game, .event-card .ev-capacity { overflow-wrap: anywhere; line-height: 1.5; }
+.event-card .ev-admin-actions { align-self: flex-start; flex: 0 0 auto; gap: 6px; }
+.event-card .ev-admin-edit, .event-card .ev-admin-del {
+  width: 42px !important; height: 42px !important;
+  min-height: 42px !important; border-radius: 12px;
+}
+.event-card .ev-admin-edit svg, .event-card .ev-admin-del svg { width: 18px; height: 18px; }
+.event-card .ev-buttons, .event-checkin-actions, .mc-booking-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; min-width: 0;
+}
+.event-card .ev-buttons > button, .event-checkin-actions > button, .mc-booking-actions > button {
+  flex: 1 1 135px; min-width: 0; max-width: 100%;
+  min-height: 44px; height: auto;
+  border-radius: 13px; padding: 10px 12px;
+  text-align: center; white-space: normal;
+  overflow-wrap: anywhere; line-height: 1.3;
+  font-size: 13px;
+}
+.event-card .ev-repeat-btn, .event-games-open,
+.event-private-open, .event-receipts-admin {
+  min-width: 0; min-height: 46px;
+  padding: 11px 13px; white-space: normal;
+  overflow-wrap: anywhere; line-height: 1.35;
+}
+.event-game-pick-chip, .participant-chip { max-width: 100%; overflow-wrap: anywhere; }
+.event-game-pick-chip > *, .participant-chip > * { min-width: 0; }
+/* Bottom sheets remain usable with long text / small iPhone viewports. */
+.modal { max-width: 100%; padding: 0; }
+.modal .sheet, .profile-shop-sheet, .admin-user-detail-sheet, .event-pick-sheet {
+  box-sizing: border-box;
+  min-width: 0;
+  width: min(100%, 660px) !important;
+  max-width: 660px !important;
+  max-height: min(91dvh, 860px) !important;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-block: 14px 32px;
+  padding-left: var(--ui-page-pad) !important;
+  padding-right: var(--ui-page-pad) !important;
+  padding-bottom: calc(26px + max(env(safe-area-inset-bottom, 0px), var(--tg-safe-bottom, 0px))) !important;
+}
+.modal .sheet h2 { max-width: 100%; padding-right: 36px; font-size: clamp(18px, 4.9vw, 22px); overflow-wrap: anywhere; }
+.modal .sheet label { font-size: 13px; line-height: 1.4; margin: 14px 0 6px; }
+.modal .sheet :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+.modal .sheet input[type=file] {
+  display: block; width: 100%; max-width: 100%;
+  font-size: 13px; overflow: hidden; text-overflow: ellipsis;
+  padding: 9px 10px; border-radius: 12px;
+}
+.modal .sheet input[type=file]::file-selector-button {
+  padding: 9px 11px; margin-right: 9px;
+  min-height: 36px; border-radius: 10px;
+  border: 1px solid rgba(164, 209, 242, .4);
+  background: #1a3c5e; color: #eaf7ff; font: inherit;
+  font-weight: 700; cursor: pointer;
+}
+.modal .sheet :is(input[type=text], input[type=url], input[type=number], input[type=time],
+                         input[type=date], textarea, select):focus {
+  outline: 2px solid rgba(141, 211, 255, .55);
+  outline-offset: 2px;
+}
+.sheet .btn, .sheet > button:not(.close-btn) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.event-date-trigger {
+  min-width: 0; min-height: 52px; gap: 8px;
+  border-color: #436c91;
+  background: #0e2842; color: #c4d9ee;
+  text-align: left;
+  padding: 11px 13px;
+  font-size: 16px;
+}
+.event-date-trigger.has-value { color: #f1faff; }
+.event-date-trigger > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.event-date-calendar-icon { flex: 0 0 auto; color: #a5daff; }
+#eventDatePickerModal { z-index: 20020 !important; }
+#eventDatePickerModal .event-calendar-sheet { max-width: 520px !important; }
+.event-calendar-month-row { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+.event-calendar-month-title { min-width: 0; font-size: clamp(17px, 5.2vw, 24px); overflow-wrap: anywhere; }
+.event-calendar-grid, .event-calendar-weekdays { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.event-calendar-day { min-width: 0; }
+/* Choice grids and long names inside forms. */
+.event-game-choice-list, .event-game-choice { min-width: 0; max-width: 100%; }
+.event-game-choice { overflow-wrap: anywhere; }
+.event-pick-row-main { min-width: 0; overflow-wrap: anywhere; }
+.event-pick-section { flex-wrap: wrap; }
+.event-pick-btn { white-space: normal; overflow-wrap: anywhere; }
+/* Profiles and community/administration. */
+.profile-hero, .home-welcome, .mmorpg-player-card,
+.admin-user-card, .admin-user-profile-top,
+.player-profile-head, .mc-booking-head { min-width: 0; }
+.profile-main, .home-welcome-main, .admin-user-profile-top > div,
+.admin-user-card > div, .mc-booking-head > div { min-width: 0; }
+.profile-name, .home-user-name, .admin-user-name { overflow-wrap: anywhere; }
+.profile-xp-head { flex-wrap: wrap; gap: 4px 9px; }
+.profile-xp-value { white-space: normal; }
+.admin-users-toolbar > *, .admin-users-title-row > * { min-width: 0; }
+.admin-users-title-row { flex-wrap: wrap; }
+.admin-user-activity { white-space: normal; }
+.admin-action-grid, .admin-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-action-btn { min-width: 0; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+.shop-hero, .shop-quick-stats { min-width: 0; flex-wrap: wrap; }
+.shop-hero > *, .shop-quick-stats > * { min-width: 0; }
+.shop-hero-wallet { min-width: 82px; }
+.shop-card-actions button, .profile-shop-action { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+
+/* Compact labels avoid splitting Ukrainian words at phone widths. */
+@media (max-width: 420px) {
+  .bottom-nav button span[data-mobile-short] {
+    font-size: 0 !important;
+    line-height: 18px !important;
+    white-space: nowrap !important;
+    -webkit-line-clamp: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .bottom-nav button span[data-mobile-short]::after {
+    content: attr(data-mobile-short);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    inset: 0;
+    font-size: clamp(9.8px, 2.8vw, 11px);
+    font-weight: inherit;
+    line-height: 18px;
+    white-space: nowrap;
+    letter-spacing: 0;
+    text-align: center;
+  }
+}
+
+
+/* Game tools: long player names and score controls should stay inside rows. */
+.counter-row, .initiative-row { min-width: 0; max-width: 100%; }
+.counter-row .counter-name, .initiative-row .init-name { min-width: 0; }
+.counter-row .counter-score { min-width: 30px; max-width: 38%; overflow-wrap: anywhere; }
+.counter-row .round-btn { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px; }
+.flip7-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.flip7-card, .flip7-panel, .flip7-panel-name { min-width: 0; overflow-wrap: anywhere; }
+.flip7-card .fc-name {
+  white-space: normal; overflow: visible; text-overflow: clip;
+  overflow-wrap: anywhere; line-height: 1.25;
+  min-height: 2.5em;
+}
+.flip7-card .fc-score { font-size: clamp(18px, 5vw, 24px); overflow-wrap: anywhere; }
+.flip7-card .fc-pending { overflow-wrap: anywhere; line-height: 1.3; }
+.home-tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.home-tool-btn { min-width: 0; max-width: 100%; white-space: normal; line-height: 1.35; overflow-wrap: anywhere; }
+.home-tool-btn > * { min-width: 0; }
+.game-detail-head, .game-detail-hero > * { min-width: 0; }
+.shop-search-wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 144px); }
+.shop-quick-stats > * { overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .shop-search-wrap { grid-template-columns: minmax(0, 1fr); }
+  .shop-quick-stats > span, .shop-quick-stats > button { min-height: 42px; }
+}
+
+/* Narrow screens: give each action enough space, no cramped four-column controls. */
+@media (max-width: 389px) {
+  .lib-subtabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lib-subtab-btn { min-height: 45px; font-size: 13px !important; }
+  .library-tools-row { flex-wrap: wrap; align-items: stretch; }
+  .library-sort-wrap { flex: 1 1 100%; }
+  .library-reset { flex: 1 1 100%; min-height: 42px; }
+  .event-card .ev-buttons { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .event-card .ev-buttons > button { width: 100%; }
+  .event-checkin-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .event-pick-row { flex-wrap: wrap; }
+  .event-pick-row-main { flex: 1 1 calc(100% - 64px); }
+  .event-pick-btn { margin-left: auto; min-height: 40px; }
+  .mc-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-quick-stats > * { flex: 1 1 calc(50% - 5px); }
+  .game-moderation-actions { grid-template-columns: 1fr; }
+}
+@media (max-width: 349px) {
+  .profile-stats-grid, .admin-users-stats { gap: 8px; }
+  .profile-hero { flex-wrap: wrap; }
+  .profile-main { flex: 1 1 145px; }
+  .library-pick-actions, .admin-action-grid { grid-template-columns: minmax(0, 1fr); }
+  .library-discovery-head { flex-wrap: wrap; }
+  .bottom-nav button .icon svg { width: 21px !important; height: 21px !important; }
+}
+@media (min-width: 700px) {
+  .modal .sheet, .profile-shop-sheet, .admin-user-detail-sheet, .event-pick-sheet {
+    border-radius: 22px 22px 0 0 !important;
+    margin-inline: auto;
+  }
+  .view > header { padding-top: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .bottom-nav button, .event-card button, .lib-subtab-btn { transition: none !important; }
+}
+
+</style>
+<style id="attendanceRewardStyles-v5324">
+.ev-reward { margin: 6px 0; color: #d1e9ff; font-size: .88rem; font-weight: 650; overflow-wrap: anywhere; }
+.event-checkin-reward { margin-top: 6px; color: #d2f0fa; font-weight: 700; }
+</style>
+
+<style id="styloteka-three-tabs-v5325">
+/* Three independent sections; deprecated views remain in the HTML only to preserve
+   existing internal bindings and avoid accidental data loss. They are inaccessible. */
+#view-home, #view-quizzes, #view-community, #view-profile, #view-admin-users {
+  display: none !important;
+}
+.bottom-nav { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.bottom-nav button { min-width: 0; width: 100%; }
+.bottom-nav button span:last-child {
+  display: block !important;
+  position: static !important;
+  font-size: clamp(11px, 3.35vw, 14px) !important;
+  line-height: 19px !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+@media (max-width: 359px) {
+  .bottom-nav button span:last-child { font-size: 11px !important; }
+  .bottom-nav button .icon svg { width: 21px !important; height: 21px !important; }
+}
+/* The original shared FAB rule forced display:grid !important, which exposed the
+   admin-only create-event button even when JS had hidden it inline. */
+#eventsFab[style*="display:none"], #eventsFab[style*="display: none"] { display: none !important; }
+/* Tools now belong to the main navigation: avoid redundant return button. */
+#view-tools .tools-return { display: none !important; }
+</style>
 </body>
 </html>
