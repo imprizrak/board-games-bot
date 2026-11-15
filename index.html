@@ -13638,5 +13638,68 @@ button, [role="button"], a, input, textarea, select { -webkit-tap-highlight-colo
 /* Tools now belong to the main navigation: avoid redundant return button. */
 #view-tools .tools-return { display: none !important; }
 </style>
+
+<style id="styloteka-compact-nav-v5326">
+/* v5.3.26 - compact, centered floating nav for three tabs only.
+   Retain minimum 44px tap target and Telegram/iPhone safe-area clearance. */
+:root {
+  --ui-nav-h: 60px;
+  --glass-nav-height: 60px;
+}
+.bottom-nav {
+  left: 50% !important;
+  right: auto !important;
+  bottom: var(--glass-bottom-gap, max(8px, env(safe-area-inset-bottom, 0px))) !important;
+  transform: translateX(-50%) !important;
+  width: min(318px, calc(100vw - 40px)) !important;
+  max-width: calc(100vw - 40px) !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  padding: 4px 6px !important;
+  border-radius: 23px !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 2px !important;
+  box-sizing: border-box !important;
+}
+.bottom-nav button {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 3px 1px !important;
+  gap: 2px !important;
+  border-radius: 17px !important;
+  justify-content: center;
+  box-sizing: border-box !important;
+}
+.bottom-nav button .icon {
+  width: 22px !important;
+  height: 21px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bottom-nav button .icon svg {
+  width: 19px !important;
+  height: 19px !important;
+}
+.bottom-nav button span:last-child {
+  font-size: 11px !important;
+  line-height: 15px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  max-width: 100%;
+}
+/* Keep admin '+' and page content above the smaller floating bar. */
+body { padding-bottom: calc(var(--ui-nav-h) + var(--glass-bottom-gap, 8px) + 16px) !important; }
+#eventsFab { bottom: calc(var(--ui-nav-h) + var(--glass-bottom-gap, 8px) + 14px) !important; }
+@media (max-width: 359px) {
+  .bottom-nav button span:last-child { font-size: 10.5px !important; }
+}
+</style>
 </body>
 </html>
