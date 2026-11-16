@@ -2941,39 +2941,7 @@ if (!window.Telegram?.WebApp) {
   }
 
 
-  /* ==================== PROFILE-BOUND TOOL ACHIEVEMENTS ==================== */
-  .tool-profile-box {
-    margin: 0 12px 12px;
-    padding: 11px 12px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--card-bg);
-  }
-  .tool-profile-label {
-    display: block;
-    margin-bottom: 7px;
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 750;
-    letter-spacing: .25px;
-  }
-  .tool-profile-select {
-    width: 100%;
-    min-height: 42px;
-    padding: 9px 11px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text);
-    font: inherit;
-    font-size: 13px;
-  }
-  .tool-profile-note {
-    margin-top: 7px;
-    color: var(--muted);
-    font-size: 10px;
-    line-height: 1.4;
-  }
+  /* Кубики працюють локально, без Telegram-профілів. */
   .achievement-progress-text {
     margin-top: 4px;
     color: var(--accent);
@@ -5920,11 +5888,6 @@ if (!window.Telegram?.WebApp) {
 
   <!-- Кубики -->
   <div class="tool-panel active" id="panel-dice">
-    <div class="tool-profile-box">
-      <label class="tool-profile-label" for="diceProfileSelect">Хто кидає кубик</label>
-      <select class="tool-profile-select" id="diceProfileSelect"></select>
-      <div class="tool-profile-note">Результат прив’язується до Telegram ID обраного профілю. Якщо передаєте телефон іншому гравцю — оберіть його тут.</div>
-    </div>
     <div class="dice-buttons">
       <button class="die-btn active" data-sides="4">d4</button>
       <button class="die-btn" data-sides="6">d6</button>
@@ -6159,7 +6122,7 @@ button,.btn{font-family:inherit}
 
 /* Forms: no odd widths or clipped controls */
 .sheet input[type=text],.sheet input[type=url],.sheet input[type=number],.sheet input[type=date],.sheet input[type=time],
-.sheet textarea,.sheet select,.tool-profile-select{
+.sheet textarea,.sheet select{
   width:100%;max-width:100%;min-height:46px;padding:10px 12px;border-radius:12px;font-size:16px;line-height:1.3
 }
 .sheet textarea{min-height:96px}
@@ -9150,10 +9113,6 @@ async function submitWishlist() {
 let toolProfilesCache = [];
 let currentToolProfileId = null;
 
-function toolProfileName(p) {
-  return p?.display_name || p?.username || 'Гравець';
-}
-
 async function ensureToolProfiles(force = false) {
   if (toolProfilesCache.length && !force) return toolProfilesCache;
   try {
@@ -9167,64 +9126,11 @@ async function ensureToolProfiles(force = false) {
     if (me?.telegram_user_id && !toolProfilesCache.some(p => String(p.telegram_user_id) === String(me.telegram_user_id))) {
       toolProfilesCache.unshift(me);
     }
-    populateDiceProfiles();
   } catch (e) {
     console.warn('Не вдалося завантажити профілі для інструментів', e);
   }
   return toolProfilesCache;
 }
-
-function populateDiceProfiles() {
-  const select = document.getElementById('diceProfileSelect');
-  if (!select) return;
-  const previous = select.value || currentToolProfileId || '';
-  select.innerHTML = '';
-  toolProfilesCache.forEach(p => {
-    const option = document.createElement('option');
-    option.value = String(p.telegram_user_id || '');
-    option.textContent = toolProfileName(p);
-    select.appendChild(option);
-  });
-  const wanted = toolProfilesCache.some(p => String(p.telegram_user_id) === previous)
-    ? previous
-    : (currentToolProfileId || String(toolProfilesCache[0]?.telegram_user_id || ''));
-  if (wanted) select.value = wanted;
-}
-
-async function recordProfileToolEvent(eventType, targetTelegramUserId, extra = {}) {
-  const target = targetTelegramUserId ? Number(targetTelegramUserId) : 0;
-  if (!target) return null;
-  try {
-    const res = await fetch('/api/profile/tool-event', {
-      method: 'POST',
-      headers: telegramAuthHeaders({'Content-Type':'application/json'}),
-      body: JSON.stringify({
-        event_type: eventType,
-        target_telegram_user_id: target,
-        ...extra,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.warn('Tool event not recorded', data);
-      return null;
-    }
-    const unlocked = Array.isArray(data.new_achievements) ? data.new_achievements : [];
-    if (unlocked.length && tg?.HapticFeedback) {
-      tg.HapticFeedback.notificationOccurred('success');
-    }
-    // Якщо досягнення отримав поточний користувач — оновлюємо його профіль.
-    if (currentToolProfileId && String(target) === String(currentToolProfileId)) {
-      loadMyProfile();
-    }
-    return data;
-  } catch (e) {
-    console.warn('Tool event request failed', e);
-    return null;
-  }
-}
-
-setTimeout(() => ensureToolProfiles(), 0);
 
 /* ==================== КУБИКИ ==================== */
 let selectedSides = 4;
@@ -9276,11 +9182,6 @@ function rollDice() {
       document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
 
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
-      const diceActorId = document.getElementById('diceProfileSelect')?.value || currentToolProfileId;
-      recordProfileToolEvent('dice_roll', diceActorId, {
-        sides: selectedSides,
-        value: finalResult
-      });
       isRolling = false;
     }
   }, tickEvery);
@@ -10594,7 +10495,6 @@ async function loadCommunity() {
     ]);
     communityMembersCache = membersRes.ok ? await membersRes.json() : [];
     toolProfilesCache = communityMembersCache.slice();
-    populateDiceProfiles();
     homeActivityCache = activityRes.ok ? await activityRes.json() : [];
     renderCommunityMembers(communityMembersCache);
     renderActivityList('communityActivity', homeActivityCache);

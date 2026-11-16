@@ -10,7 +10,7 @@ assert 'renderPickerProfiles' not in html
 assert 'nextPickerProfileForTouch' not in html
 assert 'selectedPickerProfiles' not in html
 assert "recordProfileToolEvent('first_player_win'" not in html
-assert 'id="diceProfileSelect"' in html
+assert 'id="diceProfileSelect"' not in html
 assert 'id="gamesGrid"' in html
 assert 'styloteka-zip-bag-theme-v5327' in html
 
@@ -64,7 +64,8 @@ with sync_playwright() as pw:
         assert 'Cannot read properties' not in str(errors), (width,errors)
         page.evaluate("openToolPanel('dice')")
         assert page.locator('#panel-dice.active').count()==1,width
-        assert page.locator('#diceProfileSelect').count()==1,width
+        assert page.locator('#diceProfileSelect').count()==0,width
+        assert page.locator('#panel-dice .die-btn').count()==7,width
         print('PASS',width,'profile-free picker, multitouch, winner, reset, dice retained', 'runtime_errors',len(errors))
         page.close()
     browser.close()
