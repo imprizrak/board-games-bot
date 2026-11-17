@@ -5824,10 +5824,6 @@ if (!window.Telegram?.WebApp) {
 <div class="view" id="view-library">
   <header>Бібліотека настільних ігор</header>
 
-  <div class="lib-subtabs">
-    <button class="lib-subtab-btn active" data-lib="games">Бібліотека</button>
-  </div>
-
   <div class="lib-mode active" id="libmode-games">
     <div class="lib-search-row">
       <input type="text" class="lib-search-input" id="librarySearch" placeholder="Пошук за назвою або тегами...">
@@ -10161,9 +10157,11 @@ function showMainView(viewId) {
 function openToolsHub() { showMainView('view-tools'); }
 
 function openLibraryMode(mode = 'games') {
+  // The library has one content view; legacy links all open it directly.
+  document.querySelectorAll('#view-library .lib-mode').forEach(el =>
+    el.classList.toggle('active', el.id === 'libmode-games')
+  );
   showMainView('view-library');
-  // v5.3.29: Only the public library is visible; old links return safely.
-  document.querySelector('.lib-subtab-btn[data-lib="games"]')?.click();
 }
 
 function friendlyActivityTime(value) {

@@ -4,7 +4,8 @@ from playwright.sync_api import sync_playwright
 
 folder=Path(__file__).parent
 html=(folder/'index.html').read_text('utf-8')
-assert html.count('class="lib-subtab-btn active" data-lib="games"')==1
+assert html.count('class="lib-subtab-btn active" data-lib="games"')==0
+assert '<div class="lib-subtabs">' not in html
 for mode in ('wishlist','history','stats'):
     assert f'class="lib-subtab-btn" data-lib="{mode}"' not in html
 assert 'class="library-discovery" aria-label="Ігровий компас"' not in html
@@ -26,8 +27,8 @@ with sync_playwright() as pw:
         page.on('pageerror',lambda ex:errors.append(str(ex)))
         page.set_content(html,wait_until='domcontentloaded')
         page.locator('.nav-btn[data-view="view-library"]').click()
-        assert page.locator('.lib-subtab-btn').count()==1
-        assert page.locator('.lib-subtab-btn[data-lib="games"]').is_visible()
+        assert page.locator('#view-library .lib-subtabs').count()==0
+        assert page.locator('#view-library .lib-subtab-btn').count()==0
         assert page.locator('.library-discovery').count()==0
         assert page.locator('#gameModerationRow').count()==0
         assert page.locator('#librarySearch').is_visible()
