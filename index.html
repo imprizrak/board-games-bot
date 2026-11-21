@@ -11556,8 +11556,10 @@ function renderEvents(events) {
     ).join('') || `<div class="ev-no-participants">${historyMode ? 'Учасників не було' : 'Поки ніхто не записався'}</div>`;
 
     const isPaid=(Number(ev.price_kop)||0)>0;
-    const receiptMode=isPaid&&ev.payment_method==='receipt';
-    let voteLabel = isPaid ? (receiptMode?'🧾 Я йду — квитанція':'💳 Я йду — оплатити') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись');
+    const receiptMode=isPaid&&(ev.payment_method==='receipt'||
+      (ev.payment_method!=='monobank'&&Boolean(ev.payment_link)));
+    const acquiringMode=isPaid&&ev.payment_method==='monobank';
+    let voteLabel = isPaid ? (acquiringMode?'💳 Я йду — оплатити':'🧾 Я йду — квитанція') : (cap && going.length >= cap ? 'Стати в чергу' : 'Записатись');
     let voteClass = '';
     let voteNote = '';
 
@@ -11644,7 +11646,7 @@ function renderEvents(events) {
       ${!historyMode ? `
         <div class="ev-buttons">
           <button class="ev-rsvp-btn ${voteClass}" data-id="${ev.id}" ${mine ? 'disabled' : ''}>${voteLabel}</button>
-          ${isPaid && !mine && !receiptMode ? `<button class="ev-payment-check" type="button">↻ Перевірити оплату</button>` : ''}
+          ${acquiringMode && !mine ? `<button class="ev-payment-check" type="button">↻ Перевірити оплату</button>` : ''}
           ${isAdmin ? `<button class="ev-add-participant-btn" data-id="${ev.id}">+ Учасник</button>` : ''}
         </div>
         ${voteNote ? `<div class="ev-my-vote">${voteNote}</div>` : ''}
@@ -12337,7 +12339,22 @@ async function startMonobankEventPayment(eventId){
       tg.showAlert('Створюємо рахунок, спробуй ще раз за декілька секунд.');return;
     }
     if(!res.ok||!data.page_url){
-      const errorMap={monobank_not_configured:'Оплату ще не підключено. Попроси організатора налаштувати monobank.',event_full:'Усі платні місця вже зайняті або зарезервовані під оплату. Спробуй пізніше.',monobank_invoice_unavailable:'Банк тимчасово не створив рахунок. Спробуй пізніше.',payment_service_unavailable:'Платіжний сервіс зараз недоступний.'};
+      // An outdated Telegram card/deep-link may try acquiring for a receipt
+      // event. Probe the read-only receipt endpoint before showing an error.
+      // This also works with older deployed backends that returned 503 before
+      // checking payment_method. The server remains authoritative.
+      if(data.error==='receipt_payment_required'||data.error==='monobank_not_configured'){
+        try{
+          const probe=await fetch(`/api/events/${Number(eventId)}/receipt`,{
+            headers:telegramAuthHeaders(),cache:'no-store'});
+          if(probe.ok){
+            const known=lastEventsData.find(ev=>String(ev.id)===String(eventId));
+            await openEventReceiptModal(known||{id:Number(eventId),title:''});
+            return;
+          }
+        }catch(_){/* Preserve the server's actual error if the probe fails. */}
+      }
+      const errorMap={receipt_payment_required:'Для цієї події потрібна квитанція. Онови список подій і повтори.',monobank_not_configured:'Автоматичну оплату monobank ще не підключено. Попроси організатора перевірити спосіб оплати події.',event_full:'Усі платні місця вже зайняті або зарезервовані під оплату. Спробуй пізніше.',monobank_invoice_unavailable:'Банк тимчасово не створив рахунок. Спробуй пізніше.',payment_service_unavailable:'Платіжний сервіс зараз недоступний.'};
       tg.showAlert(errorMap[data.error]||data.error||'Не вдалося сформувати оплату.');return;
     }
     try{localStorage.setItem(`styloteka_payment_pending_${eventId}`,'1');}catch(_){}

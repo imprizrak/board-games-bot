@@ -4401,9 +4401,9 @@ def admin_review_event_receipt(receipt_id):
 def start_event_payment(event_id):
     user=_request_telegram_user()
     if not user: return jsonify({'error':'telegram_auth_required'}),401
-    if not MONOBANK_ACQUIRING_TOKEN: return jsonify({'error':'monobank_not_configured'}),503
-    uid,username,display_name=_payment_identity(user)
-    _sync_paid_event_member_profile(uid,username,display_name)
+    # First verify the event's configured payment mode. A receipt/jar event
+    # must NEVER require a merchant acquiring token (and should not create an
+    # invoice), even if an old Telegram WebView calls this endpoint by mistake.
     try:
         event=get_event_snapshot(event_id)
         if not event: return jsonify({'error':'event_not_found'}),404
@@ -4412,7 +4412,13 @@ def start_event_payment(event_id):
         price=int(event.get('price_kop') or 0)
         if price<=0: return jsonify({'error':'free_event'}),409
         if event.get('payment_method') == 'receipt':
-            return jsonify({'error':'receipt_payment_required'}),409
+            return jsonify({'error':'receipt_payment_required', 'payment_method':'receipt'}),409
+        if event.get('payment_method') != 'monobank':
+            return jsonify({'error':'invalid_event_payment_method'}),409
+        if not MONOBANK_ACQUIRING_TOKEN:
+            return jsonify({'error':'monobank_not_configured'}),503
+        uid,username,display_name=_payment_identity(user)
+        _sync_paid_event_member_profile(uid,username,display_name)
         existing=get_event_rsvp_response(event_id,username,uid)
         if existing and existing.get('status') in ('going','waitlist'):
             return jsonify({'status':'already_registered','rsvp_status':existing.get('status')}),200
