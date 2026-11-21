@@ -5865,7 +5865,45 @@ if (!window.Telegram?.WebApp) {
 
 <!-- ==================== ВКЛАДКА: ІГРОВІ ДОДАТКИ ==================== -->
 <div class="view" id="view-tools">
-  <header>Ігрові інструменти</header>
+  <header>Інструменти</header>
+  <div class="ios-widgets-heading" id="iosWidgetsHeading">
+    <span class="ios-widgets-kicker">ТВІЙ ІГРОВИЙ НАБІР</span>
+    <p>Улюблені інструменти — під рукою</p>
+  </div>
+
+  <section id="toolWidgetHub" class="ios-widgets-hub" aria-label="Віджети ігрових інструментів">
+    <div class="ios-widget-grid">
+      <button type="button" class="ios-widget ios-widget-dice ios-widget-wide" onclick="openToolPanel('dice')" aria-label="Відкрити кубики">
+        <span class="ios-widget-top"><span class="ios-widget-icon dice-icon" aria-hidden="true">⚄</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
+        <span class="ios-widget-dice-visual" aria-hidden="true"><span class="ios-widget-d20">20</span><span class="ios-widget-dice-mini">6</span></span>
+        <span class="ios-widget-bottom"><strong>Кубики</strong><small id="widgetDiceSummary">Віртуальні d4–d100</small></span>
+      </button>
+      <button type="button" class="ios-widget ios-widget-picker" onclick="openToolPanel('picker')" aria-label="Відкрити випадковий вибір гравця">
+        <span class="ios-widget-top"><span class="ios-widget-icon picker-icon" aria-hidden="true">✋</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
+        <span class="ios-widget-picker-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="ios-widget-bottom"><strong>Вибір гравця</strong><small>Доторкніться разом</small></span>
+      </button>
+      <button type="button" class="ios-widget ios-widget-counters" onclick="openToolPanel('counters','simple')" aria-label="Відкрити лічильники очок">
+        <span class="ios-widget-top"><span class="ios-widget-icon counter-icon" aria-hidden="true">▤</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
+        <span class="ios-widget-counter-visual" aria-hidden="true"><span>−</span><strong>00</strong><span>+</span></span>
+        <span class="ios-widget-bottom"><strong>Лічильники</strong><small id="widgetCountersSummary">Рахуй очки швидко</small></span>
+      </button>
+      <button type="button" class="ios-widget ios-widget-flip7 ios-widget-wide" onclick="openToolPanel('counters','flip7')" aria-label="Відкрити лічильник Flip Seven">
+        <span class="ios-widget-top"><span class="ios-widget-icon flip-icon" aria-hidden="true">7</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
+        <span class="ios-widget-flip-visual" aria-hidden="true"><span>F</span><span>L</span><span>I</span><span>P</span><b>7</b></span>
+        <span class="ios-widget-bottom"><strong>Flip Seven</strong><small id="widgetFlipSummary">Підрахунок балів за раундами</small></span>
+      </button>
+    </div>
+    <p class="ios-widgets-hint">Натисни на віджет, щоб відкрити інструмент</p>
+  </section>
+
+  <div id="toolWidgetDetailBar" class="ios-widget-detail-bar" hidden>
+    <button type="button" class="ios-widget-back" onclick="showToolWidgetHome()" aria-label="Повернутися до віджетів">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 18-6-6 6-6"/></svg>
+      <span>Віджети</span>
+    </button>
+    <strong id="toolWidgetDetailTitle">Інструмент</strong>
+  </div>
 
   <div class="tools-tabs">
     <button class="tool-tab-btn active" data-tool="dice">
@@ -5883,7 +5921,7 @@ if (!window.Telegram?.WebApp) {
   </div>
 
   <!-- Кубики -->
-  <div class="tool-panel active" id="panel-dice">
+  <div class="tool-panel" id="panel-dice">
     <div class="dice-buttons">
       <button class="die-btn active" data-sides="4">d4</button>
       <button class="die-btn" data-sides="6">d6</button>
@@ -5902,7 +5940,7 @@ if (!window.Telegram?.WebApp) {
 
   <!-- Вибір гравця -->
   <div class="tool-panel" id="panel-picker">
-    <button class="picker-exit" type="button" onclick="exitPickerFullscreen()" aria-label="Вийти з повноекранного вибору">
+    <button class="picker-exit" type="button" onclick="exitPickerFullscreen(); showToolWidgetHome()" aria-label="Повернутися до віджетів">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <div class="picker-intro" role="heading" aria-level="2"><strong>Вибір гравця</strong><span>Нехай кожен одночасно покладе палець на поле. Зачекайте на випадковий вибір.</span></div>
@@ -7696,18 +7734,7 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
 });
 
 document.querySelectorAll(".tool-tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tool-tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".tool-panel").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("panel-" + btn.dataset.tool).classList.add("active");
-
-    if (btn.dataset.tool === "picker") {
-      enterPickerFullscreen();
-    } else if (document.body.classList.contains("picker-fullscreen")) {
-      exitPickerFullscreen(false);
-    }
-  });
+  btn.addEventListener("click", () => openToolPanel(btn.dataset.tool));
 });
 
 /* ==================== АВТОМАТИЧНЕ ПРИБИРАННЯ ФОНУ ОБКЛАДИНОК ==================== */
@@ -9239,6 +9266,8 @@ function rollDice() {
       diceHistory.unshift(`d${selectedSides}: ${finalResult}`);
       if (diceHistory.length > 8) diceHistory.pop();
       document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
+      const preview = document.getElementById('widgetDiceSummary');
+      if (preview) preview.textContent = `Останній: d${selectedSides} → ${finalResult}`;
 
       if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
       isRolling = false;
@@ -9575,6 +9604,8 @@ function restoreCounterSession() {
 restoreCounterSession();
 
 function renderCounters() {
+  const preview = document.getElementById('widgetCountersSummary');
+  if (preview) preview.textContent = `${counterPlayers.length} гравців · рахунок під рукою`;
   const list = document.getElementById("countersList");
   list.innerHTML = "";
   counterPlayers.forEach(p => {
@@ -9754,6 +9785,8 @@ function renderFlip7() {
   grid.appendChild(addCard);
 
   document.getElementById("flip7RoundTitle").textContent = `Раунд ${flip7Round}`;
+  const widgetPreview = document.getElementById('widgetFlipSummary');
+  if (widgetPreview) widgetPreview.textContent = `Раунд ${flip7Round} · ${flip7Players.length} гравців`;
 
   // ---- Панель активного гравця ----
   const panel = document.getElementById("flip7Panel");
@@ -10226,12 +10259,38 @@ function showMainView(viewId) {
     if (isActive) b.setAttribute('aria-current', 'page');
     else b.removeAttribute('aria-current');
   });
+  if (viewId === 'view-tools') showToolWidgetHome();
   if (viewId === 'view-library') loadGames();
   if (viewId === 'view-events') loadEvents();
   window.scrollTo({top:0, behavior:'auto'});
 }
 
 function openToolsHub() { showMainView('view-tools'); }
+
+function showToolWidgetHome() {
+  if (document.body.classList.contains('picker-fullscreen')) exitPickerFullscreen(false);
+  const hub = document.getElementById('toolWidgetHub');
+  const bar = document.getElementById('toolWidgetDetailBar');
+  const heading = document.getElementById('iosWidgetsHeading');
+  if (hub) hub.hidden = false;
+  if (heading) heading.hidden = false;
+  if (bar) bar.hidden = true;
+  document.querySelectorAll('#view-tools .tool-panel').forEach(panel => panel.classList.remove('active'));
+  window.scrollTo({top:0,behavior:'auto'});
+}
+
+function showToolWidgetDetail(tool, mode) {
+  const hub = document.getElementById('toolWidgetHub');
+  const bar = document.getElementById('toolWidgetDetailBar');
+  const heading = document.getElementById('iosWidgetsHeading');
+  if (hub) hub.hidden = true;
+  if (heading) heading.hidden = true;
+  if (bar) bar.hidden = false;
+  const title = document.getElementById('toolWidgetDetailTitle');
+  const labels = {dice:'Кубики',picker:'Вибір гравця',counters:mode==='flip7'?'Flip Seven':'Лічильники'};
+  if (title) title.textContent = labels[tool] || 'Інструмент';
+}
+
 
 function openLibraryMode(mode = 'games') {
   // The library has one content view; legacy links all open it directly.
@@ -10799,6 +10858,7 @@ function openToolPanel(tool, mode = null) {
   showMainView('view-tools');
   document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
   document.querySelectorAll('.tool-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tool));
+  showToolWidgetDetail(tool, mode);
   if (tool === 'counters' && mode) {
     document.querySelectorAll('.counters-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
     document.querySelectorAll('.counters-mode').forEach(m => m.classList.toggle('active', m.id === 'mode-' + mode));
@@ -14418,5 +14478,83 @@ body.picker-fullscreen #panel-picker .picker-reset {
   body.picker-fullscreen #panel-picker .picker-intro span {display:none;}
 }
 </style>
+
+<style id="styloteka-ios-widgets-v5336">
+/* Styloteka v5.3.36 — iPhone inspired home screen widgets for tools. */
+#view-tools .tools-tabs { display:none !important; }
+#view-tools .tool-panel { display:none; }
+#view-tools .tool-panel.active { display:block; }
+#toolWidgetHub[hidden], #toolWidgetDetailBar[hidden], #iosWidgetsHeading[hidden] {display:none !important;}
+#view-tools > header {margin-bottom:3px !important;}
+.ios-widgets-heading {padding:0 18px 8px;text-align:center;}
+.ios-widgets-heading p {margin:4px 0 0;color:#adbcd3;font-size:12px;line-height:1.5;}
+.ios-widgets-kicker {font-weight:900;font-size:9px;letter-spacing:.22em;color:#8ecfeb;}
+.ios-widgets-hub {width:100%;max-width:740px;margin:0 auto;padding:10px 14px calc(100px + env(safe-area-inset-bottom,0px));}
+.ios-widget-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:row;gap:13px;}
+.ios-widget {appearance:none;-webkit-appearance:none;display:flex;min-width:0;position:relative;isolation:isolate;flex-direction:column;align-items:stretch;justify-content:space-between;gap:10px;
+  overflow:hidden;text-align:left;min-height:178px;padding:17px;border-radius:28px;
+  color:#f5fbff;background:linear-gradient(137deg,rgba(68,101,154,.48),rgba(27,39,79,.82) 52%,rgba(32,18,66,.83));
+  border:1px solid rgba(184,219,255,.38);box-shadow:inset 0 1px 1px rgba(255,255,255,.27),inset 0 -16px 36px rgba(9,11,32,.19),0 13px 30px rgba(3,8,30,.29);
+  -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);cursor:pointer;transition:transform .16s ease,border-color .16s ease;}
+.ios-widget::before {content:'';position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse at 0% 0%,rgba(108,223,255,.25),transparent 58%),linear-gradient(116deg,rgba(255,255,255,.14),transparent 40%);}
+.ios-widget::after {content:'';position:absolute;inset:auto 0 0;height:2px;opacity:.88;background:linear-gradient(90deg,rgba(102,231,255,.7),rgba(178,104,255,.74));pointer-events:none;}
+.ios-widget:active {transform:scale(.977);}
+.ios-widget:focus-visible {outline:2px solid #95ebff;outline-offset:3px;}
+.ios-widget-wide {grid-column:span 2;min-height:171px;}
+.ios-widget-top {display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;}
+.ios-widget-icon {display:grid;place-items:center;border-radius:14px;width:40px;height:40px;font-size:24px;font-weight:900;
+  background:linear-gradient(140deg,rgba(117,221,255,.33),rgba(161,114,249,.19));border:1px solid rgba(197,236,255,.26);box-shadow:0 4px 15px rgba(0,0,0,.14);}
+.ios-widget-arrow {font-size:21px;opacity:.8;line-height:1;}
+.ios-widget-bottom {display:flex;flex-direction:column;gap:3px;position:relative;z-index:1;min-width:0;}
+.ios-widget-bottom strong {display:block;font-size:clamp(16px,4.4vw,20px);font-weight:850;line-height:1.15;letter-spacing:-.02em;overflow-wrap:anywhere;}
+.ios-widget-bottom small {display:block;color:#c8d8ea;font-size:11px;line-height:1.4;overflow-wrap:anywhere;}
+.ios-widget-dice {background:linear-gradient(125deg,rgba(28,92,145,.71),rgba(19,42,77,.87) 52%,rgba(36,27,79,.88));}
+.ios-widget-dice-visual {position:absolute;right:39px;top:19px;width:120px;height:114px;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.ios-widget-d20 {width:78px;height:85px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 28%,100% 75%,50% 100%,0 75%,0 28%);
+  background:linear-gradient(145deg,#b4faff 0%,#4f9efb 38%,#6152bd 75%,#b67eff);color:#fff;font-size:31px;font-weight:900;filter:drop-shadow(0 8px 12px rgba(29,118,221,.4));text-shadow:0 2px 4px #1b3b7b;transform:rotate(12deg);}
+.ios-widget-dice-mini {position:absolute;right:0;bottom:5px;display:grid;place-items:center;width:44px;height:44px;border-radius:13px;transform:rotate(-19deg);
+  background:linear-gradient(145deg,#f4d3ff,#8e6de3 62%,#5945a7);border:1px solid rgba(255,255,255,.37);font-size:23px;font-weight:900;box-shadow:0 0 24px rgba(152,114,236,.45);}
+.ios-widget-picker {background:linear-gradient(145deg,rgba(83,64,150,.68),rgba(33,27,71,.91));}
+.ios-widget-picker-dots {position:relative;display:flex;justify-content:center;align-items:center;gap:7px;height:37px;pointer-events:none;}
+.ios-widget-picker-dots i {display:block;width:18px;height:18px;border-radius:50%;background:#8cf0ff;box-shadow:0 0 15px rgba(111,239,255,.58);}
+.ios-widget-picker-dots i:nth-child(2) {width:24px;height:24px;background:#b79aff;box-shadow:0 0 19px rgba(188,140,255,.68);transform:translateY(-5px);}
+.ios-widget-picker-dots i:nth-child(3) {background:#f2a2df;box-shadow:0 0 17px rgba(237,148,225,.52);}
+.ios-widget-counters {background:linear-gradient(145deg,rgba(35,96,121,.66),rgba(25,34,66,.88));}
+.ios-widget-counter-visual {display:flex;align-items:center;justify-content:center;gap:11px;min-height:37px;pointer-events:none;}
+.ios-widget-counter-visual span {font-size:23px;opacity:.78;}
+.ios-widget-counter-visual strong {font-size:33px;font-variant-numeric:tabular-nums;letter-spacing:-.07em;color:#aaf0ff;text-shadow:0 0 15px rgba(121,232,254,.55);}
+.ios-widget-flip7 {background:linear-gradient(125deg,rgba(47,49,101,.84),rgba(52,31,93,.93));}
+.ios-widget-flip-visual {position:absolute;right:21px;top:45px;display:flex;align-items:center;gap:5px;pointer-events:none;transform:rotate(-7deg);}
+.ios-widget-flip-visual span, .ios-widget-flip-visual b {display:grid;place-items:center;width:33px;height:47px;border-radius:7px;background:linear-gradient(145deg,#e7e4fa,#879bd8 60%,#5c55a6);border:1px solid rgba(255,255,255,.4);font-size:21px;color:#263768;box-shadow:0 6px 13px rgba(10,10,30,.26);}
+.ios-widget-flip-visual b {height:55px;width:41px;font-size:31px;background:linear-gradient(145deg,#fbdba8,#e88a75,#ba539a);color:#fff;}
+.ios-widgets-hint {color:#92a8c2;font-size:11px;text-align:center;margin:16px 8px 0;line-height:1.5;}
+.ios-widget-detail-bar {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 16px 18px;max-width:740px;margin:0 auto;}
+.ios-widget-back {display:inline-flex;align-items:center;gap:4px;min-height:42px;padding:8px 12px 8px 7px;border:1px solid rgba(161,220,254,.27);border-radius:14px;
+  background:linear-gradient(120deg,rgba(67,108,163,.35),rgba(89,54,137,.27));color:#d3eafe;font-size:13px;font-weight:760;}
+.ios-widget-back svg {width:20px;height:20px;}
+#toolWidgetDetailTitle {font-size:13px;color:#edf4ff;font-weight:850;text-align:right;}
+#view-tools .tool-panel.active {max-width:740px;margin:0 auto;}
+@media (max-width:355px) {
+  .ios-widgets-hub {padding:8px 11px 100px;}
+  .ios-widget-grid {gap:10px;}
+  .ios-widget {min-height:163px;padding:13px;border-radius:23px;}
+  .ios-widget-wide {min-height:155px;}
+  .ios-widget-icon {width:36px;height:36px;font-size:21px;}
+  .ios-widget-bottom strong {font-size:15px;}
+  .ios-widget-bottom small {font-size:10px;}
+  .ios-widget-dice-visual {right:18px;transform:scale(.84);transform-origin:right center;}
+  .ios-widget-flip-visual {right:13px;transform:scale(.83) rotate(-7deg);transform-origin:right center;}
+}
+@media (min-width:600px) {
+  .ios-widget-grid {gap:16px;}
+  .ios-widget-wide {min-height:195px;}
+  .ios-widget {min-height:196px;padding:21px;}
+  .ios-widget-dice-visual {right:65px;top:26px;transform:scale(1.13);}
+  .ios-widget-flip-visual {right:53px;top:58px;transform:scale(1.13) rotate(-7deg);}
+}
+@media (prefers-reduced-motion:reduce) {.ios-widget {transition:none;}}
+</style>
+
 </body>
 </html>
