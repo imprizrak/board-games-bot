@@ -6017,8 +6017,12 @@ if (!window.Telegram?.WebApp) {
     <button type="button" class="events-subtab-btn active" data-events-mode="upcoming">Майбутні</button>
     <button type="button" class="events-subtab-btn" data-events-mode="history">Історія</button>
   </div>
+  <div class="event-submission-nav" aria-label="Заявки на події">
+    <button type="button" class="event-submission-nav-btn" onclick="openEventSubmissions('mine')">📋 Мої заявки</button>
+    <button type="button" class="event-submission-nav-btn group-admin-only" id="eventPendingReviewButton" onclick="openEventSubmissions('pending')" style="display:none;">🛡️ На розгляді <span id="eventPendingBadge"></span></button>
+  </div>
   <div class="events-list" id="eventsList"></div>
-  <button class="fab" id="eventsFab" onclick="openEventModal()" style="display:none;">
+  <button class="fab" id="eventsFab" onclick="openEventModal()" title="Створити або запропонувати подію" aria-label="Створити або запропонувати подію" style="display:none;">
     <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
   </button>
 </div>
@@ -7570,6 +7574,7 @@ button,.btn{font-family:inherit}
   <div class="sheet">
     <button class="close-btn" aria-label="Закрити" onclick="closeModal('eventModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h2 id="eventModalHeading">Нова подія</h2>
+    <div class="event-proposal-notice" id="eventProposalNotice" hidden>📨 Твоя подія спочатку потрапить на розгляд адміністрації. До схвалення її не побачать інші учасники.</div>
     <div class="event-repeat-hint" id="eventRepeatHint" style="display:none;">
       🔁 Створюється <b>нова</b> подія. Обов’язково обери її дату, перевір час, адресу та оплату.
       Учасники, квитанції та записи з Quests не переноситимуться.
@@ -7653,6 +7658,16 @@ button,.btn{font-family:inherit}
 </div>
 
 
+<!-- Заявки на події: власні та на модерації -->
+<div class="modal" id="eventSubmissionsModal" onclick="if(event.target===this)closeModal('eventSubmissionsModal')">
+  <div class="sheet event-submissions-sheet" role="dialog" aria-modal="true" aria-labelledby="eventSubmissionsHeading">
+    <button type="button" class="close-btn" aria-label="Закрити" onclick="closeModal('eventSubmissionsModal')">×</button>
+    <h2 id="eventSubmissionsHeading">Мої заявки</h2>
+    <p class="event-submissions-intro" id="eventSubmissionsIntro"></p>
+    <div id="eventSubmissionsContent" aria-live="polite"></div>
+  </div>
+</div>
+
 <!-- Публічний профіль учасника -->
 <div class="modal" id="memberProfileModal">
   <div class="sheet">
@@ -7724,8 +7739,10 @@ function applyAdminPermissionsUi() {
     el.style.display = isAdmin ? "" : "none";
   });
   const eventsFab = document.getElementById("eventsFab");
-  if (eventsFab) eventsFab.style.display = isAdmin ? "flex" : "none";
+  if (eventsFab) eventsFab.style.display = (isAdmin || !!telegramInitData) ? "flex" : "none";
+  if (eventsFab) eventsFab.title = isAdmin ? 'Створити подію' : 'Запропонувати подію';
   if (isAdmin) loadGameModerationCount();
+  if (isAdmin) loadEventPendingCount();
 }
 
 /* ==================== НАВІГАЦІЯ ВКЛАДКАМИ ==================== */
@@ -11443,7 +11460,7 @@ function renderEvents(events) {
       list.innerHTML = '<div class="events-empty">Історія подій поки порожня.</div>';
     } else {
       list.innerHTML = '<div class="events-empty">На цей час пакет пустий.<br>' +
-        (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') +
+        (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Натисни "+", щоб запропонувати свою подію!') +
         '</div>';
     }
     return;
@@ -11638,6 +11655,29 @@ let editingEventId = null;
 let editingEventCoverUrl = '';
 let editingEventRemoveCover = false;
 let repeatSourceEventId = null;
+let editingEventSubmissionId = null;
+let eventSubmissionsData = [];
+let eventSubmissionsScope = 'mine';
+
+function setEventProposalUi() {
+  const proposalMode = !isAdmin && !editingEventId && !editingEventSubmissionId;
+  const modal = document.getElementById('eventModal');
+  modal?.classList.toggle('proposal-mode', proposalMode);
+  const notice = document.getElementById('eventProposalNotice');
+  if (notice) notice.hidden = !proposalMode;
+  const method = document.getElementById('eventPaymentMethod');
+  const automatic = method?.querySelector('option[value="monobank"]');
+  if (automatic) automatic.disabled = proposalMode;
+  if (proposalMode && method && method.value === 'monobank') {
+    method.value = 'receipt'; setEventPaymentMethod('receipt');
+  }
+  const heading = document.getElementById('eventModalHeading');
+  const submit = document.getElementById('eventSubmitBtn');
+  if (proposalMode) {
+    if (heading) heading.textContent = 'Запропонувати подію';
+    if (submit) submit.textContent = '📨 Надіслати на підтвердження';
+  }
+}
 
 function setEventModalMode(editing) {
   const heading = document.getElementById('eventModalHeading');
@@ -11779,6 +11819,7 @@ function populateEventFormFromEvent(ev) {
 
 function openEditEventModal(ev) {
   if (!isAdmin || !ev?.id || ev.status === 'completed') return;
+  editingEventSubmissionId = null;
   repeatSourceEventId = null;
   document.getElementById('eventRepeatHint').style.display = 'none';
   editingEventId = Number(ev.id);
@@ -11796,6 +11837,7 @@ function openRepeatEventModal(ev) {
   // Reuse only the old event's editable fields, never its registration state.
   editingEventId = null;
   repeatSourceEventId = sourceId;
+  editingEventSubmissionId = null;
   setEventModalMode(false);
   populateEventFormFromEvent(ev);
   document.getElementById('eventModalHeading').textContent = '🔁 Повторити подію';
@@ -11813,12 +11855,15 @@ function openRepeatEventModal(ev) {
 }
 
 function openEventModal() {
+  if (!isAdmin && !telegramInitData) { tg.showAlert('Відкрий мінібот через Telegram для подання заявки.'); return; }
+  editingEventSubmissionId = null;
   repeatSourceEventId = null;
   document.getElementById('eventRepeatHint').style.display = 'none';
   editingEventId = null;
   editingEventCoverUrl = '';
   editingEventRemoveCover = false;
   setEventModalMode(false);
+  setEventProposalUi();
 
   document.getElementById('eventTitle').value = '';
   resetEventDatePickerField();
@@ -11849,6 +11894,8 @@ function openEventModal() {
 
 async function submitEvent() {
   const isEditing = !!editingEventId;
+  const isReviewEdit = !!editingEventSubmissionId;
+  const isProposal = !isAdmin && !isEditing && !isReviewEdit;
   const title = document.getElementById('eventTitle').value.trim();
   const date = document.getElementById('eventDate').value.trim();
   if (!title || !date) {
@@ -11926,8 +11973,10 @@ async function submitEvent() {
   const coverFile = document.getElementById('eventCover')?.files?.[0];
   if (coverFile) formData.append('cover', coverFile);
 
-  const url = isEditing ? `/api/events/${editingEventId}` : '/api/events';
-  const method = isEditing ? 'PATCH' : 'POST';
+  const url = isReviewEdit ? `/api/event-submissions/${editingEventSubmissionId}`
+    : isProposal ? '/api/event-submissions'
+    : isEditing ? `/api/events/${editingEventId}` : '/api/events';
+  const method = (isReviewEdit || isEditing) ? 'PATCH' : 'POST';
   const submitBtn = document.getElementById('eventSubmitBtn');
   if (submitBtn) submitBtn.disabled = true;
 
@@ -11941,9 +11990,9 @@ async function submitEvent() {
     const data = await res.json().catch(() => ({}));
 
     if (res.status === 403) {
-      tg.showAlert(isEditing
-        ? 'Редагувати події можуть лише адміністратори Telegram-групи.'
-        : 'Створювати події можуть лише адміністратори Telegram-групи.');
+      tg.showAlert(isProposal
+        ? 'Пропонувати події можуть лише учасники підключеної Telegram-групи.'
+        : 'Ця дія доступна лише адміністраторам Telegram-групи.');
       return;
     }
     if (res.status === 409 && data.error === 'completed_event_cannot_be_edited') {
@@ -11952,21 +12001,132 @@ async function submitEvent() {
       return;
     }
     if (!res.ok) {
-      const errors={attendance_reward_locked_after_checkin:'Не можна змінювати винагороду після першої відмітки відвідування.',invalid_attendance_reward_stils:'Вкажи ціле число стілсів від 0 до 500.',event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
+      const errors={telegram_auth_required:'Відкрий застосунок у Telegram.',group_membership_required:'Приєднайся до групи клубу, щоб пропонувати події.',too_many_pending_proposals:'У тебе вже є три заявки на розгляді. Дочекайся рішення адміністрації.',invalid_event_title:'Введи назву події від 3 до 120 символів.',invalid_event_date:'Обери коректну майбутню дату.',invalid_event_time:'Вкажи час у форматі 19:00.',receipt_only_for_members:'Обери ручне підтвердження оплати квитанцією.',invalid_cover_type:'Обкладинка має бути JPEG, PNG або WebP.',cover_too_large:'Обкладинка завелика (максимум 5 МБ).',attendance_reward_locked_after_checkin:'Не можна змінювати винагороду після першої відмітки відвідування.',invalid_attendance_reward_stils:'Вкажи ціле число стілсів від 0 до 500.',event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
       tg.showAlert(errors[data.error] || data.error || (isEditing ? 'Не вдалося зберегти зміни.' : 'Не вдалося створити подію.'));
       return;
     }
 
     closeModal('eventModal');
+    if (isProposal) tg.showAlert('📨 Заявку надіслано адміністрації! Подія з’явиться лише після схвалення.');
+    if (isReviewEdit) tg.showAlert('✅ Зміни заявки збережено. Тепер можна її схвалити.');
     editingEventId = null;
+    editingEventSubmissionId = null;
     repeatSourceEventId = null;
     editingEventCoverUrl = '';
     editingEventRemoveCover = false;
     document.getElementById('eventRepeatHint').style.display = 'none';
-    loadEvents(isEditing ? eventsMode : 'upcoming');
+    if (isProposal) openEventSubmissions('mine');
+    else if (isReviewEdit) openEventSubmissions('pending');
+    else loadEvents(isEditing ? eventsMode : 'upcoming');
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
+}
+
+
+// Private approval inbox. Do not merge pending entries into public events.
+async function loadEventPendingCount() {
+  if (!isAdmin) return;
+  try {
+    const response = await fetch('/api/event-submissions?scope=pending', {
+      headers:telegramAuthHeaders(),cache:'no-store'});
+    if (!response.ok) return;
+    const records = await response.json();
+    const badge = document.getElementById('eventPendingBadge');
+    if (badge) badge.textContent = Array.isArray(records) && records.length ? `(${records.length})` : '';
+  } catch (_) {}
+}
+
+async function openEventSubmissions(scope = 'mine') {
+  if (!telegramInitData) {tg.showAlert('Відкрий мінібот через Telegram.');return;}
+  if (scope==='pending' && !isAdmin) return;
+  eventSubmissionsScope = scope;
+  const modal = document.getElementById('eventSubmissionsModal');
+  const title = document.getElementById('eventSubmissionsHeading');
+  const intro = document.getElementById('eventSubmissionsIntro');
+  const content = document.getElementById('eventSubmissionsContent');
+  if (!modal || !content) return;
+  if (title) title.textContent = scope==='pending' ? '🛡️ Заявки на розгляді' : '📋 Мої заявки';
+  if (intro) intro.textContent = scope==='pending'
+    ? 'Події не публікуються до схвалення. Перевір адресу, вартість і реквізити перед публікацією.'
+    : 'Тут видно стан запропонованих тобою подій.';
+  content.innerHTML = '<div class="event-submission-empty">Завантаження…</div>';
+  modal.classList.add('open');
+  try {
+    const response = await fetch(`/api/event-submissions?scope=${scope}`,{
+      headers:telegramAuthHeaders(), cache:'no-store'});
+    if(!response.ok) throw new Error('Не вдалося завантажити заявки.');
+    const data = await response.json();
+    eventSubmissionsData = Array.isArray(data) ? data : [];
+    const statuses = {pending:'Очікує рішення',approved:'Схвалено',rejected:'Відхилено'};
+    content.innerHTML = eventSubmissionsData.length ? eventSubmissionsData.map(item => {
+      const id = Number(item.id);
+      const cost = Number(item.price_kop || 0);
+      const games = Array.isArray(item.game_names) ? item.game_names.join(', ') : '';
+      return `<article class="event-submission-card">
+        <div class="event-submission-header"><strong>${escapeHtml(item.title||'Подія')}</strong><span class="event-submission-status ${escapeHtml(item.status||'')}">${escapeHtml(statuses[item.status]||item.status||'')}</span></div>
+        <div class="event-submission-meta">🗓 ${escapeHtml(item.event_date||'')} ${escapeHtml(item.event_time||'')} · ${cost>0?`${(cost/100).toFixed(2)} грн`:'Безкоштовно'}</div>
+        ${scope==='pending' ? `<div class="event-submission-private">👤 ${escapeHtml(item.submitted_by_display_name||item.submitted_by_username||'Учасник')}
+          ${item.location_text?`<p>📍 ${escapeHtml(item.location_text)}</p>`:''}
+          ${games?`<p>🎲 ${escapeHtml(games)}</p>`:''}
+          ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
+          ${item.payment_link?`<p>💳 ${escapeHtml(item.payment_link)}</p>`:''}
+          ${item.payment_details?`<p>🧾 ${escapeHtml(item.payment_details)}</p>`:''}
+          ${item.cover_url?`<p>🖼️ <a href="${escapeHtml(item.cover_url)}" target="_blank" rel="noopener noreferrer">Переглянути обкладинку ↗</a></p>`:''}
+        </div><div class="event-submission-actions">
+            <button type="button" data-action="edit" data-id="${id}">Редагувати</button>
+            <button type="button" data-action="approve" data-id="${id}">✓ Схвалити</button>
+            <button type="button" data-action="reject" data-id="${id}">Відхилити</button>
+          </div>`:''}
+        ${scope==='mine' && item.status==='rejected' && item.reject_reason ? `<div class="event-submission-reason">Причина: ${escapeHtml(item.reject_reason)}</div>`:''}
+      </article>`;
+    }).join('') : `<div class="event-submission-empty">${scope==='pending'?'Зараз немає заявок на розгляді.':'Ти ще не пропонував події.'}</div>`;
+    if (scope==='pending') content.querySelectorAll('[data-action]').forEach(button => {
+      button.addEventListener('click',()=>eventSubmissionAction(button.dataset.action,Number(button.dataset.id)));
+    });
+  }catch(e){content.innerHTML=`<div class="event-submission-empty">${escapeHtml(e.message||'Помилка завантаження.')}</div>`;}
+}
+
+function openEditEventSubmission(item) {
+  if (!isAdmin || !item || item.status!=='pending') return;
+  closeModal('eventSubmissionsModal');
+  editingEventId=null;
+  repeatSourceEventId=null;
+  editingEventSubmissionId=Number(item.id);
+  document.getElementById('eventRepeatHint').style.display='none';
+  setEventModalMode(false);
+  setEventProposalUi();
+  populateEventFormFromEvent(item);
+  document.getElementById('eventModalHeading').textContent='🛡️ Редагувати заявку';
+  document.getElementById('eventSubmitBtn').textContent='Зберегти заявку';
+}
+
+async function eventSubmissionAction(action,id) {
+  const item = eventSubmissionsData.find(x=>Number(x.id)===id);
+  if (!isAdmin || !item || item.status!=='pending') return;
+  if (action==='edit') {openEditEventSubmission(item);return;}
+  if (action!=='approve' && action!=='reject') return;
+  if (!confirm(action==='approve'
+    ? `Опублікувати подію «${item.title}»? Перевір вартість, посилання та адресу.`
+    : `Відхилити подію «${item.title}»?`)) return;
+  const note=action==='reject' ? (prompt('Причина відхилення (необов’язково)','')||'') : '';
+  const content=document.getElementById('eventSubmissionsContent');
+  if(content)content.querySelectorAll('[data-action]').forEach(btn=>{btn.disabled=true;});
+  try{
+    const response=await fetch(`/api/event-submissions/${id}/review`,{
+      method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+      body:JSON.stringify({decision:action==='approve'?'approved':'rejected',note})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw Error(data.error==='event_date_in_past'
+      ? 'Дата події вже минула. Відредагуй заявку.'
+      : data.error==='submission_already_reviewed'
+      ? 'Заявку вже опрацьовано.' : 'Не вдалося опрацювати заявку.');
+    await openEventSubmissions('pending');
+    await loadEvents('upcoming');
+    await loadEventPendingCount();
+  }catch(e){tg.showAlert(e.message||'Помилка модерації.');
+    if(content)content.querySelectorAll('[data-action]').forEach(btn=>{btn.disabled=false;});}
 }
 
 // Private details and receipt moderation are opened in the existing safe sheet.
@@ -14554,6 +14714,40 @@ body.picker-fullscreen #panel-picker .picker-reset {
   .ios-widget-flip-visual {right:53px;top:58px;transform:scale(1.13) rotate(-7deg);}
 }
 @media (prefers-reduced-motion:reduce) {.ios-widget {transition:none;}}
+</style>
+
+
+<style id="styloteka-event-proposals-v5337">
+.event-submission-nav {display:flex;gap:9px;flex-wrap:wrap;align-items:center;justify-content:center;margin:10px 14px 15px;}
+.event-submission-nav-btn {display:flex;align-items:center;justify-content:center;min-height:43px;padding:10px 16px;border-radius:15px;border:1px solid rgba(102,213,255,.37);background:linear-gradient(135deg,rgba(56,124,166,.20),rgba(134,67,199,.15));box-shadow:inset 0 1px 0 rgba(255,255,255,.1);color:#e7f7ff;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.event-proposal-notice[hidden] {display:none!important}
+.event-proposal-notice {margin:12px 0;padding:12px 13px;border:1px solid rgba(125,204,255,.37);border-radius:14px;background:rgba(78,134,190,.15);color:#d4f1ff;font-size:13px;line-height:1.45;}
+#eventModal.proposal-mode label[for="eventQuestsUrl"],
+#eventModal.proposal-mode #eventQuestsUrl,
+#eventModal.proposal-mode #eventQuestsCountRow,
+#eventModal.proposal-mode label[for="eventAttendanceReward"],
+#eventModal.proposal-mode #eventAttendanceReward,
+#eventModal.proposal-mode #eventAttendanceReward + .event-form-hint {display:none!important}
+.event-submissions-sheet {max-height:min(88dvh,780px);overflow-y:auto;overscroll-behavior:contain}
+.event-submissions-intro{font-size:13px;line-height:1.4;color:#a4bed5;margin:5px 0 14px}
+#eventSubmissionsContent{display:grid;gap:12px}
+.event-submission-card{padding:14px;border:1px solid rgba(130,204,255,.3);border-radius:18px;background:linear-gradient(130deg,rgba(45,86,139,.24),rgba(88,54,150,.13));overflow-wrap:anywhere}
+.event-submission-header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.event-submission-header strong{font-size:15px;flex:1 1 150px}
+.event-submission-status{padding:5px 8px;border-radius:999px;font-size:11px;background:rgba(140,172,230,.18);color:#cfddff}
+.event-submission-status.approved{color:#b9ffd8;background:rgba(36,140,85,.2)}
+.event-submission-status.rejected{color:#ffd2d2;background:rgba(170,59,69,.17)}
+.event-submission-meta{font-size:12px;color:#a8c6e1;margin-top:9px}
+.event-submission-private{font-size:12px;color:#dcebf5;line-height:1.45;margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(3,15,32,.20)}
+.event-submission-private p{margin:7px 0 0;overflow-wrap:anywhere}
+.event-submission-private a{color:#a9eaff}
+.event-submission-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+.event-submission-actions button{min-height:43px;padding:8px 5px;border:1px solid rgba(137,210,255,.3);border-radius:10px;color:white;font:inherit;font-size:11px;font-weight:800;background:rgba(63,97,144,.3)}
+.event-submission-actions button[data-action="approve"]{background:rgba(36,140,85,.22);border-color:rgba(80,200,145,.4)}
+.event-submission-actions button[data-action="reject"]{background:rgba(156,57,81,.20);border-color:rgba(255,126,155,.33)}
+.event-submission-reason{font-size:12px;margin-top:10px;color:#ffd2d2}
+.event-submission-empty{text-align:center;color:#afc6de;padding:20px 8px;line-height:1.5}
+@media(max-width:360px){.event-submission-nav{margin-inline:10px;gap:6px}.event-submission-nav-btn{padding:10px 11px;font-size:12px}}
 </style>
 
 </body>

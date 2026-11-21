@@ -52,6 +52,7 @@ REST = f"{SUPABASE_URL}/rest/v1/games"
 HISTORY_REST = f"{SUPABASE_URL}/rest/v1/game_history"
 WISHLIST_REST = f"{SUPABASE_URL}/rest/v1/wishlist"
 EVENTS_REST = f"{SUPABASE_URL}/rest/v1/events"
+EVENT_SUBMISSIONS_REST = f"{SUPABASE_URL}/rest/v1/event_submissions"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
 EVENT_GROUP_POSTS_REST = f"{SUPABASE_URL}/rest/v1/event_group_posts"
 EVENT_RECEIPTS_REST = f"{SUPABASE_URL}/rest/v1/event_payment_receipts"
@@ -5560,6 +5561,315 @@ def member_event_games_remove(event_id, game_id):
         return jsonify({"error": "event_games_unavailable"}), 503
 
 
+
+# ==================== ПРОПОЗИЦІЇ ПОДІЙ УЧАСНИКІВ ====================
+# Important: pending submissions are NEVER stored in public.events.
+# The only way to publish is the service-role Postgres RPC that atomically
+# approves a pending submission and creates exactly one scheduled event.
+def _proposal_authorized_member(user):
+    if not user or not user.get('id') or not API_TOKEN:
+        return False
+    uid = int(user['id'])
+    for chat_id in _active_telegram_group_ids():
+        try:
+            reply = requests.post(
+                f'https://api.telegram.org/bot{API_TOKEN}/getChatMember',
+                json={'chat_id': chat_id, 'user_id': uid}, timeout=9)
+            value = (reply.json().get('result') or {}) if reply.ok else {}
+            status = str(value.get('status') or '').lower()
+            if status in ('member', 'administrator', 'creator') or (
+                    status == 'restricted' and value.get('is_member')):
+                return True
+        except (requests.RequestException, ValueError):
+            logging.warning('Cannot confirm proposal membership in %s', chat_id)
+    return False
+
+
+def _proposal_validated_fields(data, *, admin=False):
+    """Allowlist and validate an event proposal, never trusting user metadata."""
+    title = str(data.get('title') or '').strip()
+    if not 3 <= len(title) <= 120:
+        raise ValueError('invalid_event_title')
+    day = str(data.get('event_date') or '').strip()
+    try:
+        d = datetime.strptime(day, '%Y-%m-%d').date()
+        if d.isoformat() != day or d < datetime.now(ZoneInfo('Europe/Kyiv')).date():
+            raise ValueError('event_date_in_past')
+    except (TypeError, ValueError):
+        raise ValueError('invalid_event_date')
+    time = str(data.get('event_time') or '').strip()
+    if time and not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d', time):
+        raise ValueError('invalid_event_time')
+    description = str(data.get('description') or '').strip()
+    if len(description) > 2000:
+        raise ValueError('description_too_long')
+    raw_location = str(data.get('location_text') or '').strip()
+    if len(raw_location) > 500:
+        raise ValueError('location_too_long')
+    location = _normalize_event_location(raw_location)
+    try:
+        cap = int(data.get('max_participants') or 0)
+    except (TypeError, ValueError):
+        raise ValueError('invalid_capacity')
+    if not 0 <= cap <= 99:
+        raise ValueError('invalid_capacity')
+    try:
+        raw_games = data.get('game_names_json')
+        names = json.loads(raw_games) if isinstance(raw_games, str) and raw_games.strip() else data.get('game_names', [])
+    except (ValueError, TypeError):
+        raise ValueError('invalid_game_names')
+    if not isinstance(names, list):
+        raise ValueError('invalid_game_names')
+    names = list(dict.fromkeys(str(n).strip() for n in names if str(n).strip()))
+    if len(names) > 25 or any(len(name) > 120 for name in names):
+        raise ValueError('invalid_game_names')
+    price = _event_price_kop(data)
+    method, details, link = _event_payment_config(data, price)
+    # Participants cannot opt into automatic merchant acquiring; the admin
+    # must arrange it independently after approval.
+    if not admin and method == 'monobank':
+        raise ValueError('receipt_only_for_members')
+    reward = 50
+    if admin:
+        raw = str(data.get('attendance_reward_stils') or '50')
+        if not re.fullmatch(r'\d{1,3}', raw) or int(raw) > 500:
+            raise ValueError('invalid_attendance_reward_stils')
+        reward = int(raw)
+    return {
+        'title': title, 'event_date': day, 'event_time': time,
+        'location_text': location['location_text'],
+        'location_map_url': location['location_map_url'],
+        'location_lat': location['location_lat'], 'location_lng': location['location_lng'],
+        'description': description, 'max_participants': cap,
+        'game_name': names[0] if names else '', 'game_names': names,
+        'price_kop': price, 'payment_method': method,
+        'payment_details': details, 'payment_link': link,
+        'attendance_reward_stils': reward,
+    }
+
+
+def _proposal_cover_file():
+    cover = request.files.get('cover')
+    if not cover or not cover.filename:
+        return None
+    if cover.mimetype not in ('image/jpeg', 'image/png', 'image/webp'):
+        raise ValueError('invalid_cover_type')
+    # Bound uploads before passing them to the existing Storage helper.
+    start = cover.stream.tell()
+    if len(cover.stream.read(5 * 1024 * 1024 + 1)) > 5 * 1024 * 1024:
+        raise ValueError('cover_too_large')
+    cover.stream.seek(start)
+    return cover
+
+
+def _proposal_telegram_send(uid, text):
+    if not API_TOKEN:
+        return False
+    try:
+        result = requests.post(
+            f'https://api.telegram.org/bot{API_TOKEN}/sendMessage',
+            json={'chat_id': int(uid), 'text': text[:3800]}, timeout=9)
+        return result.ok and result.json().get('ok') is True
+    except (ValueError, requests.RequestException):
+        return False
+
+
+def _proposal_notify_admins(item):
+    # Telegram cannot DM an admin who has not started the bot; the in-app
+    # moderation inbox remains the authoritative notification channel.
+    seen = set()
+    for chat_id in _active_telegram_group_ids():
+        try:
+            r = requests.post(f'https://api.telegram.org/bot{API_TOKEN}/getChatAdministrators',
+                              json={'chat_id': int(chat_id)}, timeout=9)
+            if not r.ok:
+                continue
+            for entry in (r.json().get('result') or []):
+                person = entry.get('user') or {}
+                uid = person.get('id')
+                if not uid or person.get('is_bot') or uid in seen:
+                    continue
+                seen.add(uid)
+                _proposal_telegram_send(uid,
+                    '📨 Нова заявка на подію в Styloteka\n'
+                    f"{item['title']} · {item['event_date']} {item.get('event_time') or ''}\n"
+                    'Відкрий мінібот → Події → На розгляді.')
+        except (requests.RequestException, ValueError):
+            logging.warning('Cannot notify moderators for %s', chat_id)
+
+
+def _proposal_retrieve(submission_id):
+    result = requests.get(EVENT_SUBMISSIONS_REST, headers=HEADERS,
+                          params={'select':'*','id':f'eq.{int(submission_id)}','limit':1}, timeout=20)
+    result.raise_for_status()
+    rows = result.json()
+    return rows[0] if rows else None
+
+
+@app.route('/api/event-submissions', methods=['POST'])
+def propose_event():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error':'telegram_auth_required'}), 401
+    if not _proposal_authorized_member(user):
+        return jsonify({'error':'group_membership_required'}), 403
+    admin = _telegram_user_is_group_admin(user['id'])
+    data = request.form.to_dict(flat=True) if request.form else (request.get_json(silent=True) or {})
+    try:
+        fields = _proposal_validated_fields(data, admin=admin)
+        cover = _proposal_cover_file()
+    except ValueError as error:
+        return jsonify({'error':str(error)}),400
+    uid, name, display = _payment_identity(user)
+    existing = requests.get(EVENT_SUBMISSIONS_REST, headers=HEADERS,params={
+        'select':'id','telegram_user_id':f'eq.{uid}','status':'eq.pending', 'limit':4,
+    }, timeout=20)
+    if not existing.ok:
+        return jsonify({'error':'submissions_unavailable'}),503
+    if len(existing.json()) >= 3:
+        return jsonify({'error':'too_many_pending_proposals'}),429
+    try:
+        fields['cover_url'] = upload_file(cover, 'event-covers') if cover else None
+        fields.update({'telegram_user_id':uid, 'submitted_by_username':name,
+                       'submitted_by_display_name':display, 'status':'pending'})
+        result = requests.post(EVENT_SUBMISSIONS_REST, headers={**HEADERS,
+            'Content-Type':'application/json','Prefer':'return=representation'},
+            json=fields,timeout=30)
+        if not result.ok:
+            logging.error('Event proposal failed %s %s',result.status_code,result.text[:400])
+            return jsonify({'error':'submission_save_failed'}),503
+        proposal = (result.json() or [{}])[0]
+        # Do not expose private venue / program details in Telegram notices.
+        Thread(target=_proposal_notify_admins,
+               args=({'title':fields['title'],'event_date':fields['event_date'],
+                      'event_time':fields['event_time']},),daemon=True).start()
+        return jsonify({'status':'pending','submission_id':proposal.get('id')}),201
+    except requests.RequestException:
+        logging.exception('Could not save event proposal')
+        return jsonify({'error':'submissions_unavailable'}),503
+
+
+@app.route('/api/event-submissions', methods=['GET'])
+def list_event_submissions():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error':'telegram_auth_required'}),401
+    admin = _telegram_user_is_group_admin(user.get('id'))
+    scope = (request.args.get('scope') or 'mine').strip().lower()
+    if scope == 'pending' and not admin:
+        return jsonify({'error':'group_admin_required'}),403
+    if scope not in ('pending','mine'):
+        return jsonify({'error':'invalid_scope'}),400
+    params={'select':'*' if admin else 'id,title,event_date,event_time,status,created_at,reject_reason,created_event_id',
+            'order':'created_at.desc','limit':100}
+    if scope == 'mine':
+        params['telegram_user_id'] = f"eq.{int(user['id'])}"
+    else:
+        params['status']='eq.pending'
+    try:
+        r = requests.get(EVENT_SUBMISSIONS_REST,headers=HEADERS,params=params,timeout=20)
+        r.raise_for_status()
+        return jsonify(r.json())
+    except requests.RequestException:
+        logging.exception('Event submission list unavailable')
+        return jsonify({'error':'submissions_unavailable'}),503
+
+
+@app.route('/api/event-submissions/<int:submission_id>', methods=['PATCH'])
+def admin_update_event_submission(submission_id):
+    denied = _admin_required_response()
+    if denied:
+        return denied
+    current = _proposal_retrieve(submission_id)
+    if not current:
+        return jsonify({'error':'submission_not_found'}),404
+    if current['status']!='pending':
+        return jsonify({'error':'submission_already_reviewed'}),409
+    data=request.form.to_dict(flat=True) if request.form else (request.get_json(silent=True) or {})
+    try:
+        fields=_proposal_validated_fields(data,admin=True)
+        cover=_proposal_cover_file()
+    except ValueError as error:
+        return jsonify({'error':str(error)}),400
+    fields['cover_url']=upload_file(cover,'event-covers') if cover else current.get('cover_url')
+    if str(data.get('remove_cover') or '').lower() in ('1','true','yes'):
+        fields['cover_url']=None
+    fields['updated_at']=datetime.now(timezone.utc).isoformat()
+    r=requests.patch(EVENT_SUBMISSIONS_REST,headers={**HEADERS,'Content-Type':'application/json',
+        'Prefer':'return=representation'},params={'id':f'eq.{submission_id}','status':'eq.pending'},
+        json=fields,timeout=30)
+    if not r.ok:
+        return jsonify({'error':'submission_update_failed'}),503
+    rows=r.json()
+    return (jsonify({'status':'updated','submission':rows[0]}),200) if rows else (
+        jsonify({'error':'submission_already_reviewed'}),409)
+
+
+@app.route('/api/event-submissions/<int:submission_id>/review', methods=['POST'])
+def review_event_submission(submission_id):
+    denied=_admin_required_response()
+    if denied:
+        return denied
+    admin=_request_telegram_user()
+    data=request.get_json(silent=True) or {}
+    decision=str(data.get('decision') or '').lower()
+    if decision not in ('approved','rejected'):
+        return jsonify({'error':'invalid_decision'}),400
+    current=_proposal_retrieve(submission_id)
+    if not current:
+        return jsonify({'error':'submission_not_found'}),404
+    if current.get('status')!='pending':
+        return jsonify({'error':'submission_already_reviewed'}),409
+    if decision=='rejected':
+        note=str(data.get('note') or '').strip()[:500]
+        response=requests.patch(EVENT_SUBMISSIONS_REST,
+            headers={**HEADERS,'Content-Type':'application/json','Prefer':'return=representation'},
+            params={'id':f'eq.{submission_id}','status':'eq.pending'},
+            json={'status':'rejected','reject_reason':note,
+                  'reviewed_by':int(admin['id']),
+                  'reviewed_at':datetime.now(timezone.utc).isoformat()},timeout=25)
+        if not response.ok:
+            return jsonify({'error':'review_failed'}),503
+        if not response.json():
+            return jsonify({'error':'submission_already_reviewed'}),409
+        _proposal_telegram_send(current['telegram_user_id'],
+            f"❌ Твою пропозицію «{current['title']}» відхилено."
+            + (f'\nПричина: {note}' if note else ''))
+        return jsonify({'status':'rejected'})
+    if str(current.get('event_date') or '') < datetime.now(ZoneInfo('Europe/Kyiv')).date().isoformat():
+        return jsonify({'error':'event_date_in_past'}),409
+    try:
+        result=requests.post(f'{SUPABASE_URL}/rest/v1/rpc/styloteka_approve_event_submission',
+            headers={**HEADERS,'Content-Type':'application/json'},
+            json={'p_submission_id':int(submission_id), 'p_admin_telegram_user_id':int(admin['id'])},
+            timeout=30)
+        if not result.ok:
+            logging.error('Proposal approval transaction failed %s %s',result.status_code,result.text[:500])
+            return jsonify({'error':'approval_failed'}),503
+        info=result.json()
+        if info.get('status')!='approved':
+            return jsonify({'error':info.get('status','approval_failed')}),409
+        new_id=int(info['event_id'])
+    except (ValueError,KeyError,requests.RequestException):
+        logging.exception('Proposal approval unavailable')
+        return jsonify({'error':'approval_failed'}),503
+    price=int(current.get('price_kop') or 0)
+    lines=[f"📅 Нова подія: {current['title']}",
+           f"{current['event_date']} {current.get('event_time') or ''}".strip(),
+           f'💳 Вартість: {price/100:.2f} грн' if price else '🆓 Безкоштовно',
+           '🔒 Адресу та ігри надішлемо підтвердженим учасникам особисто.']
+    public=_public_event_description(current)
+    if public:
+        lines.append(public)
+    notify_subscribers_async('\n'.join(lines),photo_url=current.get('cover_url'))
+    notify_groups_async(new_id,photo_url=current.get('cover_url'))
+    _proposal_telegram_send(current['telegram_user_id'],
+        f"✅ Твою пропозицію «{current['title']}» схвалено! Подію опубліковано в Styloteka.")
+    log_activity('event_created', f"Опубліковано запропоновану подію: {current['title']}",
+        'Схвалено адміністрацією',actor_name=current.get('submitted_by_display_name') or 'Учасник',
+        image_url=current.get('cover_url'),metadata={'event_id':new_id,'submission_id':submission_id})
+    return jsonify({'status':'approved','event_id':new_id})
+
 @app.route("/api/events", methods=["POST"])
 def add_event():
     denied = _admin_required_response()
@@ -5676,7 +5986,13 @@ def add_event():
         "cover_url": uploaded_cover_url,
         "status": "scheduled",
         "completed_at": None,
+        "attendance_reward_stils": 50,
     }
+    if 'attendance_reward_stils' in data:
+        raw_reward = str(data['attendance_reward_stils']).strip()
+        if not re.fullmatch(r'\d{1,3}', raw_reward) or int(raw_reward)>500:
+            return jsonify({'error':'invalid_attendance_reward_stils'}),400
+        payload['attendance_reward_stils'] = int(raw_reward)
 
     resp = requests.post(
         EVENTS_REST,
@@ -5921,6 +6237,11 @@ def edit_event(event_id):
         "max_participants": max_participants,
         "cover_url": cover_url,
     }
+    if 'attendance_reward_stils' in data:
+        raw_reward = str(data['attendance_reward_stils']).strip()
+        if not re.fullmatch(r'\d{1,3}', raw_reward) or int(raw_reward)>500:
+            return jsonify({'error':'invalid_attendance_reward_stils'}),400
+        payload['attendance_reward_stils'] = int(raw_reward)
 
     # Якщо адміністратор переносить дату або час уже анонсованої події,
     # дозволяємо системі надіслати нове нагадування за день до нового часу.
