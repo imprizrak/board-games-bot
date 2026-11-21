@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Styloteka — настільні ігри</title>
+<title>Styloteka — події, ігри та творчість</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#101423">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Styloteka">
@@ -5963,7 +5963,18 @@ if (!window.Telegram?.WebApp) {
 
 <!-- ==================== ВКЛАДКА: ПОДІЇ ==================== -->
 <div class="view active" id="view-events">
-  <header>Ігрові вечори</header>
+  <header>Події</header>
+  <div class="neon-page-subtitle">Зустрічі, настільні ігри та творчість</div>
+  <div class="neon-event-filters" role="group" aria-label="Категорії подій">
+    <button type="button" class="neon-filter-chip active" data-event-kind="all" aria-pressed="true">Усі</button>
+    <button type="button" class="neon-filter-chip" data-event-kind="games" aria-pressed="false">🎲 Настолки</button>
+    <button type="button" class="neon-filter-chip" data-event-kind="tea" aria-pressed="false">🍵 Чаювання</button>
+    <button type="button" class="neon-filter-chip" data-event-kind="art" aria-pressed="false">🎨 Творчість</button>
+  </div>
+  <label class="neon-event-search-wrap" for="eventSearch">
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+    <input type="search" id="eventSearch" placeholder="Пошук подій…" autocomplete="off" aria-label="Пошук подій">
+  </label>
   <div class="events-subtabs" role="tablist" aria-label="Події">
     <button type="button" class="events-subtab-btn active" data-events-mode="upcoming">Майбутні</button>
     <button type="button" class="events-subtab-btn" data-events-mode="history">Історія</button>
@@ -8407,6 +8418,33 @@ function formatEventDate(iso) {
 let lastEventsData = [];
 let currentParticipantEventId = null;
 let eventsMode = 'upcoming';
+let neonEventKind = 'all';
+function neonDetectEventKind(ev) {
+  // Presentation-only classification; storage/API schema remain unchanged.
+  const text = String([ev?.title, ev?.description, ev?.game_name].filter(Boolean).join(' ')).toLocaleLowerCase('uk');
+  if (/(чай|чаюван|чайна|дегустац|tea|матча|церемон)/i.test(text)) return 'tea';
+  if (/(розмальов|фарбув|малюван|мініатюр|фігур|майстер.клас|творч|painting|miniature|workshop)/i.test(text)) return 'art';
+  return 'games';
+}
+function neonVisibleEvents(events) {
+  const query = (document.getElementById('eventSearch')?.value || '').trim().toLocaleLowerCase('uk');
+  return (Array.isArray(events) ? events : []).filter(ev => {
+    if (neonEventKind !== 'all' && neonDetectEventKind(ev) !== neonEventKind) return false;
+    if (!query) return true;
+    return String([ev.title, ev.description, ev.event_date, ev.event_time].filter(Boolean).join(' ')).toLocaleLowerCase('uk').includes(query);
+  });
+}
+function neonRefreshEvents() { renderEvents(lastEventsData); }
+document.getElementById('eventSearch')?.addEventListener('input', neonRefreshEvents);
+document.querySelectorAll('.neon-filter-chip').forEach(btn => btn.addEventListener('click', () => {
+  neonEventKind = btn.dataset.eventKind || 'all';
+  document.querySelectorAll('.neon-filter-chip').forEach(chip => {
+    const active = chip.dataset.eventKind === neonEventKind;
+    chip.classList.toggle('active', active);
+    chip.setAttribute('aria-pressed', String(active));
+  });
+  neonRefreshEvents();
+}));
 
 async function loadEvents(mode = eventsMode) {
   eventsMode = mode === 'history' ? 'history' : 'upcoming';
@@ -11294,12 +11332,18 @@ function renderEvents(events) {
   const list = document.getElementById('eventsList');
   list.innerHTML = '';
   const historyMode = eventsMode === 'history';
+  const totalLoadedEvents = Array.isArray(events) ? events.length : 0;
+  events = neonVisibleEvents(events);
 
   if (!events || !events.length) {
+    if (totalLoadedEvents) {
+      list.innerHTML = '<div class="events-empty neon-events-filter-empty"><span aria-hidden="true">✦</span><strong>Нічого не знайдено</strong><small>Спробуй іншу категорію або зміни запит.</small></div>';
+      return;
+    }
     if (historyMode) {
       list.innerHTML = '<div class="events-empty">Історія подій поки порожня.</div>';
     } else {
-      list.innerHTML = '<div class="events-empty">Найближчих подій поки немає.<br>' +
+      list.innerHTML = '<div class="events-empty">На цей час пакет пустий.<br>' +
         (isAdmin ? 'Натисни "+", щоб створити першу!' : 'Адмін ще нічого не запланував.') +
         '</div>';
     }
@@ -11370,10 +11414,15 @@ function renderEvents(events) {
     const cover = ev.cover_url
       ? `<div class="event-cover-wrap"><img class="event-cover" src="${escapeHtml(ev.cover_url)}" alt="Обкладинка події ${escapeHtml(ev.title || '')}" loading="lazy" decoding="async"></div>`
       : '';
+    const eventKind = neonDetectEventKind(ev);
+    const categoryName = eventKind === 'tea' ? 'Чаювання' : eventKind === 'art' ? 'Творчість' : 'Настолки';
+    const categorySymbol = eventKind === 'tea' ? '🍵' : eventKind === 'art' ? '🎨' : '🎲';
 
     card.innerHTML = `
       <div class="ev-top-row">
-        <div>
+        <div class="ev-main">
+          ${cover || `<div class="event-cover-placeholder" aria-hidden="true">${categorySymbol}</div>`}
+          <div class="ev-kind-tag">${categorySymbol} ${categoryName}</div>
           <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</div>
           <div class="ev-title">${escapeHtml(ev.title || '')}</div>
           <div class="ev-price">${eventPriceLabel(ev)}${isPaid?' · запис лише після оплати':''}</div>
@@ -11384,7 +11433,6 @@ function renderEvents(events) {
           ${eventQuestsCountsHtml(ev, going.length)}
           ${eventAttendanceStatsHtml(ev, going.length)}
           ${eventLocationHtml(ev)}
-          ${cover}
           ${historyMode
             ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · ' + escapeHtml(completedAt) : ''}</div>`
             : `<div class="ev-capacity">${cap
@@ -13699,6 +13747,251 @@ body { padding-bottom: calc(var(--ui-nav-h) + var(--glass-bottom-gap, 8px) + 16p
     aspect-ratio: 1 / 1;
   }
 }
+</style>
+
+
+<style id="styloteka-neon-system-v5333">
+/* Styloteka v5.3.33 | Neon-glass redesign based on the user's visual reference.
+   Pure presentation + local category/search controls; zero backend/schema changes. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1220;
+  --bg-texture: radial-gradient(ellipse 80% 60% at 2% 8%, rgba(49,115,178,.15), transparent 65%),
+     radial-gradient(ellipse 70% 62% at 100% 35%,rgba(136,62,208,.13),transparent 65%),
+     linear-gradient(160deg,#181b2b 0%,#121525 48%,#0c101b 100%);
+  --card-bg: rgba(39,51,80,.66);
+  --text: #f0f2ff;
+  --muted: #adb7d3;
+  --accent: #7be8ff;
+  --accent-dark: #2d9fd5;
+  --border: rgba(164,205,253,.23);
+  --panel: #21283c;
+  --neon-cyan: #65e9ff;
+  --neon-purple: #b270ff;
+  --neon-glass: linear-gradient(135deg,rgba(119,192,233,.19),rgba(67,82,133,.19) 58%,rgba(159,85,216,.19));
+  --neon-stroke: linear-gradient(120deg,rgba(139,230,255,.8),rgba(125,144,238,.35) 54%,rgba(212,114,255,.79));
+  --neon-depth: 0 12px 28px rgba(0,0,0,.34),inset 0 1px 0 rgba(233,251,255,.2);
+}
+html {background:#0e1220!important;}
+body {color:var(--text)!important;background:var(--bg-texture)!important;
+  font-family:'Exo 2',system-ui,-apple-system,sans-serif!important;
+  letter-spacing:0!important; min-height:100dvh;}
+body::before {content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
+ background: radial-gradient(circle at 50% -10%,rgba(52,119,201,.15),transparent 55%);}
+:where(button,input,select,textarea) {font-family:'Exo 2',system-ui,sans-serif!important;}
+.view > header {font-family:'Unbounded','Exo 2',sans-serif!important;
+  font-size:clamp(25px,6.7vw,36px)!important;font-weight:800!important;
+  line-height:1.26!important;letter-spacing:-.055em!important;
+  text-align:center!important; padding:20px 12px 5px!important; margin:0 auto 6px!important;
+  color:#dff4ff!important; text-shadow:0 0 19px rgba(77,199,255,.30),0 0 26px rgba(159,103,248,.12);
+  max-width:min(100%,660px);overflow-wrap:normal!important;}
+.view > header::after {content:'';display:block;max-width:145px;width:38%;height:2px;margin:15px auto 0;
+ background:linear-gradient(90deg,transparent,#4ee4ff,#ac67ff,transparent);border-radius:50%;
+ box-shadow:0 0 13px #4fcffc88;}
+#view-events,#view-library,#view-tools {width:100%;max-width:850px;margin:0 auto;min-width:0;}
+#view-events .neon-page-subtitle {text-align:center;color:#b9bfd7;font-size:13px;margin:0 10px 20px;}
+.neon-event-filters {display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;
+  padding:6px var(--ui-page-pad,14px) 15px;margin:0 auto;max-width:760px;}
+.neon-event-filters::-webkit-scrollbar {display:none;}
+.neon-filter-chip,.events-subtab-btn,.lib-genre-chip {
+  border:1px solid rgba(158,149,245,.38)!important;
+  background:linear-gradient(145deg,rgba(91,110,162,.20),rgba(37,43,70,.50))!important;
+  color:#dfe4ff!important;border-radius:999px!important;min-height:44px;
+  white-space:nowrap;font-size:13px!important;font-weight:700!important;
+  padding:10px 17px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.11),0 6px 17px rgba(0,0,0,.15)!important;
+  flex-shrink:0;transition:background .18s ease,box-shadow .18s ease;}
+.neon-filter-chip.active,.lib-genre-chip.active,.events-subtab-btn.active {
+  color:#fff!important;border-color:rgba(165,242,255,.8)!important;
+  background:linear-gradient(115deg,rgba(79,187,244,.58),rgba(113,113,202,.6) 62%,rgba(167,75,215,.66))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 0 12px rgba(35,200,251,.38),0 0 15px rgba(163,91,240,.20)!important;}
+.neon-event-search-wrap {width:calc(100% - 2*var(--ui-page-pad,14px));max-width:744px;box-sizing:border-box;
+ display:flex;align-items:center;gap:13px;margin:0 auto 11px;padding:0 16px;
+ min-height:54px;border-radius:19px;
+ background:linear-gradient(125deg,rgba(84,151,197,.15),rgba(33,45,71,.65) 62%,rgba(112,48,152,.23));
+ border:1px solid rgba(135,221,255,.55);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.20),inset 0 -2px 0 rgba(66,220,255,.26),0 9px 24px rgba(0,0,0,.22),0 0 8px rgba(114,83,247,.13);}
+.neon-event-search-wrap svg{flex:0 0 22px;color:#b2d9ff;}
+#eventSearch {flex:1;min-width:0;width:100%;border:0!important;outline:0!important;
+ background:none!important;box-shadow:none!important;color:#f1f6ff!important;
+ font-size:15px!important;padding:12px 0!important;height:52px!important;border-radius:0!important;}
+#eventSearch::placeholder{color:#9aa8c3;opacity:1;}
+.events-subtabs {display:flex!important;justify-content:center!important;gap:8px!important;
+ padding:0 var(--ui-page-pad,14px)!important;max-width:680px;margin:9px auto 4px!important;}
+.events-subtab-btn{flex:1 1 0;max-width:230px;min-height:40px!important;padding:8px 12px!important;font-size:12px!important;}
+.events-list{gap:16px!important;padding:13px var(--ui-page-pad,14px) 115px!important;}
+.event-card {position:relative;isolation:isolate;overflow:hidden;
+  background:var(--neon-glass)!important;
+  border:1px solid rgba(140,207,255,.58)!important;
+  border-radius:24px!important;padding:15px!important;
+  box-shadow:inset 0 1px 0 rgba(248,252,255,.25),inset 0 -2px 0 rgba(112,72,169,.23),
+    0 10px 28px rgba(0,0,0,.23),0 0 0 1px rgba(64,180,242,.10),0 0 18px rgba(75,152,237,.12)!important;}
+.event-card::before{content:'';position:absolute;inset:0 0 auto;height:40%;border-radius:inherit;
+ background:linear-gradient(113deg,rgba(212,243,255,.14),transparent 42%,rgba(181,99,254,.1));
+ pointer-events:none;z-index:-1;}
+.event-card::after{content:'';position:absolute;left:13%;right:13%;bottom:0;height:2px;
+ background:linear-gradient(90deg,transparent,rgba(63,210,251,.65),rgba(172,97,255,.65),transparent);
+ box-shadow:0 0 17px rgba(139,116,241,.36);pointer-events:none;}
+.event-card .ev-top-row {align-items:flex-start;gap:9px;}
+.event-card .ev-main {display:grid;grid-template-columns:minmax(94px,35%) minmax(0,1fr);
+ grid-template-rows:repeat(4,auto);align-items:start;column-gap:14px;row-gap:3px;
+ min-width:0;width:100%;flex:1 1 0;}
+.event-card .ev-main > .ev-kind-tag,.event-card .ev-main > .ev-date,
+.event-card .ev-main > .ev-title,.event-card .ev-main > .ev-price {grid-column:2;min-width:0;margin:0;}
+.event-card .ev-main > .ev-kind-tag{grid-row:1;}
+.event-card .ev-main > .ev-date{grid-row:2;}
+.event-card .ev-main > .ev-title{grid-row:3;}
+.event-card .ev-main > .ev-price{grid-row:4;}
+.event-card .event-cover-wrap,.event-card .event-cover-placeholder {
+ grid-column:1;grid-row:1 / span 4;width:100%;height:143px;
+ border:1px solid rgba(171,227,255,.23);border-radius:18px;overflow:hidden;
+ background:radial-gradient(circle at 25% 15%,rgba(93,111,232,.52),transparent 65%),
+   linear-gradient(135deg,rgba(50,54,97,.85),rgba(22,36,68,.88));
+ box-shadow:inset 0 1px 0 rgba(248,248,255,.15),0 7px 16px rgba(0,0,0,.18);}
+.event-card .event-cover-wrap img,.event-card img.event-cover{
+ display:block!important;width:100%!important;height:100%!important;max-height:none!important;
+ margin:0!important;object-fit:cover!important;background:none!important;}
+.event-card .event-cover-placeholder{display:grid;place-items:center;font-size:clamp(48px,9vw,80px);
+ filter:drop-shadow(0 5px 10px rgba(10,7,41,.12));}
+.event-card .ev-kind-tag{font-size:10px;line-height:1.3;width:max-content;max-width:100%;
+ color:#b7edff;font-weight:900;letter-spacing:.06em;text-transform:uppercase;
+ border:1px solid rgba(139,219,248,.25);background:rgba(68,115,163,.20);
+ border-radius:999px;padding:4px 8px;overflow-wrap:anywhere;}
+.event-card .ev-date {font-size:12px!important;color:#c1dcff!important;letter-spacing:0!important;}
+.event-card .ev-title {font-family:'Exo 2',sans-serif!important;font-size:clamp(17px,4.5vw,23px)!important;
+ line-height:1.2!important;color:#f4f4ff!important;letter-spacing:-.02em;font-weight:800!important;text-shadow:none!important;}
+.event-card .ev-price{color:#d0d7fa!important;font-size:13px!important;font-weight:700!important;line-height:1.4!important;}
+.event-card .ev-main > :not(.event-cover-wrap):not(.event-cover-placeholder):not(.ev-kind-tag):not(.ev-date):not(.ev-title):not(.ev-price){
+ grid-column:1/-1;min-width:0;}
+.event-card .ev-description{color:#b8c2d9!important;font-size:13px!important;line-height:1.5!important;}
+.event-card .ev-game,.event-card .ev-capacity,.event-card .ev-reward {font-size:12px!important;color:#bdd5e8!important;line-height:1.5!important;}
+.event-card .ev-admin-actions {max-width:42px;display:grid;gap:8px;}
+.event-card .ev-admin-edit,.event-card .ev-admin-del{height:39px!important;width:39px!important;
+ border:1px solid rgba(176,224,250,.28)!important;background:rgba(10,20,43,.43)!important;
+ color:#eff7ff!important;backdrop-filter:blur(10px);}
+.event-card :is(.ev-rsvp-btn,.event-private-open,.ev-repeat-btn) {
+ color:#fff!important;border:1px solid rgba(127,248,255,.77)!important;
+ background:linear-gradient(110deg,rgba(55,168,217,.67),rgba(65,99,186,.68) 58%,rgba(167,78,216,.66))!important;
+ border-radius:18px!important;min-height:46px!important;font:inherit;font-weight:800!important;
+ box-shadow:inset 0 1px 0 rgba(251,251,255,.34),0 0 12px rgba(75,185,249,.25),0 8px 20px rgba(8,16,42,.24)!important;}
+.event-card .ev-rsvp-btn.joined {background:rgba(26,41,67,.68)!important;border-color:rgba(134,169,206,.54)!important;}
+.event-card .ev-participants-label {color:#d0d6ee;font-size:10px;letter-spacing:.08em;}
+.event-card .participant-chip{background:rgba(12,21,40,.4)!important;border:1px solid rgba(145,188,237,.24)!important;
+ color:#d7e8ff!important;font-size:11px;}
+.events-empty{padding:55px 22px!important;border:1px dashed rgba(147,206,249,.33);
+ background:linear-gradient(125deg,rgba(52,94,145,.10),rgba(114,54,150,.09));
+ border-radius:24px;max-width:700px;margin:8px auto 0;font-size:16px;color:#d5eaff!important;line-height:1.6;}
+.neon-events-filter-empty{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.neon-events-filter-empty span{font-size:31px;color:#7adaff;}
+.neon-events-filter-empty small{font-size:13px;color:#b7c3da;}
+/* Library: games stay in bag-like wrappers, recolored to the shared cyan/violet glass system. */
+#view-library .lib-search-row{margin:9px var(--ui-page-pad,14px) 14px!important;}
+#view-library #librarySearch,.lib-search-input {
+ background:linear-gradient(115deg,rgba(73,126,179,.2),rgba(67,44,108,.21))!important;
+ color:#eff7ff!important;border:1px solid rgba(113,205,252,.49)!important;
+ border-radius:18px!important;min-height:53px!important;
+ box-shadow:inset 0 -2px 0 rgba(50,203,239,.17),0 6px 19px rgba(0,0,0,.20)!important;}
+#view-library #librarySearch::placeholder {color:#a9b7d3;opacity:1;}
+#view-library .lib-genre-row{padding-bottom:14px;scrollbar-width:none;}
+#view-library .lib-genre-row::-webkit-scrollbar{display:none;}
+#gamesGrid .card {
+ border:1px solid rgba(164,229,254,.52)!important;
+ background:linear-gradient(165deg,rgba(120,192,244,.20),rgba(30,40,69,.83) 33%,rgba(19,27,49,.96) 75%,rgba(90,45,126,.28))!important;
+ box-shadow:inset 0 1px 0 rgba(244,250,255,.24),inset 0 -1px 0 rgba(200,116,252,.22),
+  0 12px 29px rgba(0,0,0,.27),0 0 11px rgba(95,177,230,.13)!important;}
+#gamesGrid .card::before{background:linear-gradient(180deg,rgba(245,252,255,.7),rgba(143,198,245,.33) 58%,rgba(156,90,252,.33))!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 0 9px rgba(92,218,255,.38)!important;}
+#gamesGrid .library-card-cover{border:1px solid rgba(157,222,255,.27)!important;
+ background:linear-gradient(145deg,rgba(144,194,241,.12),rgba(49,61,115,.17))!important;}
+#gamesGrid .card-title{color:#eff9ff!important;text-shadow:0 0 10px rgba(67,171,238,.12)!important;}
+#gamesGrid .card-tags{color:#c4ceed!important;}
+#gamesGrid .fav-star{border:1px solid rgba(165,219,251,.3);background:rgba(18,27,54,.6);}
+/* Tools, counters, tabs, modal sheets and forms. */
+#view-tools .tools-tabs {display:flex!important;gap:9px!important;overflow-x:auto;padding:7px var(--ui-page-pad,14px) 16px!important;
+ scrollbar-width:none;}
+#view-tools .tools-tabs::-webkit-scrollbar{display:none;}
+#view-tools .tool-tab-btn {min-height:46px!important;border-radius:16px!important;flex:0 0 auto!important;
+ color:#e6e6ff!important;border:1px solid rgba(147,148,244,.36)!important;
+ background:linear-gradient(135deg,rgba(96,120,166,.21),rgba(61,43,109,.3))!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 7px 19px rgba(0,0,0,.2)!important;}
+#view-tools .tool-tab-btn.active {color:#fff!important;border-color:rgba(121,230,255,.72)!important;
+ background:linear-gradient(115deg,rgba(73,177,233,.52),rgba(132,68,202,.57))!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.29),0 0 14px rgba(72,188,241,.3)!important;}
+#view-tools .tool-panel {background:linear-gradient(135deg,rgba(50,81,119,.15),rgba(69,43,111,.14))!important;
+ border:1px solid rgba(124,194,236,.28)!important;border-radius:22px!important;
+ box-shadow:var(--neon-depth)!important;margin:0 var(--ui-page-pad,14px) 20px!important;padding:16px!important;}
+#view-tools :is(.die-btn,.counters-subtab-btn,.flip7-icon-btn,.flip7-history-btn,.picker-reset),
+#view-tools .counters-actions .btn {border:1px solid rgba(139,198,247,.39)!important;
+ background:var(--neon-glass)!important;color:#eaf2ff!important;border-radius:14px!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 5px 12px rgba(0,0,0,.15)!important;}
+#view-tools :is(.die-btn.active,.counters-subtab-btn.active){border-color:#8ae7ff!important;
+ background:linear-gradient(120deg,rgba(76,170,214,.58),rgba(138,75,215,.54))!important;
+ box-shadow:0 0 12px rgba(74,211,255,.33)!important;}
+#view-tools :is(.roll-area,.counter-row,.flip7-panel,.picker-area,.flip7-grid){border-color:rgba(136,197,244,.36)!important;
+ border-radius:19px!important;}
+.modal {background:rgba(2,5,19,.73)!important;backdrop-filter:blur(8px);}
+.modal .sheet,.admin-user-detail-sheet,.event-calendar-sheet{
+ border:1px solid rgba(148,212,255,.49)!important;
+ background:linear-gradient(155deg,#283249 0%,#1a2133 44%,#1b1730 100%)!important;
+ box-shadow:inset 0 1px 0 rgba(248,251,255,.26),0 -12px 35px rgba(39,128,225,.16),0 18px 60px rgba(0,0,0,.52)!important;
+ border-radius:24px 24px 0 0!important;color:#eef2ff!important;}
+.sheet :is(h2,h3,.modal-title){color:#f6f4ff!important;font-family:'Exo 2',sans-serif!important;}
+.sheet :is(input:not([type="checkbox"]):not([type="radio"]),textarea,select){
+ background:rgba(8,17,37,.65)!important;border:1px solid rgba(142,194,250,.44)!important;
+ border-radius:13px!important;color:#f4f7ff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;}
+.sheet :is(input,textarea,select)::placeholder{color:#93a6c6!important;opacity:1;}
+.sheet label,.sheet small,.sheet .event-form-hint{color:#c7d3e6;}
+.btn:not(.secondary),.sheet .btn:not(.secondary),.fab{
+ background:linear-gradient(110deg,rgba(47,158,221,.84),rgba(70,108,192,.85) 56%,rgba(159,79,220,.85))!important;
+ color:#fff!important;border:1px solid rgba(164,236,255,.7)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 0 14px rgba(73,170,244,.27),0 8px 19px rgba(0,0,0,.24)!important;}
+.btn.secondary,.sheet .btn.secondary,.close-btn {color:#e6edff!important;background:rgba(92,104,163,.22)!important;
+ border:1px solid rgba(146,173,238,.42)!important;}
+.fab{border-radius:50%!important;}
+.event-game-choice{border-color:rgba(171,225,255,.35)!important;
+ background:linear-gradient(160deg,rgba(109,168,222,.16),rgba(20,26,50,.94))!important;}
+.event-game-choice:has(input:checked){box-shadow:0 0 0 1px rgba(114,228,250,.4),0 0 14px rgba(120,102,236,.25)!important;}
+/* Keep the user's compact 60px floating navbar, just update its glass colors. */
+.bottom-nav {background:linear-gradient(130deg,rgba(66,95,146,.76),rgba(38,47,84,.90) 48%,rgba(106,48,139,.72))!important;
+ border:1px solid rgba(155,218,255,.56)!important;
+ box-shadow:0 12px 32px rgba(0,0,0,.40),inset 0 1px 0 rgba(244,255,255,.35),0 0 18px rgba(113,81,250,.21)!important;
+ backdrop-filter:blur(18px) saturate(140%)!important;}
+.bottom-nav::before {background:linear-gradient(180deg,rgba(244,249,255,.19),transparent)!important;}
+.bottom-nav button {background:transparent!important;color:#c6cfef!important;}
+.bottom-nav button.active {color:#fff!important;border:1px solid rgba(144,239,255,.76)!important;
+ background:linear-gradient(120deg,rgba(53,172,229,.59),rgba(89,113,204,.53) 58%,rgba(169,74,218,.62))!important;
+ box-shadow:inset 0 1px 0 rgba(247,252,255,.35),0 0 12px rgba(73,220,255,.32),0 0 10px rgba(189,82,244,.21)!important;}
+.bottom-nav button.active .icon{filter:drop-shadow(0 0 5px rgba(107,225,255,.6))!important;}
+@media(max-width:480px) {
+  .event-card{padding:12px!important;border-radius:21px!important;}
+  .event-card .ev-main{grid-template-columns:minmax(94px,36%) minmax(0,1fr);column-gap:10px;row-gap:4px;}
+  .event-card .event-cover-wrap,.event-card .event-cover-placeholder{height:134px;border-radius:14px;}
+  .event-card .ev-title{font-size:clamp(15px,4.2vw,18px)!important;}
+  .event-card .ev-price{font-size:12px!important;}
+  .event-card .ev-kind-tag{font-size:9px;}
+  .event-card .ev-admin-actions {max-width:35px;}
+  .event-card .ev-admin-edit,.event-card .ev-admin-del{width:34px!important;height:34px!important;}
+  .neon-filter-chip{padding:9px 15px!important;min-height:43px;}
+}
+@media(max-width:350px) {
+  .event-card .ev-main{grid-template-columns:93px minmax(0,1fr);column-gap:9px;}
+  .event-card .event-cover-wrap,.event-card .event-cover-placeholder{height:126px;}
+  .view > header{font-size:24px!important;}
+  .event-card .ev-top-row{gap:5px;}
+}
+@media(prefers-reduced-motion:reduce){.neon-filter-chip,.event-card,.bottom-nav button{transition:none!important;}}
+
+/* Calendar typography and controls: same glass language, original date logic intact. */
+#eventDatePickerModal .event-calendar-sheet {font-family:'Exo 2',sans-serif!important;}
+#eventDatePickerModal :is(.event-calendar-month-title,.event-calendar-top strong) {
+ font-family:'Exo 2',sans-serif!important;font-weight:800!important;color:#eaf3ff!important;}
+#eventDatePickerModal .event-calendar-month-title{font-size:clamp(19px,5vw,24px)!important;letter-spacing:-.02em;}
+#eventDatePickerModal .event-calendar-text-btn{font-family:'Exo 2',sans-serif!important;font-weight:750!important;}
+#eventDatePickerModal .event-calendar-day{font-family:'Exo 2',sans-serif!important;border-radius:12px!important;}
+#eventDatePickerModal .event-calendar-day.selected{background:linear-gradient(130deg,#65dcf6,#aa77f4)!important;color:#081528!important;
+ box-shadow:0 0 12px rgba(80,207,255,.32)!important;}
+.event-date-trigger{background:rgba(8,17,37,.65)!important;border:1px solid rgba(142,194,250,.44)!important;
+ border-radius:13px!important;color:#eef3ff!important;font-family:'Exo 2',sans-serif!important;}
+.event-date-trigger.has-value{color:#f5f8ff!important;}
 </style>
 
 </body>
