@@ -11102,6 +11102,69 @@ function escapeHtml(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/**
+ * Turns URLs in user-written event descriptions into a short, accessible label.
+ * Plain text is escaped before insertion into HTML, and only http(s) URLs may
+ * be opened. The original description is kept untouched for editing/storage.
+ */
+function renderEventDescriptionWithLinks(value) {
+  const source = String(value ?? '');
+  const urlPattern = /(?:https?:\/\/|www\.|(?:instagram\.com|t\.me|telegram\.me|facebook\.com)\/)[^\s<>"'`]+/gi;
+  let html = '';
+  let previousEnd = 0;
+  for (const match of source.matchAll(urlPattern)) {
+    const start = match.index;
+    const raw = match[0];
+    html += escapeHtml(source.slice(previousEnd, start));
+    let candidate = raw.replace(/[.,!?;:]+$/g, '');
+    // Treat unmatched closing punctuation as prose, not part of the URL.
+    while (/[)\]\}]$/.test(candidate)) {
+      const last = candidate.at(-1);
+      const open = last === ')' ? '(' : last === ']' ? '[' : '{';
+      const close = last;
+      const count = (text, character) => [...text].filter(c => c === character).length;
+      if (count(candidate, close) <= count(candidate, open)) break;
+      candidate = candidate.slice(0, -1);
+    }
+    let href = '';
+    let host = '';
+    try {
+      const url = new URL(/^https?:\/\//i.test(candidate) ? candidate : 'https://' + candidate);
+      if ((url.protocol === 'https:' || url.protocol === 'http:') && url.hostname && !url.username && !url.password) {
+        href = url.href;
+        host = url.hostname.replace(/^www\./i, '');
+      }
+    } catch (_) {}
+    if (href) {
+      html += `<a class="ev-description-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" aria-label="Відкрити посилання на ${escapeHtml(host)}" title="Відкрити ${escapeHtml(host)}">Посилання ↗</a>`;
+      html += escapeHtml(raw.slice(candidate.length));
+    } else {
+      html += escapeHtml(raw);
+    }
+    previousEnd = start + raw.length;
+  }
+  html += escapeHtml(source.slice(previousEnd));
+  return html;
+}
+
+function openEventLinkInTelegram(event) {
+  const anchor = event.currentTarget;
+  const url = anchor?.href;
+  if (!url || !/^https?:\/\//i.test(url)) return;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if ((host === 't.me' || host === 'telegram.me') && typeof tg?.openTelegramLink === 'function') {
+      tg.openTelegramLink(url);
+      event.preventDefault();
+    } else if (typeof tg?.openLink === 'function') {
+      tg.openLink(url, {try_instant_view:false});
+      event.preventDefault();
+    }
+  } catch (_) {
+    // Fall back to the normal safe HTML link if Telegram cannot open it.
+  }
+}
+
 async function loadStats() {
   const wrap = document.getElementById('statsWrap');
   if (!wrap) return;
@@ -11545,7 +11608,7 @@ function renderEvents(events) {
           ${Number(ev.attendance_reward_stils ?? 50) > 0 ? `<div class="ev-reward">🪙 +${Number(ev.attendance_reward_stils ?? 50)} стілсів за підтверджений прихід</div>` : ''}
           ${eventGamesHtml(ev)}
           ${eventMemberGamesSummary(ev)}
-          ${ev.description ? `<div class="ev-description">${escapeHtml(ev.description)}</div>` : ''}
+          ${ev.description ? `<div class="ev-description">${renderEventDescriptionWithLinks(ev.description)}</div>` : ''}
           ${eventQuestsCountsHtml(ev, going.length)}
           ${eventAttendanceStatsHtml(ev, going.length)}
           ${eventLocationHtml(ev)}
@@ -11590,6 +11653,7 @@ function renderEvents(events) {
       ${historyMode && isAdmin ? '<button type="button" class="ev-repeat-btn">🔁 Повторити подію</button>' : ''}
     `;
 
+    card.querySelectorAll('.ev-description-link').forEach(link => link.addEventListener('click', openEventLinkInTelegram));
     card.querySelector('.ev-repeat-btn')?.addEventListener('click', () => openRepeatEventModal(ev));
     card.querySelector('.event-games-open')?.addEventListener('click', () => openEventGamesForMembers(ev));
     card.querySelector('.event-private-open')?.addEventListener('click',()=>openPrivateEventDetails(ev.id));
@@ -12069,7 +12133,7 @@ async function openEventSubmissions(scope = 'mine') {
         ${scope==='pending' ? `<div class="event-submission-private">👤 ${escapeHtml(item.submitted_by_display_name||item.submitted_by_username||'Учасник')}
           ${item.location_text?`<p>📍 ${escapeHtml(item.location_text)}</p>`:''}
           ${games?`<p>🎲 ${escapeHtml(games)}</p>`:''}
-          ${item.description?`<p>${escapeHtml(item.description)}</p>`:''}
+          ${item.description?`<p>${renderEventDescriptionWithLinks(item.description)}</p>`:''}
           ${item.payment_link?`<p>💳 ${escapeHtml(item.payment_link)}</p>`:''}
           ${item.payment_details?`<p>🧾 ${escapeHtml(item.payment_details)}</p>`:''}
           ${item.cover_url?`<p>🖼️ <a href="${escapeHtml(item.cover_url)}" target="_blank" rel="noopener noreferrer">Переглянути обкладинку ↗</a></p>`:''}
@@ -12081,6 +12145,7 @@ async function openEventSubmissions(scope = 'mine') {
         ${scope==='mine' && item.status==='rejected' && item.reject_reason ? `<div class="event-submission-reason">Причина: ${escapeHtml(item.reject_reason)}</div>`:''}
       </article>`;
     }).join('') : `<div class="event-submission-empty">${scope==='pending'?'Зараз немає заявок на розгляді.':'Ти ще не пропонував події.'}</div>`;
+    content.querySelectorAll('.ev-description-link').forEach(link => link.addEventListener('click', openEventLinkInTelegram));
     if (scope==='pending') content.querySelectorAll('[data-action]').forEach(button => {
       button.addEventListener('click',()=>eventSubmissionAction(button.dataset.action,Number(button.dataset.id)));
     });
@@ -14748,6 +14813,38 @@ body.picker-fullscreen #panel-picker .picker-reset {
 .event-submission-reason{font-size:12px;margin-top:10px;color:#ffd2d2}
 .event-submission-empty{text-align:center;color:#afc6de;padding:20px 8px;line-height:1.5}
 @media(max-width:360px){.event-submission-nav{margin-inline:10px;gap:6px}.event-submission-nav-btn{padding:10px 11px;font-size:12px}}
+</style>
+
+
+<style id="styloteka-event-description-links-v5338">
+/* Link label is a compact inline control that remains obvious on a touch screen. */
+.ev-description .ev-description-link,
+.event-submission-private .ev-description-link {
+  display:inline-flex;
+  align-items:center;
+  vertical-align:baseline;
+  max-width:100%;
+  padding:1px 7px;
+  margin:0 2px;
+  border-radius:8px;
+  border:1px solid rgba(84,219,255,.42);
+  background:linear-gradient(125deg,rgba(25,157,220,.18),rgba(152,75,230,.17));
+  color:#a5eaff;
+  text-decoration:underline;
+  text-decoration-thickness:1px;
+  text-underline-offset:3px;
+  font-weight:800;
+  font-size:inherit;
+  line-height:1.5;
+  white-space:nowrap;
+  cursor:pointer;
+  -webkit-tap-highlight-color:rgba(92,202,255,.32);
+}
+.ev-description .ev-description-link:focus-visible,
+.event-submission-private .ev-description-link:focus-visible {
+  outline:2px solid #a5eaff;
+  outline-offset:3px;
+}
 </style>
 
 </body>
