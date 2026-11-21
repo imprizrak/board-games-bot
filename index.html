@@ -12242,7 +12242,7 @@ async function openEventReceiptModal(ev){
       <p class="event-form-hint">Вкажи саме цю суму під час переказу: банка monobank не підставляє ціну квитка автоматично.</p>
       ${normalizeEventJarLink(d.payment_link)?`<a id="eventJarPay" class="btn" style="display:block;text-align:center;margin:12px 0" target="_blank" rel="noopener noreferrer" href="${escapeHtml(normalizeEventJarLink(d.payment_link))}">💜 Оплатити через банку monobank ↗</a>`:''}
       ${d.payment_details?`<p class="event-form-hint">Додаткова інформація для переказу:</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;border-radius:12px;background:rgba(255,255,255,.07)">${escapeHtml(d.payment_details)}</pre>`:''}
-      <p class="event-form-hint">Після оплати збережи квитанцію та надішли її адміністратору. Сам переказ не підтверджує запис автоматично.</p>
+      <p class="event-form-hint">Після оплати збережи квитанцію та надішли її адміністратору. Сам переказ не підтверджує запис автоматично. Якщо PDF із банку не завантажується, зроби скриншот квитанції та обери фото JPG або PNG.</p>
       <p>${escapeHtml(message)}</p>
       ${status==='not_submitted'||status==='rejected'?`<label for="eventReceiptFile">Фото або PDF квитанції (до 5 МБ)</label>
         <input id="eventReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
@@ -12259,13 +12259,27 @@ async function openEventReceiptModal(ev){
     content.querySelector('#sendEventReceipt')?.addEventListener('click',async()=>{
       const file=content.querySelector('#eventReceiptFile')?.files?.[0];
       if(!file){tg.showAlert('Додай фото або PDF квитанції.');return;}
+      if(!file.size){tg.showAlert('Файл порожній. Збережи квитанцію повторно або додай її скриншот.');return;}
       if(file.size>5*1024*1024){tg.showAlert('Розмір квитанції має бути до 5 МБ.');return;}
       const btn=content.querySelector('#sendEventReceipt');btn.disabled=true;
       try{
         const form=new FormData();form.append('_tg_init_data',telegramInitData);form.append('receipt',file);
         const upload=await fetch(`/api/events/${Number(ev.id)}/receipt`,{method:'POST',headers:telegramAuthHeaders(),body:form});
         const result=await upload.json().catch(()=>({}));
-        if(!upload.ok)throw Error(result.error==='receipt_already_submitted'?'Квитанцію вже відправлено.':'Не вдалося надіслати квитанцію.');
+        if(!upload.ok){
+          const errors={
+            receipt_invalid_format:'Не вдалося розпізнати формат файлу. Збережи справжній PDF повторно або надішли скриншот квитанції у JPG чи PNG.',
+            receipt_too_large_or_empty:'Квитанція порожня або більша за 5 МБ. Спробуй менший файл або скриншот.',
+            receipt_required:'Не вдалося прочитати вкладення. Обери файл ще раз.',
+            receipt_already_submitted:'Квитанцію вже відправлено. Дочекайся перевірки адміністратора.',
+            telegram_auth_required:'Сесія Telegram не підтверджена. Закрий і знову відкрий бот.',
+            event_closed:'Ця подія вже завершена або закрита для реєстрації.',
+            event_not_found:'Подію не знайдено.',
+            not_receipt_event:'Для цієї події інший спосіб оплати.',
+            receipt_upload_unavailable:'Сервер не зміг зберегти квитанцію. Спробуй повторно трохи пізніше.',
+          };
+          throw Error(errors[result.error]||('Не вдалося надіслати квитанцію (HTTP '+upload.status+'). Спробуй JPG/PNG або PDF.'));
+        }
         tg.showAlert('✅ Квитанцію передано адміністратору. Очікуй перевірки.');
         await openEventReceiptModal(ev);
       }catch(e){tg.showAlert(e.message);}finally{if(btn.isConnected)btn.disabled=false;}

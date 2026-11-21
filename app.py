@@ -4212,13 +4212,22 @@ RECEIPT_MAX_BYTES = 5 * 1024 * 1024
 
 
 def _receipt_file_type(raw):
+    """Detect actual file bytes, never trust the extension/MIME reported by Android.
+
+    PDF generators may put BOM/metadata/whitespace before %PDF-; a valid PDF
+    header is permitted in the first 1024 bytes. Banking apps on Android do
+    export such files, so checking only raw.startswith(b'%PDF-') is too strict.
+    Keep the existing image checks; private Storage accepts these four types.
+    """
     if raw.startswith(b'\xff\xd8\xff'):
         return 'image/jpeg', 'jpg'
     if raw.startswith(b'\x89PNG\r\n\x1a\n'):
         return 'image/png', 'png'
     if raw.startswith(b'RIFF') and raw[8:12] == b'WEBP':
         return 'image/webp', 'webp'
-    if raw.startswith(b'%PDF-'):
+    # PDF 1.x / PDF 2.0; the header needn't start at byte zero.
+    pdf_header = re.search(rb'%PDF-[12]\.[0-9]', raw[:1032])
+    if pdf_header and pdf_header.start() < 1024:
         return 'application/pdf', 'pdf'
     return None, None
 
@@ -4264,7 +4273,12 @@ def submit_event_receipt(event_id):
         return jsonify({'error': 'receipt_too_large_or_empty'}), 400
     mimetype, extension = _receipt_file_type(raw)
     if not mimetype:
-        return jsonify({'error': 'receipt_invalid_format'}), 400
+        # No file content, filename or personally identifying data in logs.
+        logging.warning('Unsupported receipt contents: declared_mime=%s bytes=%d first_four_hex=%s',
+                        str(file.mimetype or '')[:90], len(raw), raw[:4].hex())
+        return jsonify({'error': 'receipt_invalid_format',
+                        'accepted_formats': ['PDF', 'JPG', 'PNG', 'WEBP'],
+                        'hint': 'export_original_pdf_or_send_screenshot'}), 400
     try:
         event = get_event_snapshot(event_id)
         if not event: return jsonify({'error': 'event_not_found'}), 404
