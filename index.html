@@ -5905,7 +5905,7 @@ if (!window.Telegram?.WebApp) {
     <button class="picker-exit" type="button" onclick="exitPickerFullscreen()" aria-label="Вийти з повноекранного вибору">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
-    <p class="roll-sub picker-intro" style="padding:0 16px; margin-top:0;">Кожен гравець одночасно тримає палець на екрані. Вибір випадковий — профілі та імена не потрібні.</p>
+    <div class="picker-intro" role="heading" aria-level="2"><strong>Вибір гравця</strong><span>Нехай кожен одночасно покладе палець на поле. Зачекайте на випадковий вибір.</span></div>
     <div class="picker-area" id="pickerArea">
       <div class="picker-hint" id="pickerHint">Покладіть пальці на екран<br>(мінімум 2)</div>
     </div>
@@ -9296,21 +9296,30 @@ function playPickerWinner() {
   playPickerTone(783.99, 0.18, 0.065, "sine", 0.22);
 }
 
+// The picker is a WebView-sized overlay, NOT Telegram's native fullscreen.
+// requestFullscreen() makes iOS Telegram buttons overlap the play field.
+// Mounting it directly in <body> avoids legacy tool-panel margins and
+// animated view stacking contexts constraining the fixed-position overlay.
+const pickerPanelElement = document.getElementById('panel-picker');
+const pickerOriginalNextElement = document.getElementById('panel-counters');
 function enterPickerFullscreen() {
   ensurePickerAudio();
-  document.body.classList.add("picker-fullscreen");
+  if (pickerPanelElement.parentElement !== document.body) {
+    document.body.appendChild(pickerPanelElement);
+  }
+  document.body.classList.add('picker-fullscreen');
   resetPicker();
-  if (tg && typeof tg.expand === "function") tg.expand();
-  if (tg && typeof tg.requestFullscreen === "function") {
-    try { tg.requestFullscreen(); } catch (_) {}
+  // Telegram's own title bar remains visible and usable on iPhone.
+  if (tg?.isFullscreen && typeof tg.exitFullscreen === 'function') {
+    try { tg.exitFullscreen(); } catch (_) {}
   }
 }
 
 function exitPickerFullscreen(resetState = true) {
-  document.body.classList.remove("picker-fullscreen");
+  document.body.classList.remove('picker-fullscreen');
   if (resetState) resetPicker();
-  if (tg && typeof tg.exitFullscreen === "function") {
-    try { tg.exitFullscreen(); } catch (_) {}
+  if (pickerPanelElement.parentElement === document.body) {
+    pickerOriginalNextElement.before(pickerPanelElement);
   }
 }
 
@@ -9487,7 +9496,12 @@ pickerArea.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 function handleTouchEnd(e) {
-  if (pickerSpinning) return;
+  // Keep the animation dots until the winner is announced, but track fingers
+  // released during the spin so the round can reset automatically afterward.
+  if (pickerSpinning) {
+    for (const t of e.changedTouches) delete activeTouches[t.identifier];
+    return;
+  }
   if (pickerLocked) {
     // Пальці прибрані після показу переможця - звільняємо їх ідентифікатори,
     // а саме поле саме скинеться через autoResetTimer, коли всі пальці прибрані.
@@ -14283,5 +14297,126 @@ body::before {content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
 @media(prefers-reduced-motion:reduce){#gamesGrid .card{transition:none!important;}}
 </style>
 
+
+<style id="styloteka-picker-overlay-v5335">
+/* Styloteka 5.3.35 — iPhone/Telegram picker viewport and interaction fix. */
+body.picker-fullscreen {overflow: hidden !important; overscroll-behavior: none !important; touch-action: none !important;}
+body.picker-fullscreen .bottom-nav {display:none !important;}
+body.picker-fullscreen #panel-picker.active {
+  box-sizing:border-box !important;
+  display:block !important;
+  position:fixed !important;
+  z-index:2147483000 !important;
+  top:0 !important;right:0 !important;bottom:0 !important;left:0 !important;
+  inset:0 !important;
+  width:100% !important;max-width:none !important;
+  height:100dvh !important;min-height:0 !important;max-height:none !important;
+  padding:0 !important;margin:0 !important;
+  border:0 !important;border-radius:0 !important;
+  overflow:hidden !important;
+  background:radial-gradient(ellipse at 50% 46%,#1c3960 0%,#0e2039 55%,#071323 100%) !important;
+  box-shadow:none !important;
+  isolation:isolate;
+}
+body.picker-fullscreen #panel-picker .picker-area {
+  box-sizing:border-box !important;
+  position:absolute !important;
+  z-index:1;
+  top:108px !important;right:0 !important;bottom:126px !important;left:0 !important;
+  inset:108px 0 126px 0 !important;
+  display:block;
+  width:100% !important;height:auto !important;min-height:0 !important;
+  padding:0 !important;margin:0 !important;
+  border:0 !important;border-radius:0 !important;
+  background:radial-gradient(circle at 50% 45%,rgba(44,104,168,.21),transparent 60%) !important;
+  box-shadow:none !important;
+  touch-action:none !important;
+}
+body.picker-fullscreen #panel-picker .picker-intro {
+  box-sizing:border-box !important;
+  position:absolute !important;
+  z-index:5;
+  top:12px !important;left:18px !important;right:82px !important;
+  width:auto !important;max-width:none !important;
+  transform:none !important;
+  margin:0 !important;padding:0 !important;
+  display:flex !important;flex-direction:column;gap:5px;
+  color:#dcecff !important;
+  font-family:'Exo 2',system-ui,sans-serif !important;
+  text-align:left !important;pointer-events:none;
+  text-shadow:none !important;
+}
+body.picker-fullscreen #panel-picker .picker-intro strong {
+  color:#f1f7ff;font-size:clamp(17px,5vw,21px);line-height:1.25;
+  font-weight:850;
+}
+body.picker-fullscreen #panel-picker .picker-intro span {
+  color:#bacbe4;font-size:clamp(11px,3vw,13px);line-height:1.4;
+}
+body.picker-fullscreen #panel-picker .picker-exit {
+  box-sizing:border-box !important;
+  position:absolute !important;z-index:8 !important;
+  top:16px !important;right:16px !important;left:auto !important;
+  width:46px !important;height:46px !important;
+  border-radius:16px !important;
+  background:linear-gradient(140deg,rgba(73,146,203,.36),rgba(116,74,169,.32)) !important;
+  border:1px solid rgba(154,225,255,.55) !important;
+  color:#f7fbff !important;
+  display:flex !important;justify-content:center;align-items:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 24px rgba(0,0,0,.22);
+  touch-action:manipulation !important;
+}
+body.picker-fullscreen #panel-picker .picker-hint {
+  width:min(100%,310px) !important;
+  left:50% !important;top:50% !important;
+  font-size:clamp(17px,4.8vw,21px) !important;
+  color:#d2e4fa !important;
+  line-height:1.5 !important;
+  padding:0 20px !important;
+  text-align:center !important;
+}
+body.picker-fullscreen #panel-picker .picker-status:empty {display:none !important;}
+body.picker-fullscreen #panel-picker .picker-status {
+  box-sizing:border-box !important;
+  position:absolute !important;
+  z-index:6 !important;
+  left:16px !important;right:16px !important;
+  bottom:76px !important;
+  width:auto !important;
+  min-height:44px !important;
+  padding:10px 15px !important;
+  border-radius:14px !important;
+  border:1px solid rgba(140,209,255,.35) !important;
+  background:rgba(24,44,77,.76) !important;
+  color:#f5fbff !important;
+  font-size:clamp(12px,3.7vw,15px) !important;
+  line-height:1.35 !important;
+  box-shadow:none !important;
+  pointer-events:none;
+}
+body.picker-fullscreen #panel-picker .picker-reset {
+  box-sizing:border-box !important;
+  position:absolute !important;z-index:8 !important;
+  left:50% !important;right:auto !important;
+  bottom:16px !important;
+  transform:translateX(-50%) !important;
+  min-width:155px !important;width:auto !important;
+  height:46px !important;min-height:46px !important;
+  padding:10px 24px !important;
+  border-radius:16px !important;
+  background:linear-gradient(120deg,rgba(55,150,205,.64),rgba(130,74,193,.62)) !important;
+  border:1px solid rgba(151,230,255,.65) !important;
+  color:#fff !important;
+  touch-action:manipulation !important;
+}
+@media (max-height:520px) {
+  body.picker-fullscreen #panel-picker .picker-area {
+    top:82px !important;inset:82px 0 106px 0 !important;
+  }
+  body.picker-fullscreen #panel-picker .picker-status {bottom:61px !important;}
+  body.picker-fullscreen #panel-picker .picker-reset {bottom:9px !important;min-height:40px !important;height:40px !important;}
+  body.picker-fullscreen #panel-picker .picker-intro span {display:none;}
+}
+</style>
 </body>
 </html>
