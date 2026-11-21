@@ -2,7 +2,7 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-base=Path(__file__).parent
+base=Path(__file__).parent.parent
 html=(base/'index.html').read_text('utf-8')
 assert 'id="diceProfileSelect"' not in html
 assert 'Хто кидає кубик' not in html

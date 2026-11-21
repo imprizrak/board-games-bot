@@ -1,6 +1,6 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-root=Path(__file__).parent
+root=Path(__file__).parent.parent
 html=(root/'index.html').read_text('utf-8')
 with sync_playwright() as pw:
     browser=pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])

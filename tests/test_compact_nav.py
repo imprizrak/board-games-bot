@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 from playwright.sync_api import sync_playwright
 
-root=Path(__file__).parent
+root=Path(__file__).parent.parent
 html=(root/'index.html').read_text(encoding='utf-8')
 assert html.count('id="styloteka-compact-nav-v5326"')==1
 assert 'styloteka-three-tabs-v5325' in html

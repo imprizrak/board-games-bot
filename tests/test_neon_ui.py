@@ -5,7 +5,7 @@ from functools import partial
 from threading import Thread
 import json, time
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent.parent
 SAMPLE_EVENTS = [
  {'id':10001,'title':'Настільний вечір','event_date':'2026-12-06','event_time':'18:00','description':'Ігри для компанії та новачків. Обираємо настолки разом.', 'cover_url':'','price_kop':15000,'payment_method':'receipt','max_participants':12,'status':'scheduled','rsvps':[],'attendance_reward_stils':50},
  {'id':10002,'title':'Чаювання та дегустація','event_date':'2026-12-07','event_time':'16:00','description':'Спокійна зустріч із чаєм та спілкуванням.','cover_url':'','price_kop':10000,'payment_method':'receipt','max_participants':10,'status':'scheduled','rsvps':[], 'attendance_reward_stils':50},

@@ -2,7 +2,7 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-folder=Path(__file__).parent
+folder=Path(__file__).parent.parent
 html=(folder/'index.html').read_text('utf-8')
 assert html.count('class="lib-subtab-btn active" data-lib="games"')==0
 assert '<div class="lib-subtabs">' not in html

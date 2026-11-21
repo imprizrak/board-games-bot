@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 from playwright.sync_api import sync_playwright
 
-html=Path(__file__).with_name('index.html').read_text(encoding='utf-8')
+html=(Path(__file__).parent.parent/'index.html').read_text(encoding='utf-8')
 nav=html.split('<!-- ==================== НИЖНЄ МЕНЮ ==================== -->',1)[1].split('<!-- Бібліотека +:',1)[0]
 assert re.findall(r'data-view="(view-[a-z-]+)"',nav)==['view-events','view-library','view-tools']
 assert html.count('id="view-events"')==1

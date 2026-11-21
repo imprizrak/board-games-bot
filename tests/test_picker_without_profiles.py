@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 from playwright.sync_api import sync_playwright
 
-base=Path(__file__).parent
+base=Path(__file__).parent.parent
 html=(base/'index.html').read_text(encoding='utf-8')
 assert 'id="pickerProfiles"' not in html
 assert 'renderPickerProfiles' not in html

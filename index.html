@@ -8040,6 +8040,20 @@ function libraryOpenPickedGame() {
   if(game) openViewModal(game);
 }
 
+// Display the existing tags as structured metadata; never invent absent stats.
+function libraryCardMetadata(game) {
+  const raw = String(game?.tags || '').trim();
+  const playersMatch = raw.match(/(?:^|[\s,;])([0-9]+(?:\s*[–—-]\s*[0-9]+)?\s*гравц(?:ів|і|я|ев|и)?)/iu);
+  const timeMatch = raw.match(/(?:^|[\s,;])([0-9]+(?:\s*[–—-]\s*[0-9]+)?\s*(?:хв(?:\.|илин[а-яіїєґ]*)?|год(?:\.|ин[а-яіїєґ]*)?|min(?:utes?)?))/iu);
+  const players = playersMatch ? playersMatch[1].trim().replace(/\s*[—-]\s*/g, '–') : '';
+  const duration = timeMatch ? timeMatch[1].trim().replace(/\s*[—-]\s*/g, '–') : '';
+  let category = raw;
+  if (playersMatch) category = category.replace(playersMatch[1], '');
+  if (timeMatch) category = category.replace(timeMatch[1], '');
+  category = category.replace(/^[\s,;|.·\/–—-]+|[\s,;|.·\/–—-]+$/g, '').trim();
+  return {players, duration, category};
+}
+
 function renderGamesGrid() {
   const grid = document.getElementById('gamesGrid');
   if (!grid) return;
@@ -8072,10 +8086,18 @@ function renderGamesGrid() {
 
     const fallback = `<div class="library-cover-placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></div>`;
     const img = game.cover_url
-      ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" loading="lazy" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">${fallback.replace('class="library-cover-placeholder"', 'class="library-cover-placeholder" hidden')}`
+      ? `<img class="library-card-ambient" src="${escapeHtml(game.cover_url)}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.hidden=true">` +
+        `<img class="library-card-box" src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" loading="lazy" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">` +
+        fallback.replace('class="library-cover-placeholder"', 'class="library-cover-placeholder" hidden')
       : fallback;
-
-    const tagsHtml = game.tags ? `<div class="card-tags">${escapeHtml(game.tags)}</div>` : "";
+    const metadata = libraryCardMetadata(game);
+    const playersIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+    const clockIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+    const statsHtml = [
+      metadata.players ? `<span class="library-card-stat" aria-label="Кількість гравців: ${escapeHtml(metadata.players)}" title="${escapeHtml(metadata.players)}">${playersIcon}<span>${escapeHtml(metadata.players.replace(/\s*гравц(?:ів|і|я|ев|и)?$/iu, ''))}</span></span>` : '',
+      metadata.duration ? `<span class="library-card-stat" aria-label="Тривалість: ${escapeHtml(metadata.duration)}">${clockIcon}<span>${escapeHtml(metadata.duration)}</span></span>` : ''
+    ].filter(Boolean).join('');
+    const categoryHtml = metadata.category ? `<span class="library-card-category" title="${escapeHtml(metadata.category)}">${escapeHtml(metadata.category)}</span>` : '';
 
     card.innerHTML = `
       ${isAdmin ? `<button class="fav-star ${game.is_favorite ? 'active' : ''}" data-id="${game.id}">
@@ -8083,8 +8105,11 @@ function renderGamesGrid() {
       </button>` : ''}
       <div class="library-card-cover">${img}</div>
       <div class="library-card-info">
-        <div class="card-title">${escapeHtml(game.name || '')}</div>
-        ${tagsHtml}
+        <div class="library-card-heading">
+          <div class="card-title">${escapeHtml(game.name || '')}</div>
+          ${categoryHtml}
+        </div>
+        ${statsHtml ? `<div class="library-card-stats">${statsHtml}</div>` : ''}
       </div>
     `;
 
@@ -13992,6 +14017,270 @@ body::before {content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
 .event-date-trigger{background:rgba(8,17,37,.65)!important;border:1px solid rgba(142,194,250,.44)!important;
  border-radius:13px!important;color:#eef3ff!important;font-family:'Exo 2',sans-serif!important;}
 .event-date-trigger.has-value{color:#f5f8ff!important;}
+</style>
+
+
+<style id="styloteka-premium-games-v5334">
+/* STYLOTEKA 5.3.34 — final premium game cards, matching the chosen visual mockup.
+   Scoped to the game library so tools, events and payments are unchanged. */
+#gamesGrid {
+  gap: 13px !important;
+  align-items: stretch;
+  padding-inline: var(--ui-page-pad, 12px) !important;
+}
+#gamesGrid .card {
+  --game-glow-a: rgba(71, 226, 255, .75);
+  --game-glow-b: rgba(184, 100, 255, .7);
+  min-width: 0;
+  min-height: 0 !important;
+  height: 100%;
+  border-radius: 22px !important;
+  border: 1px solid rgba(122, 206, 248, .55) !important;
+  background: linear-gradient(155deg, rgba(21, 38, 68, .99), rgba(15, 25, 47, .99)) !important;
+  overflow: hidden;
+  box-shadow: 0 10px 20px rgba(0, 4, 20, .24), inset 0 1px 0 rgba(255,255,255,.10) !important;
+  isolation: isolate;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+#gamesGrid .card:nth-child(2n) {
+  --game-glow-a: rgba(144, 102, 250, .75);
+  --game-glow-b: rgba(255, 128, 145, .65);
+  border-color: rgba(173, 128, 249, .53) !important;
+}
+#gamesGrid .card::before {
+  content: '' !important;
+  z-index: 4;
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  height: 2px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--game-glow-a) 27%, var(--game-glow-b) 65%, transparent 100%) !important;
+  box-shadow: 0 0 9px 1px rgba(102, 182, 255, .38) !important;
+  pointer-events: none;
+}
+#gamesGrid .card::after {
+  content: none !important;
+}
+#gamesGrid .library-card-cover {
+  position: relative;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1.03 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 54% 70%, rgba(100, 147, 227, .46), transparent 58%),
+    linear-gradient(150deg, rgba(27, 51, 79, .93), rgba(13, 19, 43, .99)) !important;
+  box-shadow: none !important;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#gamesGrid .library-card-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 26% 40%, rgba(119, 203, 251, .24), transparent 44%),
+    radial-gradient(ellipse at 82% 30%, rgba(158, 99, 220, .20), transparent 44%),
+    linear-gradient(180deg, rgba(255,255,255,.055), transparent 25%, rgba(5, 12, 28, .35));
+  z-index: 1;
+  pointer-events: none;
+}
+#gamesGrid .library-card-cover::after {
+  content: '';
+  position: absolute;
+  height: 18%;
+  left: 13%;
+  right: 13%;
+  bottom: 9%;
+  border-radius: 50%;
+  background: rgba(0, 5, 21, .52);
+  filter: blur(12px);
+  z-index: 2;
+  pointer-events: none;
+}
+#gamesGrid .library-card-cover img.library-card-ambient {
+  position: absolute !important;
+  inset: -15% !important;
+  display: block;
+  width: 130% !important;
+  height: 130% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  opacity: .16;
+  transform: scale(1.18);
+  filter: blur(22px) saturate(1.25);
+  z-index: 0;
+  pointer-events: none;
+}
+#gamesGrid .library-card-cover img.library-card-box {
+  position: relative;
+  display: block;
+  z-index: 3;
+  width: 84% !important;
+  height: 84% !important;
+  max-width: 84% !important;
+  max-height: 84% !important;
+  aspect-ratio: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  object-fit: contain !important;
+  background: transparent !important;
+  filter: drop-shadow(0 13px 12px rgba(0,0,0,.55));
+}
+#gamesGrid .library-cover-placeholder {
+  position: relative;
+  z-index: 3;
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: rgba(169,209,245,.10);
+  border: 1px solid rgba(169,209,245,.20);
+}
+#gamesGrid .library-card-info {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  margin: 0;
+  padding: 12px 12px 13px !important;
+  gap: 9px !important;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: linear-gradient(140deg, rgba(33,48,79,.99), rgba(17, 28, 51, .98) 78%, rgba(53,27,70,.64)) !important;
+  border-top: 1px solid rgba(176, 201, 248, .18);
+  z-index: 2;
+}
+#gamesGrid .library-card-info::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, rgba(111,216,252,.29), rgba(180,118,246,.23), transparent);
+}
+#gamesGrid .library-card-heading {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 5px;
+}
+#gamesGrid .card-title {
+  min-width: 0;
+  display: block;
+  flex: 0 1 auto;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  color: #f5f8ff !important;
+  font-weight: 800 !important;
+  font-size: clamp(14px,3.6vw,18px) !important;
+  line-height: 1.23 !important;
+  overflow-wrap: anywhere;
+  background: none !important;
+}
+#gamesGrid .library-card-category {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+  padding: 4px 8px;
+  border-radius: 100px;
+  border: 1px solid rgba(178,125,246,.52);
+  background: rgba(120, 66, 174, .12);
+  color: #e2ccff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#gamesGrid .card:nth-child(2n + 2) .library-card-category {
+  border-color: rgba(112,207,239,.49);
+  background: rgba(40,123,167,.14);
+  color: #c6efff;
+}
+#gamesGrid .library-card-stats {
+  margin-top: auto;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(153,184,234,.21);
+  background: rgba(105,133,186,.15);
+}
+#gamesGrid .library-card-stat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  gap: 4px;
+  padding: 0;
+  color: #d9e5fc;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#gamesGrid .library-card-stat + .library-card-stat {
+  padding-left: 7px;
+  border-left: 1px solid rgba(168,194,237,.30);
+}
+#gamesGrid .library-card-stat svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: #c4daff;
+}
+#gamesGrid .fav-star {
+  z-index: 6;
+  top: 11px;
+  right: 11px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(178, 207, 255, .37);
+  background: rgba(12, 24, 46, .56);
+  border-radius: 50%;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0,0,0,.20);
+}
+#gamesGrid .fav-star svg {width:18px;height:18px;}
+#gamesGrid .card:active {transform: scale(.988);}
+@media(max-width: 380px) {
+  #gamesGrid{gap:10px!important;}
+  #gamesGrid .card{border-radius:19px!important;}
+  #gamesGrid .library-card-info{padding:10px 9px 12px!important;}
+  #gamesGrid .card-title{font-size:13px!important;}
+  #gamesGrid .library-card-category{font-size:9px;padding:4px 7px;}
+  #gamesGrid .library-card-stats{padding:6px 5px;gap:2px;}
+  #gamesGrid .library-card-stat{font-size:9px;gap:2px;}
+  #gamesGrid .library-card-stat+.library-card-stat{padding-left:5px;}
+  #gamesGrid .library-card-stat svg{width:12px;height:12px;}
+}
+@media(min-width: 600px) {
+  #gamesGrid{grid-template-columns: repeat(3,minmax(0,1fr));}
+  #gamesGrid .card-title{font-size:16px!important;}
+}
+@media(prefers-reduced-motion:reduce){#gamesGrid .card{transition:none!important;}}
 </style>
 
 </body>
