@@ -11667,7 +11667,7 @@ function renderEvents(events) {
 
     if (!historyMode) {
       if (!mine) {
-        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => receiptMode?openEventReceiptModal(ev):isPaid?startMonobankEventPayment(ev.id):toggleRsvp(ev.id));
+        card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => receiptMode?openEventJoinPayment(ev):isPaid?startMonobankEventPayment(ev.id):toggleRsvp(ev.id));
       }
 
       card.querySelector('.ev-admin-edit')?.addEventListener('click', () => openEditEventModal(ev));
@@ -12228,6 +12228,23 @@ async function openPrivateEventDetails(eventId){
   }catch(e){content.textContent=e.message||'Не вдалося відкрити деталі.';}
 }
 
+async function openEventJoinPayment(ev){
+  // Server clock, not a browser or user-editable value; first press only.
+  const eventId=Number(ev?.id||0);
+  if(!eventId) return;
+  if(telegramInitData){
+    try{
+      const response=await fetch(`/api/events/${eventId}/join-intent`,{
+        method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),
+        body:JSON.stringify({})});
+      if(!response.ok){
+        console.warn('Join intent time not recorded, HTTP',response.status);
+      }
+    }catch(error){console.warn('Join intent time not recorded',error);}
+  }
+  return openEventReceiptModal(ev);
+}
+
 async function openEventReceiptModal(ev){
   if(!telegramInitData){tg.showAlert('Для оплати відкрий Styloteka через Telegram.');return;}
   const content=eventActionSheet('🧾 Оплата участі','Завантаження реквізитів…');
@@ -12289,6 +12306,16 @@ async function openEventReceiptModal(ev){
   }catch(e){content.textContent=e.message||'Помилка завантаження.';}
 }
 
+function formatAdminKyivDateTime(value){
+  if(!value)return 'Не зафіксовано';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return 'Не зафіксовано';
+  return new Intl.DateTimeFormat('uk-UA',{
+    timeZone:'Europe/Kyiv',day:'2-digit',month:'2-digit',year:'numeric',
+    hour:'2-digit',minute:'2-digit',hour12:false,
+  }).format(date);
+}
+
 async function openAdminEventReceipts(ev){
   const content=eventActionSheet('🧾 Перевірка оплат · '+(ev.title||'Подія'),'Завантаження квитанцій…');
   try{
@@ -12298,6 +12325,12 @@ async function openAdminEventReceipts(ev){
     const items=Array.isArray(x.receipts)?x.receipts:[];
     content.innerHTML=items.length?items.map(item=>`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.15)">
       <div><strong>${escapeHtml(item.display_name||item.username||'Учасник')}</strong> · ${escapeHtml(item.status==='pending'?'⏳ На перевірці':item.status==='approved'?'✅ Підтверджено':'❌ Відхилено')}</div>
+      <div class="event-receipt-timeline" aria-label="Час запису та оплати">
+        <div>👆 Натиснув «Я йду»: <strong>${escapeHtml(formatAdminKyivDateTime(item.joined_at))}</strong></div>
+        <div>🧾 Першу квитанцію надіслано: <strong>${escapeHtml(formatAdminKyivDateTime(item.created_at))}</strong></div>
+        ${item.reviewed_at?`<div>✅ Рішення адміністратора: <strong>${escapeHtml(formatAdminKyivDateTime(item.reviewed_at))}</strong></div>`:''}
+        <small>Час за Києвом. Для старих записів натискання могло не зберегтися.</small>
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button type="button" class="event-receipt-file" data-receipt="${Number(item.id)}">📄 Відкрити квитанцію</button>
         ${item.status==='pending'?`<button type="button" data-review="approved" data-receipt="${Number(item.id)}">✅ Підтвердити</button>
@@ -12311,7 +12344,14 @@ async function openAdminEventReceipts(ev){
     }));
     content.querySelectorAll('[data-review]').forEach(btn=>btn.addEventListener('click',async()=>{
       const decision=btn.dataset.review,receiptId=Number(btn.dataset.receipt);
-      if(decision==='approved'&&!window.confirm('Ти перевірив(ла) надходження коштів і підтверджуєш оплату?'))return;
+      if(decision==='approved'){
+        const details=items.find(item=>Number(item.id)===receiptId)||{};
+        const summary=`Учасник: ${details.display_name||details.username||'—'}\n`+
+          `Натиснув «Я йду»: ${formatAdminKyivDateTime(details.joined_at)}\n`+
+          `Квитанцію отримано: ${formatAdminKyivDateTime(details.created_at)}\n\n`+
+          'Ти перевірив надходження коштів і підтверджуєш оплату?';
+        if(!window.confirm(summary))return;
+      }
       btn.disabled=true;
       try{
         const rr=await fetch(`/api/admin/event-receipts/${receiptId}/review`,{method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({decision})});
@@ -12349,7 +12389,7 @@ async function startMonobankEventPayment(eventId){
             headers:telegramAuthHeaders(),cache:'no-store'});
           if(probe.ok){
             const known=lastEventsData.find(ev=>String(ev.id)===String(eventId));
-            await openEventReceiptModal(known||{id:Number(eventId),title:''});
+            await openEventJoinPayment(known||{id:Number(eventId),title:''});
             return;
           }
         }catch(_){/* Preserve the server's actual error if the probe fails. */}
@@ -13214,7 +13254,7 @@ async function applyInitialDeepLink() {
     if(window.__deepLinkedEventId){
       if(paymentDeepLink){
         const event=lastEventsData.find(e=>String(e.id)===String(window.__deepLinkedEventId));
-        if(event?.payment_method==='receipt')await openEventReceiptModal(event);
+        if(event?.payment_method==='receipt')await openEventJoinPayment(event);
         else await startMonobankEventPayment(window.__deepLinkedEventId);
       }
       else checkMonobankEventPayment(window.__deepLinkedEventId,true);
@@ -14876,6 +14916,17 @@ body.picker-fullscreen #panel-picker .picker-reset {
   outline:2px solid #a5eaff;
   outline-offset:3px;
 }
+
+/* Styloteka 5.3.41: participant's first join click shown during payment review */
+.event-receipt-timeline {
+  display:grid;gap:5px;margin-top:10px;padding:12px;
+  border:1px solid rgba(132,186,232,.35);
+  border-radius:14px;background:rgba(10,26,48,.38);
+  font-size:13px;line-height:1.55;color:#d1e2f5;
+  overflow-wrap:anywhere;
+}
+.event-receipt-timeline strong{color:#f0f6ff;font-weight:700;}
+.event-receipt-timeline small{color:#b4c9db;font-size:11px;}
 </style>
 
 </body>

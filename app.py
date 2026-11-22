@@ -56,6 +56,7 @@ EVENT_SUBMISSIONS_REST = f"{SUPABASE_URL}/rest/v1/event_submissions"
 RSVPS_REST = f"{SUPABASE_URL}/rest/v1/event_rsvps"
 EVENT_GROUP_POSTS_REST = f"{SUPABASE_URL}/rest/v1/event_group_posts"
 EVENT_RECEIPTS_REST = f"{SUPABASE_URL}/rest/v1/event_payment_receipts"
+EVENT_JOIN_INTENTS_REST = f"{SUPABASE_URL}/rest/v1/event_join_intents"
 EVENT_RECEIPTS_RPC = f"{SUPABASE_URL}/rest/v1/rpc/styloteka_review_event_receipt"
 RECEIPT_BUCKET = "event-receipts"
 MONOBANK_EVENT_PAYMENTS_REST = f"{SUPABASE_URL}/rest/v1/event_monobank_payments"
@@ -4242,6 +4243,63 @@ def _my_receipt(event_id, telegram_id):
     return (r.json() or [None])[0]
 
 
+@app.route('/api/events/<int:event_id>/join-intent', methods=['POST'])
+def record_event_join_intent(event_id):
+    """Record the server time of the *first* 'Я йду' click for a receipt-paid event.
+
+    Trusted Telegram initData controls identity; client-supplied timestamps and
+    user IDs are ignored. The event/user unique key + ignore-duplicates keeps the
+    original instant when someone reopens the payment modal.
+    """
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error': 'telegram_auth_required'}), 401
+    try:
+        event = get_event_snapshot(event_id)
+        if not event:
+            return jsonify({'error': 'event_not_found'}), 404
+        if (event.get('status') or 'scheduled') != 'scheduled':
+            return jsonify({'error': 'event_closed'}), 409
+        if event.get('payment_method') != 'receipt' or int(event.get('price_kop') or 0) <= 0:
+            return jsonify({'error': 'not_receipt_event'}), 409
+        response = requests.post(EVENT_JOIN_INTENTS_REST,
+            headers={**HEADERS, 'Content-Type': 'application/json',
+                     'Prefer': 'resolution=ignore-duplicates,return=minimal'},
+            params={'on_conflict': 'event_id,telegram_user_id'},
+            json={'event_id': event_id, 'telegram_user_id': int(user['id'])},
+            timeout=20)
+        response.raise_for_status()
+        return jsonify({'status': 'recorded'}), 200
+    except requests.RequestException:
+        logging.exception('Could not record event join click for event %s', event_id)
+        return jsonify({'error': 'join_intent_unavailable'}), 503
+
+
+def _attach_event_join_clicks(receipts):
+    """Annotate the admin-only receipt list without exposing timestamps publicly."""
+    if not receipts:
+        return receipts
+    event_ids = sorted({int(row['event_id']) for row in receipts})
+    member_ids = sorted({int(row['telegram_user_id']) for row in receipts})
+    timestamps = {}
+    try:
+        r = requests.get(EVENT_JOIN_INTENTS_REST, headers=HEADERS, params={
+            'event_id': 'in.(' + ','.join(map(str, event_ids)) + ')',
+            'telegram_user_id': 'in.(' + ','.join(map(str, member_ids)) + ')',
+            'select': 'event_id,telegram_user_id,clicked_at',
+            'limit': max(1000, len(receipts) * 10),
+        }, timeout=20)
+        r.raise_for_status()
+        timestamps = {(int(row['event_id']), int(row['telegram_user_id'])):
+                      row.get('clicked_at') for row in r.json()}
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        # Existing payment moderation must still work if the timeline is unavailable.
+        logging.warning('Join click times unavailable for receipt moderation', exc_info=True)
+    for item in receipts:
+        item['joined_at'] = timestamps.get((int(item['event_id']), int(item['telegram_user_id'])))
+    return receipts
+
+
 @app.route('/api/events/<int:event_id>/receipt', methods=['GET'])
 def my_event_receipt_status(event_id):
     user = _request_telegram_user()
@@ -4336,7 +4394,7 @@ def admin_event_receipts():
     try:
         r = requests.get(EVENT_RECEIPTS_REST, headers=HEADERS, params=params, timeout=20)
         r.raise_for_status()
-        return jsonify({'receipts': r.json()})
+        return jsonify({'receipts': _attach_event_join_clicks(r.json())})
     except requests.RequestException:
         logging.exception('Receipt moderation list unavailable')
         return jsonify({'error': 'receipt_review_unavailable'}), 503
