@@ -5670,6 +5670,22 @@ if (!window.Telegram?.WebApp) {
 @media(max-width:340px){.styloteka-offline-entry{flex-wrap:wrap}.styloteka-offline-entry a{margin-left:30px}}
 
 </style>
+<style id="styloteka-auto-fullscreen-v5342">
+/* Native Telegram fullscreen: keep interactive content below its translucent chrome. */
+:root { --tg-ui-top: 0px; }
+body.tg-native-fullscreen:not(.picker-fullscreen) {
+  padding-top: var(--tg-ui-top, 76px) !important;
+}
+body.tg-native-fullscreen .modal.open .sheet {
+  max-height: min(85dvh, calc(100dvh - var(--tg-ui-top, 76px) - 10px)) !important;
+}
+body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-intro {
+  top: calc(var(--tg-ui-top, 76px) + 12px) !important;
+}
+body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
+  top: calc(var(--tg-ui-top, 76px) + 8px) !important;
+}
+</style>
 </head>
 <body>
 <div id="stylotekaOfflineRibbon" class="styloteka-offline-ribbon" role="status" aria-live="polite" hidden>
@@ -7679,7 +7695,7 @@ button,.btn{font-family:inherit}
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
-tg.expand();
+tg.expand(); // Fallback for older Telegram versions without true fullscreen.
 // Keep the native Telegram title bar black, as in the classic dark Mini App header.
 // The close/menu button circles are owned by Telegram and follow its own theme.
 const telegramChromeColors = {
@@ -7703,12 +7719,35 @@ function updateTelegramInsets() {
   root.style.setProperty('--tg-safe-top', `${safeTop}px`);
   root.style.setProperty('--tg-content-top', `${contentTop}px`);
   root.style.setProperty('--tg-safe-bottom', `${safeBottom}px`);
+  // True fullscreen draws Telegram controls over the WebView. Reserve room
+  // for status bar + native close/menu controls instead of hiding content beneath them.
+  const fullscreen = Boolean(tg?.isFullscreen);
+  const uiTop = fullscreen ? Math.max(contentTop, safeTop + 64) : 0;
+  root.style.setProperty('--tg-ui-top', `${uiTop}px`);
+  document.body.classList.toggle('tg-native-fullscreen', fullscreen);
 }
 updateTelegramInsets();
 if (tg && typeof tg.onEvent === 'function') {
   tg.onEvent('viewportChanged', updateTelegramInsets);
   tg.onEvent('safeAreaChanged', updateTelegramInsets);
   tg.onEvent('contentSafeAreaChanged', updateTelegramInsets);
+  tg.onEvent('fullscreenChanged', updateTelegramInsets);
+  tg.onEvent('fullscreenFailed', (info) => {
+    console.debug('Telegram fullscreen unavailable; using expanded view', info?.error || 'unknown');
+    try { tg.expand(); } catch (_) {}
+    updateTelegramInsets();
+  });
+}
+// Request real fullscreen on EVERY fresh opening (Telegram Mini Apps API 8.0+).
+// Do not fight the user's manual choice by repeatedly requesting it after exit.
+try {
+  if (typeof tg.requestFullscreen === 'function'
+      && typeof tg.isVersionAtLeast === 'function'
+      && tg.isVersionAtLeast('8.0') && !tg.isFullscreen) {
+    tg.requestFullscreen();
+  }
+} catch (error) {
+  console.debug('Telegram fullscreen request failed; keeping expanded view', error);
 }
 
 const username = tg.initDataUnsafe?.user?.username
@@ -9342,10 +9381,9 @@ function playPickerWinner() {
   playPickerTone(783.99, 0.18, 0.065, "sine", 0.22);
 }
 
-// The picker is a WebView-sized overlay, NOT Telegram's native fullscreen.
-// requestFullscreen() makes iOS Telegram buttons overlap the play field.
-// Mounting it directly in <body> avoids legacy tool-panel margins and
-// animated view stacking contexts constraining the fixed-position overlay.
+// The picker is a fixed WebView overlay. Telegram may itself be fullscreen;
+// keep picker actions below the native controls using --tg-ui-top.
+// Mounting it directly in <body> avoids tool-panel stacking contexts.
 const pickerPanelElement = document.getElementById('panel-picker');
 const pickerOriginalNextElement = document.getElementById('panel-counters');
 function enterPickerFullscreen() {
@@ -9355,10 +9393,8 @@ function enterPickerFullscreen() {
   }
   document.body.classList.add('picker-fullscreen');
   resetPicker();
-  // Telegram's own title bar remains visible and usable on iPhone.
-  if (tg?.isFullscreen && typeof tg.exitFullscreen === 'function') {
-    try { tg.exitFullscreen(); } catch (_) {}
-  }
+  // Keep the app in its current native fullscreen mode when choosing a player.
+  updateTelegramInsets();
 }
 
 function exitPickerFullscreen(resetState = true) {
