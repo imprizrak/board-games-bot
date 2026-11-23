@@ -65,7 +65,7 @@ class EventProposalTests(unittest.TestCase):
         env=self.validators()
         data={**self.form,'attendance_reward_stils':'500'}
         result=env['_proposal_validated_fields'](data,admin=False)
-        self.assertEqual(result['attendance_reward_stils'],50)
+        self.assertEqual(result['attendance_reward_stils'],0)
         self.assertEqual(result['location_text'],'Секретна адреса')
         self.assertEqual(result['title'],'Чаювання у клубі')
         self.assertEqual(result['payment_method'],'free')

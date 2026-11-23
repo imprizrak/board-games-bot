@@ -5707,12 +5707,8 @@ def _proposal_validated_fields(data, *, admin=False):
     # must arrange it independently after approval.
     if not admin and method == 'monobank':
         raise ValueError('receipt_only_for_members')
-    reward = 50
-    if admin:
-        raw = str(data.get('attendance_reward_stils') or '50')
-        if not re.fullmatch(r'\d{1,3}', raw) or int(raw) > 500:
-            raise ValueError('invalid_attendance_reward_stils')
-        reward = int(raw)
+    # V5.3.44: reward currency for attendance is discontinued.
+    reward = 0
     return {
         'title': title, 'event_date': day, 'event_time': time,
         'location_text': location['location_text'],
@@ -6064,13 +6060,8 @@ def add_event():
         "cover_url": uploaded_cover_url,
         "status": "scheduled",
         "completed_at": None,
-        "attendance_reward_stils": 50,
+        "attendance_reward_stils": 0,
     }
-    if 'attendance_reward_stils' in data:
-        raw_reward = str(data['attendance_reward_stils']).strip()
-        if not re.fullmatch(r'\d{1,3}', raw_reward) or int(raw_reward)>500:
-            return jsonify({'error':'invalid_attendance_reward_stils'}),400
-        payload['attendance_reward_stils'] = int(raw_reward)
 
     resp = requests.post(
         EVENTS_REST,
@@ -6315,11 +6306,7 @@ def edit_event(event_id):
         "max_participants": max_participants,
         "cover_url": cover_url,
     }
-    if 'attendance_reward_stils' in data:
-        raw_reward = str(data['attendance_reward_stils']).strip()
-        if not re.fullmatch(r'\d{1,3}', raw_reward) or int(raw_reward)>500:
-            return jsonify({'error':'invalid_attendance_reward_stils'}),400
-        payload['attendance_reward_stils'] = int(raw_reward)
+    payload['attendance_reward_stils'] = 0  # No new attendance rewards.
 
     # Якщо адміністратор переносить дату або час уже анонсованої події,
     # дозволяємо системі надіслати нове нагадування за день до нового часу.

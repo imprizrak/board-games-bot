@@ -6019,12 +6019,6 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
 <div class="view active" id="view-events">
   <header>Події</header>
   <div class="neon-page-subtitle">Зустрічі, настільні ігри та творчість</div>
-  <div class="neon-event-filters" role="group" aria-label="Категорії подій">
-    <button type="button" class="neon-filter-chip active" data-event-kind="all" aria-pressed="true">Усі</button>
-    <button type="button" class="neon-filter-chip" data-event-kind="games" aria-pressed="false">🎲 Настолки</button>
-    <button type="button" class="neon-filter-chip" data-event-kind="tea" aria-pressed="false">🍵 Чаювання</button>
-    <button type="button" class="neon-filter-chip" data-event-kind="art" aria-pressed="false">🎨 Творчість</button>
-  </div>
   <label class="neon-event-search-wrap" for="eventSearch">
     <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
     <input type="search" id="eventSearch" placeholder="Пошук подій…" autocomplete="off" aria-label="Пошук подій">
@@ -7652,10 +7646,6 @@ button,.btn{font-family:inherit}
       <div class="event-form-hint">Кількість поки вводить адміністратор. Автоматичне оновлення та профілі можливі після перевірки доступу до Quests Inc.</div>
     </div>
 
-    <label for="eventAttendanceReward">🪙 Стілси за фактичне відвідування</label>
-    <input type="number" id="eventAttendanceReward" min="0" max="500" step="1" inputmode="numeric" value="50">
-    <div class="event-form-hint">За замовчуванням +50 стілсів. Винагорода нараховується лише після сканування QR-квитка адміністратором, один раз на подію. 0 — без винагороди.</div>
-
     <label>Максимум учасників (0 = без ліміту)</label>
     <input type="number" id="eventCapacity" min="0" max="99" value="0" inputmode="numeric">
 
@@ -8526,7 +8516,6 @@ function formatEventDate(iso) {
 let lastEventsData = [];
 let currentParticipantEventId = null;
 let eventsMode = 'upcoming';
-let neonEventKind = 'all';
 function neonDetectEventKind(ev) {
   // Presentation-only classification; storage/API schema remain unchanged.
   const text = String([ev?.title, ev?.description, ev?.game_name].filter(Boolean).join(' ')).toLocaleLowerCase('uk');
@@ -8537,22 +8526,12 @@ function neonDetectEventKind(ev) {
 function neonVisibleEvents(events) {
   const query = (document.getElementById('eventSearch')?.value || '').trim().toLocaleLowerCase('uk');
   return (Array.isArray(events) ? events : []).filter(ev => {
-    if (neonEventKind !== 'all' && neonDetectEventKind(ev) !== neonEventKind) return false;
     if (!query) return true;
     return String([ev.title, ev.description, ev.event_date, ev.event_time].filter(Boolean).join(' ')).toLocaleLowerCase('uk').includes(query);
   });
 }
 function neonRefreshEvents() { renderEvents(lastEventsData); }
 document.getElementById('eventSearch')?.addEventListener('input', neonRefreshEvents);
-document.querySelectorAll('.neon-filter-chip').forEach(btn => btn.addEventListener('click', () => {
-  neonEventKind = btn.dataset.eventKind || 'all';
-  document.querySelectorAll('.neon-filter-chip').forEach(chip => {
-    const active = chip.dataset.eventKind === neonEventKind;
-    chip.classList.toggle('active', active);
-    chip.setAttribute('aria-pressed', String(active));
-  });
-  neonRefreshEvents();
-}));
 
 async function loadEvents(mode = eventsMode) {
   eventsMode = mode === 'history' ? 'history' : 'upcoming';
@@ -11495,7 +11474,7 @@ async function openEventTicket(ev) {
        <img class="event-checkin-qr" alt="QR-квиток для входу" src="${uri}">
        <div class="event-checkin-token">Код: ${escapeHtml(data.ticket)}</div>
        <div class="event-checkin-result">${data.checked_in?'✅ Твій прихід уже підтверджено.':'⏳ Очікує сканування організатором.'}
-       ${Number(data.reward_stils)>0?`<div class="event-checkin-reward">🪙 ${data.checked_in?`За прихід нараховується +${Number(data.reward_stils)} стілсів.`:`Після сканування QR отримаєш +${Number(data.reward_stils)} стілсів.`}</div>`:''}</div>`;
+       </div>`;
   } catch(err) {root.textContent=err.message||'QR-квиток недоступний.';}
 }
 
@@ -11545,8 +11524,8 @@ async function confirmEventCheckin() {
     if(!res.ok){const errors={invalid_ticket:'Невідомий або чужий QR-квиток.',not_registered:'Людина ще не має підтвердженого місця.',event_closed:'Подія вже закрита.',group_admin_required:'Лише адміністратор може підтвердити прихід.'};throw Error(errors[data.status||data.error]||'Не вдалося відмітити прихід.');}
     const who=data.display_name||'Гравець';
     root.textContent = data.status==='already_checked_in'
-      ? `ℹ️ Уже відмічено: ${who}. Повторної винагороди немає.`
-      : `✅ Прихід підтверджено: ${who}.${Number(data.reward_stils)>0?` 🪙 +${Number(data.reward_stils)} стілсів зараховано!`:''}`;
+      ? `ℹ️ Уже відмічено: ${who}.`
+      : `✅ Прихід підтверджено: ${who}.`;
     input.value='';
     await loadEvents();
   }catch(err){root.textContent=err.message||'Помилка сканування.';}
@@ -11562,7 +11541,7 @@ function renderEvents(events) {
 
   if (!events || !events.length) {
     if (totalLoadedEvents) {
-      list.innerHTML = '<div class="events-empty neon-events-filter-empty"><span aria-hidden="true">✦</span><strong>Нічого не знайдено</strong><small>Спробуй іншу категорію або зміни запит.</small></div>';
+      list.innerHTML = '<div class="events-empty neon-events-filter-empty"><span aria-hidden="true">✦</span><strong>Нічого не знайдено</strong><small>Спробуй змінити пошуковий запит.</small></div>';
       return;
     }
     if (historyMode) {
@@ -11648,34 +11627,42 @@ function renderEvents(events) {
     card.innerHTML = `
       <div class="ev-top-row">
         <div class="ev-main">
-          ${cover || `<div class="event-cover-placeholder" aria-hidden="true">${categorySymbol}</div>`}
-          <div class="ev-kind-tag">${categorySymbol} ${categoryName}</div>
-          <div class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</div>
-          <div class="ev-title">${escapeHtml(ev.title || '')}</div>
-          <div class="ev-price">${eventPriceLabel(ev)}${isPaid?' · запис лише після оплати':''}</div>
-          ${Number(ev.attendance_reward_stils ?? 50) > 0 ? `<div class="ev-reward">🪙 +${Number(ev.attendance_reward_stils ?? 50)} стілсів за підтверджений прихід</div>` : ''}
-          ${eventGamesHtml(ev)}
-          ${eventMemberGamesSummary(ev)}
-          ${ev.description ? `<div class="ev-description">${renderEventDescriptionWithLinks(ev.description)}</div>` : ''}
-          ${eventQuestsCountsHtml(ev, going.length)}
-          ${eventAttendanceStatsHtml(ev, going.length)}
-          ${eventLocationHtml(ev)}
-          ${historyMode
-            ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · ' + escapeHtml(completedAt) : ''}</div>`
-            : `<div class="ev-capacity">${cap
+          <div class="ev-post-head">
+            <span class="ev-post-avatar" aria-hidden="true">${categorySymbol}</span>
+            <div class="ev-post-account">
+              <strong>Styloteka <span class="ev-post-category">· ${categoryName}</span></strong>
+              <span class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</span>
+            </div>
+            ${!historyMode && isAdmin
+              ? `<div class="ev-admin-actions">
+                  <button class="ev-admin-edit" data-id="${ev.id}" aria-label="Редагувати подію" title="Редагувати">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11a2.2 2.2 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
+                  </button>
+                  <button class="ev-admin-del" data-id="${ev.id}" aria-label="Видалити подію" title="Видалити"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>
+                </div>`
+              : ''}
+          </div>
+          <div class="ev-post-media">
+            ${cover || `<div class="event-cover-placeholder" aria-label="Подія без обкладинки">${categorySymbol}</div>`}
+          </div>
+          <div class="ev-post-info">
+            <h3 class="ev-title">${escapeHtml(ev.title || '')}</h3>
+            <div class="ev-post-meta">
+              <span class="ev-price">${eventPriceLabel(ev)}${isPaid?' · запис після оплати':''}</span>
+              <span class="ev-capacity">${cap
                 ? `Місця: ${going.length}/${cap}${waiting.length ? ` · черга ${waiting.length}` : ''}`
                 : `Учасників: ${going.length}${waiting.length ? ` · черга ${waiting.length}` : ''}`
-              }${declined.length ? ` · не йдуть ${declined.length}` : ''}</div>`
-          }
+              }${declined.length ? ` · не йдуть ${declined.length}` : ''}</span>
+            </div>
+            ${eventGamesHtml(ev)}
+            ${eventMemberGamesSummary(ev)}
+            ${ev.description ? `<div class="ev-description">${renderEventDescriptionWithLinks(ev.description)}</div>` : ''}
+            ${eventQuestsCountsHtml(ev, going.length)}
+            ${eventAttendanceStatsHtml(ev, going.length)}
+            ${eventLocationHtml(ev)}
+            ${historyMode ? `<div class="event-status-completed">✓ Завершено${completedAt ? ' · ' + escapeHtml(completedAt) : ''}</div>` : ''}
+          </div>
         </div>
-        ${!historyMode && isAdmin
-          ? `<div class="ev-admin-actions">
-              <button class="ev-admin-edit" data-id="${ev.id}" aria-label="Редагувати подію" title="Редагувати">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11a2.2 2.2 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
-              </button>
-              <button class="ev-admin-del" data-id="${ev.id}" aria-label="Видалити подію" title="Видалити"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>
-            </div>`
-          : ''}
       </div>
 
       ${!historyMode && (mine?.status === 'going' || isAdmin) ? `<div class="event-checkin-actions">
@@ -11919,7 +11906,6 @@ function populateEventFormFromEvent(ev) {
   setEventPriceMode(paid?'paid':'free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = String(Number(ev.max_participants) || 0);
-  document.getElementById('eventAttendanceReward').value = String(ev.attendance_reward_stils ?? 50);
 
   renderEventGameChoices(eventGameNames(ev));
   resetEventCoverPreview();
@@ -11995,7 +11981,6 @@ function openEventModal() {
   setEventPriceMode('free');
   const capacity = document.getElementById('eventCapacity');
   if (capacity) capacity.value = '0';
-  document.getElementById('eventAttendanceReward').value = '50';
   renderEventGameChoices();
   resetEventCoverPreview();
   initEventCoverPreview();
@@ -12051,11 +12036,8 @@ async function submitEvent() {
   formData.append('payment_method',priceMode==='paid'?payMethod:'free');
   formData.append('payment_details',priceMode==='paid'&&payMethod==='receipt'?payDetails:'');
   formData.append('payment_link',priceMode==='paid'&&payMethod==='receipt'?payLink:'');
-  const rewardInput = document.getElementById('eventAttendanceReward').value.trim();
-  if (!/^\d{1,3}$/.test(rewardInput) || Number(rewardInput) > 500) {
-    tg.showAlert('Стілси за відвідування: ціле число від 0 до 500.');return;
-  }
-  formData.append('attendance_reward_stils', rewardInput);
+  // Compatibility with older servers; attendance rewards are intentionally disabled.
+  formData.append('attendance_reward_stils', '0');
   formData.append('max_participants', parseInt(document.getElementById('eventCapacity')?.value || '0', 10) || 0);
   formData.append('description', document.getElementById('eventDescription').value.trim());
   const questsEventUrl = document.getElementById('eventQuestsUrl').value.trim();
@@ -12113,7 +12095,7 @@ async function submitEvent() {
       return;
     }
     if (!res.ok) {
-      const errors={telegram_auth_required:'Відкрий застосунок у Telegram.',group_membership_required:'Приєднайся до групи клубу, щоб пропонувати події.',too_many_pending_proposals:'У тебе вже є три заявки на розгляді. Дочекайся рішення адміністрації.',invalid_event_title:'Введи назву події від 3 до 120 символів.',invalid_event_date:'Обери коректну майбутню дату.',invalid_event_time:'Вкажи час у форматі 19:00.',receipt_only_for_members:'Обери ручне підтвердження оплати квитанцією.',invalid_cover_type:'Обкладинка має бути JPEG, PNG або WebP.',cover_too_large:'Обкладинка завелика (максимум 5 МБ).',attendance_reward_locked_after_checkin:'Не можна змінювати винагороду після першої відмітки відвідування.',invalid_attendance_reward_stils:'Вкажи ціле число стілсів від 0 до 500.',event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
+      const errors={telegram_auth_required:'Відкрий застосунок у Telegram.',group_membership_required:'Приєднайся до групи клубу, щоб пропонувати події.',too_many_pending_proposals:'У тебе вже є три заявки на розгляді. Дочекайся рішення адміністрації.',invalid_event_title:'Введи назву події від 3 до 120 символів.',invalid_event_date:'Обери коректну майбутню дату.',invalid_event_time:'Вкажи час у форматі 19:00.',receipt_only_for_members:'Обери ручне підтвердження оплати квитанцією.',invalid_cover_type:'Обкладинка має бути JPEG, PNG або WebP.',cover_too_large:'Обкладинка завелика (максимум 5 МБ).',event_price_locked_after_invoice:'Не можна змінювати ціну після створення рахунків. Створи іншу подію.',event_price_locked_after_registration:'Не можна змінювати ціну, якщо на подію вже є записи. Створи нову подію.',event_capacity_locked_after_invoice:'Не можна зменшувати кількість місць, коли вже є рахунки або оплати.',invalid_event_price:'Вкажи коректну суму (до двох знаків після коми).',minimum_price_1_uah:'Мінімальна сума — 1 гривня.'};
       tg.showAlert(errors[data.error] || data.error || (isEditing ? 'Не вдалося зберегти зміни.' : 'Не вдалося створити подію.'));
       return;
     }
@@ -14907,9 +14889,6 @@ body.picker-fullscreen #panel-picker .picker-reset {
 #eventModal.proposal-mode label[for="eventQuestsUrl"],
 #eventModal.proposal-mode #eventQuestsUrl,
 #eventModal.proposal-mode #eventQuestsCountRow,
-#eventModal.proposal-mode label[for="eventAttendanceReward"],
-#eventModal.proposal-mode #eventAttendanceReward,
-#eventModal.proposal-mode #eventAttendanceReward + .event-form-hint {display:none!important}
 .event-submissions-sheet {max-height:min(88dvh,780px);overflow-y:auto;overscroll-behavior:contain}
 .event-submissions-intro{font-size:13px;line-height:1.4;color:#a4bed5;margin:5px 0 14px}
 #eventSubmissionsContent{display:grid;gap:12px}
@@ -15045,5 +15024,95 @@ body.picker-fullscreen #panel-picker .touch-dot.winner {
 @media (prefers-reduced-motion:reduce) {#panel-picker .touch-dot.pulsing {animation:none!important}}
 </style>
 
+
+<style id="styloteka-v5344-post-feed">
+/* Styloteka 5.3.44: immersive Instagram-like event feed */
+#view-events .events-list {width:100%;max-width:740px;margin:0 auto!important;
+  padding:12px 10px 135px!important;box-sizing:border-box;gap:20px!important;}
+#view-events .event-card {width:100%;box-sizing:border-box;padding:0!important;
+  border-radius:24px!important;overflow:hidden!important;
+  background:linear-gradient(156deg,rgba(41,63,100,.95),rgba(14,24,48,.96) 57%,rgba(46,28,72,.9))!important;
+  border:1px solid rgba(144,208,255,.45)!important;
+  box-shadow:inset 0 1px 0 rgba(250,253,255,.2),0 14px 34px rgba(0,0,0,.31),0 0 15px rgba(105,141,242,.1)!important;}
+#view-events .event-card::before {height:80px;opacity:.43;z-index:0;}
+#view-events .event-card .ev-top-row {display:block!important;padding:0!important;margin:0!important;}
+#view-events .event-card .ev-main {display:block!important;width:100%;padding:0!important;margin:0!important;}
+#view-events .ev-post-head {position:relative;display:flex;gap:11px;align-items:center;
+  min-height:70px;padding:12px 14px;box-sizing:border-box;}
+#view-events .ev-post-avatar {flex:0 0 43px;width:43px;height:43px;display:grid;place-items:center;
+  font-size:22px;border-radius:50%;border:1px solid rgba(139,232,255,.64);
+  background:linear-gradient(135deg,rgba(45,172,225,.3),rgba(150,66,202,.3));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 13px rgba(76,179,255,.16);}
+#view-events .ev-post-account {min-width:0;display:flex;flex-direction:column;gap:3px;flex:1;}
+#view-events .ev-post-account strong {font-family:'Exo 2',sans-serif;font-size:15px;line-height:1.28;
+  color:#f7faff;overflow-wrap:anywhere;}
+#view-events .ev-post-category {font-family:inherit;font-size:12px;font-weight:500;color:#b5c6ed;}
+#view-events .ev-post-head .ev-date {font-size:12px!important;color:#bdd5ed!important;line-height:1.3!important;}
+#view-events .ev-post-head .ev-admin-actions {flex:0 0 auto;display:flex!important;align-items:center;gap:6px!important;
+  max-width:none!important;margin:0!important;}
+#view-events .ev-post-head :is(.ev-admin-edit,.ev-admin-del) {width:37px!important;height:37px!important;
+  min-width:37px!important;min-height:37px!important;border-radius:13px!important;}
+#view-events .ev-post-media {position:relative;display:block;width:100%;aspect-ratio:4 / 5;
+  min-height:0;overflow:hidden;background:radial-gradient(circle at 20% 15%,rgba(53,127,184,.28),transparent 55%),
+    linear-gradient(145deg,#121e3b,#111a34 63%,#2a1b47);}
+#view-events .ev-post-media :is(.event-cover-wrap,.event-cover-placeholder) {
+  display:grid!important;place-items:center!important;position:absolute;inset:0!important;
+  width:100%!important;height:100%!important;box-sizing:border-box!important;
+  padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;max-height:none!important;background:transparent!important;}
+#view-events .ev-post-media .event-cover {display:block!important;width:100%!important;height:100%!important;
+  max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important;
+  margin:0!important;border-radius:0!important;background:transparent!important;}
+#view-events .ev-post-media .event-cover-placeholder {font-size:clamp(74px,23vw,128px)!important;
+  background:radial-gradient(circle,rgba(63,176,242,.18),transparent 68%)!important;}
+#view-events .ev-post-info {display:flex;flex-direction:column;gap:11px;padding:17px 16px 9px;
+  box-sizing:border-box;min-width:0;}
+#view-events .ev-post-info > * {min-width:0;max-width:100%;margin:0!important;}
+#view-events .ev-post-info .ev-title {font-size:clamp(21px,5.6vw,29px)!important;line-height:1.2!important;
+  font-weight:900!important;color:#f8faff!important;letter-spacing:-.03em!important;}
+#view-events .ev-post-meta {display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+#view-events .ev-post-meta :is(.ev-price,.ev-capacity) {display:inline-flex;align-items:center;max-width:100%;
+  font-size:12px!important;line-height:1.45!important;color:#dfebff!important;font-weight:700!important;
+  padding:7px 10px!important;border:1px solid rgba(142,193,245,.3);border-radius:999px;
+  background:rgba(36,70,111,.33);overflow-wrap:anywhere;}
+#view-events .ev-post-meta .ev-price {border-color:rgba(111,224,244,.45);
+  background:linear-gradient(110deg,rgba(48,130,167,.28),rgba(112,67,169,.24));}
+#view-events .ev-post-info .ev-description {color:#d0d9ef!important;font-size:14px!important;
+  line-height:1.65!important;white-space:normal;}
+#view-events .ev-post-info .ev-description a {overflow-wrap:anywhere;}
+#view-events .ev-post-info :is(.ev-game,.ev-quests,.event-attendance-stats) {line-height:1.5;}
+#view-events .event-card :is(.event-checkin-actions,.event-games-open,.event-private-open,
+  .event-receipts-admin,.ev-participants-label,.ev-participants,.ev-buttons,
+  .ev-my-vote,.ev-repeat-btn,.event-form-hint,.event-status-completed):not(.ev-post-info *) {
+  width:calc(100% - 32px)!important;max-width:calc(100% - 32px)!important;
+  box-sizing:border-box;margin-left:16px!important;margin-right:16px!important;}
+#view-events .event-card .ev-participants-label {margin-top:12px!important;}
+#view-events .event-card .ev-participants {margin-top:6px!important;margin-bottom:14px!important;}
+#view-events .event-card .ev-buttons {margin-top:12px!important;margin-bottom:15px!important;}
+#view-events .event-card .ev-my-vote {margin-bottom:16px!important;}
+#view-events .event-card > :last-child {margin-bottom:17px!important;}
+#view-events .event-card .event-checkin-actions {margin-top:8px!important;}
+#view-events .event-card :is(.ev-rsvp-btn,.event-private-open,.ev-repeat-btn) {border-radius:15px!important;}
+@media(max-width:360px) {
+  #view-events .events-list {padding-left:7px!important;padding-right:7px!important;}
+  #view-events .ev-post-head {padding:10px 11px;gap:8px;}
+  #view-events .ev-post-avatar {width:37px;height:37px;flex-basis:37px;font-size:19px;}
+  #view-events .ev-post-account strong {font-size:14px;}
+  #view-events .ev-post-info {padding:14px 13px 8px;gap:9px;}
+}
+
+/* Instagram feed respects each uploaded image ratio (portrait, square or landscape)
+   so poster text is never cropped and landscape covers never letterbox. */
+#view-events .ev-post-media {aspect-ratio:auto!important;}
+#view-events .ev-post-media .event-cover-wrap {
+  position:relative!important;inset:auto!important;display:block!important;
+  height:auto!important;aspect-ratio:auto!important;}
+#view-events .ev-post-media img.event-cover {
+  position:relative!important;display:block!important;width:100%!important;
+  height:auto!important;aspect-ratio:auto!important;max-height:none!important;}
+#view-events .ev-post-media .event-cover-placeholder {
+  position:relative!important;inset:auto!important;height:auto!important;
+  min-height:0!important;aspect-ratio:4 / 5!important;display:grid!important;}
+</style>
 </body>
 </html>
