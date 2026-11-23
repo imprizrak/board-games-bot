@@ -13,6 +13,8 @@ from decimal import Decimal, InvalidOperation
 from threading import Thread, Lock
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
+from werkzeug.datastructures import FileStorage
+from game_autofill import search_games, preview_game, fetch_bgg_cover
 from urllib.parse import quote, parse_qsl, urlparse, unquote, parse_qs
 
 import requests
@@ -613,6 +615,53 @@ def get_games():
     return jsonify(resp.json())
 
 
+# ==================== АВТОЗАПОВНЕННЯ НАСТІЛЬНИХ ІГОР (5.3.45) ====================
+# These credentials MUST live in Render environment, never in HTML/JavaScript.
+BGG_API_TOKEN = os.environ.get('BGG_API_TOKEN', '').strip()
+YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '').strip()
+BRAVE_SEARCH_API_KEY = os.environ.get('BRAVE_SEARCH_API_KEY', '').strip()
+_autofill_rate = {}
+_autofill_lock = Lock()
+
+
+def _game_autofill_rate_limit(telegram_id):
+    # Modest per-user throttle; additional providers have their own quotas.
+    now = time.monotonic()
+    with _autofill_lock:
+        if len(_autofill_rate) > 1200:
+            for key in list(_autofill_rate):
+                _autofill_rate[key] = [t for t in _autofill_rate[key] if now-t < 60]
+                if not _autofill_rate[key]: _autofill_rate.pop(key, None)
+        history = _autofill_rate.setdefault(int(telegram_id), [])
+        history[:] = [t for t in history if now-t < 60]
+        if len(history) >= 12:
+            return False
+        history.append(now)
+        return True
+
+
+@app.route('/api/games/autofill', methods=['POST'])
+def game_autofill():
+    user = _request_telegram_user()
+    if not user:
+        return jsonify({'error':'telegram_auth_required'}), 401
+    data = request.get_json(silent=True) or {}
+    query = str(data.get('query') or '').strip()
+    if len(query) < 2 or len(query) > 100:
+        return jsonify({'error':'Назва має містити від 2 до 100 символів.'}), 400
+    if not _game_autofill_rate_limit(user['id']):
+        return jsonify({'error':'Забагато запитів. Спробуй трохи пізніше.'}), 429
+    bgg_id = data.get('bgg_id')
+    if bgg_id is not None:
+        if not str(bgg_id).isdigit() or not (0 < int(bgg_id) < 2**31):
+            return jsonify({'error':'invalid_game_id'}), 400
+        result = preview_game(bgg_id,BGG_API_TOKEN,YOUTUBE_API_KEY,BRAVE_SEARCH_API_KEY)
+        if result.get('error'):
+            return jsonify(result), 503 if result['error'] not in ('not_found','invalid_id') else 404
+        return jsonify(result)
+    return jsonify(search_games(query,BGG_API_TOKEN))
+
+
 # ==================== ВІКТОРИНИ З НАСТІЛЬНИХ ІГОР ====================
 QUIZ_CATEGORIES = {"rules", "goal", "strategy", "tips"}
 QUIZ_DAILY_CORRECT_LIMIT = 5
@@ -809,6 +858,15 @@ def add_game():
 
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
+    # Only the verified BGG image CDN may supply remote covers, and only after
+    # authenticated submission. Failure does not block the game submission.
+    if not cover_file:
+        raw_cover_url = str(request.form.get('cover_source_url') or '').strip()
+        if raw_cover_url:
+            downloaded = fetch_bgg_cover(raw_cover_url)
+            if downloaded:
+                content, mime_type, filename = downloaded
+                cover_file = FileStorage(stream=io.BytesIO(content),filename=filename,content_type=mime_type)
     cover_url = upload_file(cover_file, "covers") if cover_file else None
     rules_url = upload_file(rules_file, "rules") if rules_file else (rules_link or None)
 
@@ -913,6 +971,16 @@ def update_game(game_id):
 
     cover_file = request.files.get("cover")
     rules_file = request.files.get("rules")
+    # Allow an admin to explicitly apply a BGG cover to an existing game.
+    # Only the allowlisted BGG CDN is supported; arbitrary URLs are NEVER fetched.
+    if not cover_file:
+        proposed_cover_url = str(request.form.get('cover_source_url') or '').strip()
+        if proposed_cover_url:
+            downloaded = fetch_bgg_cover(proposed_cover_url)
+            if not downloaded:
+                return jsonify({'error':'Не вдалося завантажити обкладинку BGG. Стару обкладинку збережено.'}), 400
+            content, mime_type, filename = downloaded
+            cover_file = FileStorage(stream=io.BytesIO(content), filename=filename, content_type=mime_type)
 
     current = requests.get(
         REST,
@@ -925,37 +993,47 @@ def update_game(game_id):
     if not rows:
         return jsonify({"status": "not_found"}), 404
 
-    cover_url = rows[0].get("cover_url")
-    rules_url = rows[0].get("rules_url")
-
-    if cover_file:
-        delete_file(cover_url)
-        cover_url = upload_file(cover_file, "covers")
-    if rules_file:
-        delete_file(rules_url)
-        rules_url = upload_file(rules_file, "rules")
-    elif rules_link_raw is not None and str(rules_link_raw).strip():
-        # Нове зовнішнє посилання замінює попередній PDF/URL.
-        if rules_link != rules_url:
-            delete_file(rules_url)
+    previous_cover_url = rows[0].get("cover_url")
+    previous_rules_url = rows[0].get("rules_url")
+    cover_url = previous_cover_url
+    rules_url = previous_rules_url
+    uploaded_urls = []
+    try:
+        # Upload replacements first. An API/storage failure must never erase
+        # the existing game's original media before the database update succeeds.
+        if cover_file:
+            cover_url = upload_file(cover_file, "covers")
+            uploaded_urls.append(cover_url)
+        if rules_file:
+            rules_url = upload_file(rules_file, "rules")
+            uploaded_urls.append(rules_url)
+        elif rules_link_raw is not None and str(rules_link_raw).strip():
             rules_url = rules_link
 
-    resp = requests.patch(
-        REST,
-        headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
-        params={"id": f"eq.{game_id}"},
-        json={
-            "name": name,
-            "description": description,
-            "cover_url": cover_url,
-            "rules_url": rules_url,
-            "tags": tags,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
+        resp = requests.patch(
+            REST,
+            headers={**HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"},
+            params={"id": f"eq.{game_id}"},
+            json={
+                "name": name,
+                "description": description,
+                "cover_url": cover_url,
+                "rules_url": rules_url,
+                "tags": tags,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except Exception:
+        for path in uploaded_urls:
+            delete_file(path)
+        raise
+    # Old stored files are deleted only after the new row is safely committed.
+    if previous_cover_url != cover_url:
+        delete_file(previous_cover_url)
+    if previous_rules_url != rules_url:
+        delete_file(previous_rules_url)
     return jsonify({"status": "updated"})
-
 
 @app.route("/api/games/<int:game_id>/favorite", methods=["POST"])
 def toggle_favorite(game_id):
