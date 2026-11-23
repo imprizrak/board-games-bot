@@ -15396,6 +15396,116 @@ body.picker-fullscreen #panel-picker .touch-dot.winner {
   position:relative!important;inset:auto!important;height:auto!important;
   min-height:0!important;aspect-ratio:4 / 5!important;display:grid!important;}
 </style>
+
+<style id="styloteka-v5346-mini-clear-bottom-nav">
+/* 5.3.46: deliberately fully transparent floating dock. No tinted glass,
+   backdrop blur, gradient overlay, or active-tab fill. Keep 44px+ hit areas. */
+:root {
+  --ui-nav-h: 56px;
+  --glass-nav-height: 56px;
+}
+.bottom-nav {
+  left: 50% !important;
+  right: auto !important;
+  bottom: var(--glass-bottom-gap, max(10px, env(safe-area-inset-bottom, 0px))) !important;
+  transform: translateX(-50%) !important;
+  width: min(302px, calc(100vw - 34px)) !important;
+  max-width: calc(100vw - 34px) !important;
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 4px 5px !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 3px !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(155, 220, 255, .66) !important;
+  background: transparent !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22),
+              0 0 10px rgba(65, 199, 255, .16),
+              0 0 6px rgba(174, 82, 233, .13) !important;
+  isolation: isolate;
+  overflow: hidden;
+}
+.bottom-nav::before,
+.bottom-nav::after {
+  content: none !important;
+  display: none !important;
+  background: transparent !important;
+}
+.bottom-nav button {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 3px 1px !important;
+  margin: 0 !important;
+  gap: 1px !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  color: #d6e7ff !important;
+  background: transparent !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 4px rgba(2, 12, 35, .7);
+}
+.bottom-nav button.active,
+.bottom-nav button[aria-current="page"] {
+  color: #fff !important;
+  border: 1px solid rgba(144, 235, 255, .9) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 1px rgba(220, 243, 255, .16),
+              0 0 11px rgba(52, 213, 248, .4),
+              0 0 9px rgba(190, 101, 244, .2) !important;
+}
+.bottom-nav button .icon {
+  width: 22px !important;
+  height: 21px !important;
+  filter: drop-shadow(0 1px 3px rgba(6, 18, 38, .7));
+}
+.bottom-nav button .icon svg {
+  width: 19px !important;
+  height: 19px !important;
+}
+.bottom-nav button span:last-child {
+  font-size: clamp(10px, 2.65vw, 11px) !important;
+  line-height: 15px !important;
+  letter-spacing: 0 !important;
+  font-weight: 650 !important;
+}
+body {
+  padding-bottom: calc(var(--glass-nav-height) + var(--glass-bottom-gap, 10px) + 20px) !important;
+}
+#eventsFab {
+  bottom: calc(var(--glass-nav-height) + var(--glass-bottom-gap, 10px) + 16px) !important;
+}
+@media (max-width: 359px) {
+  .bottom-nav {
+    width: min(290px, calc(100vw - 28px)) !important;
+    max-width: calc(100vw - 28px) !important;
+    left: 50% !important;
+    right: auto !important;
+    border-radius: 999px !important;
+  }
+  .bottom-nav button span:last-child { font-size: 10px !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  /* Keep user's explicit transparent preference even when OS reduces transparency. */
+  .bottom-nav, .bottom-nav button, .bottom-nav button.active {
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+</style>
 </body>
 </html>
 
