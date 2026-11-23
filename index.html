@@ -9336,7 +9336,7 @@ const pickerArea = document.getElementById("pickerArea");
 const pickerHint = document.getElementById("pickerHint");
 const pickerStatus = document.getElementById("pickerStatus");
 
-const pickerColors = ["#e0533d", "#3f8fd1", "#5cb85c", "#c9a227", "#3f78b5", "#5c8ec4", "#4fbfa8", "#e0904d"];
+const pickerColors = ["#ff4fac", "#17e9fb", "#b884ff", "#52d6ff", "#ffcf64", "#7ef3bf", "#ff8b78", "#9d9dff"];
 
 /* Повноекранний режим + звук рулетки */
 let pickerAudioCtx = null;
@@ -9413,20 +9413,30 @@ let colorCursor = 0;
 let autoResetTimer = null;
 
 function renderTouches() {
-  pickerArea.querySelectorAll(".touch-dot").forEach(el => el.remove());
+  // Keep existing DOM nodes during finger movement so the concentric rings
+  // never flicker or restart their animation on every touchmove.
   const ids = Object.keys(activeTouches);
+  const visible = new Set(ids);
+  pickerArea.querySelectorAll('.touch-dot').forEach(dot => {
+    if (!visible.has(dot.dataset.id)) dot.remove();
+  });
   ids.forEach(id => {
     const t = activeTouches[id];
-    const dot = document.createElement("div");
-    dot.className = "touch-dot" + (pickerLocked || pickerSpinning ? "" : " pulsing");
-    dot.style.left = t.x + "px";
-    dot.style.top = t.y + "px";
-    dot.style.setProperty("--dot-color", t.color);
-    dot.dataset.id = id;
-    dot.innerHTML = '<div class="dot-ripple"></div><div class="dot-ripple ripple-2"></div><div class="dot-fill"></div>';
-    pickerArea.appendChild(dot);
+    let dot = Array.from(pickerArea.querySelectorAll('.touch-dot'))
+      .find(node => node.dataset.id === id);
+    if (!dot) {
+      dot = document.createElement('div');
+      dot.className = 'touch-dot pulsing';
+      dot.dataset.id = id;
+      dot.innerHTML = '<div class="dot-ripple"></div><div class="dot-ripple ripple-2"></div><div class="dot-fill"></div>';
+      pickerArea.appendChild(dot);
+    }
+    dot.classList.toggle('pulsing', !pickerLocked && !pickerSpinning);
+    dot.style.left = t.x + 'px';
+    dot.style.top = t.y + 'px';
+    dot.style.setProperty('--dot-color', t.color);
   });
-  pickerHint.style.display = ids.length === 0 ? "block" : "none";
+  pickerHint.style.display = ids.length === 0 ? 'block' : 'none';
 }
 
 function updateStatus() {
@@ -14963,6 +14973,76 @@ body.picker-fullscreen #panel-picker .picker-reset {
 }
 .event-receipt-timeline strong{color:#f0f6ff;font-weight:700;}
 .event-receipt-timeline small{color:#b4c9db;font-size:11px;}
+</style>
+
+
+<style id="styloteka-picker-round-rings-v5343">
+/* v5.3.43 — equal, perfect concentric Neon Glass circles at live fingertip positions. */
+:root { --styloteka-picker-ring-size: 86px; }
+#panel-picker .touch-dot,
+body.picker-fullscreen #panel-picker .touch-dot {
+  box-sizing: border-box !important;
+  width: var(--styloteka-picker-ring-size) !important;
+  height: var(--styloteka-picker-ring-size) !important;
+  aspect-ratio: 1 / 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translate(-50%,-50%) !important;
+  border: 3px solid var(--dot-color,#19e8f5) !important;
+  border-radius: 50% !important;
+  background: color-mix(in srgb,var(--dot-color,#19e8f5) 12%,rgba(4,12,33,.72)) !important;
+  box-shadow: 0 0 0 2px rgba(230,247,255,.14) inset,
+              0 0 10px color-mix(in srgb,var(--dot-color,#19e8f5) 65%,transparent),
+              0 0 24px color-mix(in srgb,var(--dot-color,#19e8f5) 36%,transparent),
+              inset 0 0 15px color-mix(in srgb,var(--dot-color,#19e8f5) 16%,transparent) !important;
+  overflow: visible;
+  isolation: isolate;
+  pointer-events: none;
+}
+#panel-picker .touch-dot .dot-fill,
+body.picker-fullscreen #panel-picker .touch-dot .dot-fill,
+#panel-picker .touch-dot.winner .dot-fill,
+body.picker-fullscreen #panel-picker .touch-dot.winner .dot-fill {
+  box-sizing: border-box !important;
+  position: absolute !important;
+  width: calc(100% - 21px) !important;
+  height: calc(100% - 21px) !important;
+  inset: 50% auto auto 50% !important;
+  transform: translate(-50%,-50%) !important;
+  border-radius: 50% !important;
+  border: 2px solid var(--dot-color,#19e8f5) !important;
+  background: color-mix(in srgb,var(--dot-color,#19e8f5) 14%,rgba(6,19,43,.48)) !important;
+  opacity: .93 !important;
+  box-shadow: 0 0 9px color-mix(in srgb,var(--dot-color,#19e8f5) 20%,transparent),
+              inset 0 0 12px color-mix(in srgb,var(--dot-color,#19e8f5) 18%,transparent) !important;
+  animation: none !important;
+}
+#panel-picker .touch-dot .dot-ripple { display: none !important; }
+#panel-picker .touch-dot.pulsing {
+  animation: styloteka-ring-breathe 1.55s ease-in-out infinite alternate;
+}
+@keyframes styloteka-ring-breathe {
+  from { filter: brightness(.95); }
+  to { filter: brightness(1.16); }
+}
+#panel-picker .touch-dot.spin-highlight,
+body.picker-fullscreen #panel-picker .touch-dot.spin-highlight {
+  filter: brightness(1.45);
+  border-color: white !important;
+  box-shadow: 0 0 16px var(--dot-color,#19e8f5),
+              0 0 36px color-mix(in srgb,var(--dot-color,#19e8f5) 66%,transparent),
+              0 0 0 3px rgba(255,255,255,.24) inset !important;
+}
+#panel-picker .touch-dot.winner,
+body.picker-fullscreen #panel-picker .touch-dot.winner {
+  animation: winnerBurst 1s ease-out !important;
+  border-color:#fff !important;
+  filter:brightness(1.2);
+}
+#panel-picker .touch-dot.fading { opacity:0 !important;transition:opacity .5s ease !important; }
+#panel-picker .touch-dot.winner svg {position:relative;z-index:2;filter:drop-shadow(0 0 7px white)}
+@media (max-width:360px) { :root { --styloteka-picker-ring-size: 78px; } }
+@media (prefers-reduced-motion:reduce) {#panel-picker .touch-dot.pulsing {animation:none!important}}
 </style>
 
 </body>
