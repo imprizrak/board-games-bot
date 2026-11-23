@@ -15506,6 +15506,33 @@ body {
   }
 }
 </style>
+<!-- Styloteka v5.3.47: light frosted blur, retaining v5.3.46's compact pill navigation. -->
+<style id="styloteka-v5347-soft-blur-bottom-nav">
+/* A gentle frost reveals the content underneath, not a solid bottom bar. */
+.bottom-nav {
+  background: rgba(17, 34, 67, .105) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: blur(8px) saturate(118%) !important;
+  backdrop-filter: blur(8px) saturate(118%) !important;
+}
+.bottom-nav button.active,
+.bottom-nav button[aria-current="page"] {
+  background: rgba(58, 126, 164, .105) !important;
+  background-image: none !important;
+}
+/* Respect the OS accessibility request, without making the dock opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  .bottom-nav {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: rgba(17, 34, 67, .78) !important;
+  }
+  .bottom-nav button.active,
+  .bottom-nav button[aria-current="page"] {
+    background: rgba(58, 126, 164, .3) !important;
+  }
+}
+</style>
 </body>
 </html>
 
@@ -15550,3 +15577,4 @@ body {
   @media (max-width:359px){.game-autofill{padding:10px}.game-autofill-preview-head{grid-template-columns:72px minmax(0,1fr)}
     .game-autofill-preview-head img{width:72px;}}
 </style>
+
