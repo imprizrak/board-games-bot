@@ -7276,17 +7276,10 @@ button,.btn{font-family:inherit}
     <label>Назва гри</label>
     <input type="text" id="editName">
 
-    <div class="game-autofill" id="editGameAutofillBox">
-      <button class="game-autofill-main" type="button" id="editGameAutofillButton" onclick="gameAutofillSearch()">✨ Автозаповнити наявну гру</button>
-      <div id="editGameAutofillStatus" class="game-autofill-status" role="status" aria-live="polite">Знайдемо інформацію та запропонуємо, які поля доповнити. Нічого не змінюється без підтвердження.</div>
-      <div id="editGameAutofillMatches" class="game-autofill-matches" aria-label="Знайдені ігри"></div>
-      <div id="editGameAutofillPreview" class="game-autofill-preview" hidden></div>
-      <div class="game-autofill-credits" id="editGameAutofillCredits" hidden>
-        <a href="https://boardgamegeek.com/" target="_blank" rel="noopener noreferrer">Powered by <strong>BoardGameGeek</strong> ↗</a>
-        <span>Перевіряй назву й видання перед застосуванням.</span>
-      </div>
+    <div class="game-reference-search" aria-label="Пошук матеріалів для гри">
+      <button type="button" class="game-reference-btn" onclick="openGameReferenceSearch('edit','video')">▶ Знайти відео ↗</button>
+      <button type="button" class="game-reference-btn" onclick="openGameReferenceSearch('edit','rules')">📖 Знайти правила ↗</button>
     </div>
-    <input type="hidden" id="editGameAutofillCoverUrl" value="">
 
     <label>Опис (необов'язково)</label>
     <textarea id="editDescription" rows="3"></textarea>
@@ -7304,7 +7297,7 @@ button,.btn{font-family:inherit}
 
     <label>Відеоогляд на YouTube (необов'язково)</label>
     <input type="url" id="editVideoUrl" placeholder="https://www.youtube.com/watch?v=...">
-    <div class="game-autofill-hint">Можна залишити поточне посилання або вибрати інший огляд у попередньому перегляді.</div>
+    <div class="game-reference-hint">За потреби знайди огляд і встав посилання вручну. Поточне посилання можна залишити.</div>
 
     <label>Або новий файл з правилами (PDF, необов'язково)</label>
     <input type="file" id="editRules" accept="application/pdf">
@@ -7323,17 +7316,10 @@ button,.btn{font-family:inherit}
     <label>Назва гри</label>
     <input type="text" id="inputName" placeholder="Наприклад, Каркассон">
 
-    <div class="game-autofill" id="gameAutofillBox">
-      <button class="game-autofill-main" type="button" id="gameAutofillButton" onclick="gameAutofillSearch()">✨ Знайти гру та автозаповнити</button>
-      <div id="gameAutofillStatus" class="game-autofill-status" role="status" aria-live="polite">Знайдемо характеристики, обкладинку, огляди та правила. Перед збереженням ти все перевіриш.</div>
-      <div id="gameAutofillMatches" class="game-autofill-matches" aria-label="Результати пошуку"></div>
-      <div id="gameAutofillPreview" class="game-autofill-preview" hidden></div>
-      <div class="game-autofill-credits" id="gameAutofillCredits" hidden>
-        <a href="https://boardgamegeek.com/" target="_blank" rel="noopener noreferrer" aria-label="BoardGameGeek — джерело даних">Powered by <strong>BoardGameGeek</strong> ↗</a>
-        <span>Перевіряй видання та правила перед публікацією.</span>
-      </div>
+    <div class="game-reference-search" aria-label="Пошук матеріалів для гри">
+      <button type="button" class="game-reference-btn" onclick="openGameReferenceSearch('add','video')">▶ Знайти відео ↗</button>
+      <button type="button" class="game-reference-btn" onclick="openGameReferenceSearch('add','rules')">📖 Знайти правила ↗</button>
     </div>
-    <input type="hidden" id="gameAutofillCoverUrl" value="">
 
     <label>Опис (необов'язково)</label>
     <textarea id="inputDescription" rows="3" placeholder="Коротко про гру"></textarea>
@@ -7351,7 +7337,7 @@ button,.btn{font-family:inherit}
 
     <label>Відеоогляд на YouTube (необов'язково)</label>
     <input type="url" id="inputVideoUrl" placeholder="https://www.youtube.com/watch?v=...">
-    <div class="game-autofill-hint">Посилання на відео стане окремою кнопкою в картці гри.</div>
+    <div class="game-reference-hint">Посилання на відео стане окремою кнопкою в картці гри.</div>
 
     <label>Або файл з правилами (PDF)</label>
     <input type="file" id="inputRules" accept="application/pdf">
@@ -8266,19 +8252,15 @@ function openAddModal() {
     ? 'Ти адміністратор — гра буде одразу опублікована у бібліотеці.'
     : 'Після надсилання гра потрапить на модерацію. Редагувати або видаляти ігри можуть тільки адміністратори.';
   if (btn) btn.textContent = isAdmin ? 'Опублікувати гру' : 'Надіслати на модерацію';
-  gameAutofillMode='add';
-  gameAutofillReset();
   document.getElementById("addModal").classList.add("open");
 }
 
 function openEditModal() {
   if (!isAdmin) { tg.showAlert("Редагувати ігри можуть лише адміністратори Telegram-групи."); return; }
   if (!currentGame) return;
-  gameAutofillMode='edit';
-  gameAutofillReset();
   document.getElementById("editName").value = currentGame.name || "";
-  document.getElementById("editDescription").value = gameAutofillStripVideo(currentGame.description || "");
-  document.getElementById("editVideoUrl").value = gameAutofillVideoUrl(currentGame.description || "");
+  document.getElementById("editDescription").value = stripGameVideoLine(currentGame.description || "");
+  document.getElementById("editVideoUrl").value = extractGameVideoUrl(currentGame.description || "");
   document.getElementById("editTags").value = currentGame.tags || "";
   document.getElementById("editCover").value = "";
   document.getElementById("editRulesUrl").value = currentGame.rules_url || "";
@@ -8299,19 +8281,15 @@ async function submitEdit() {
   const formData = new FormData();
   formData.append("_tg_init_data", telegramInitData);
   formData.append("name", name);
-  let description = gameAutofillStripVideo(document.getElementById("editDescription").value).trim();
+  let description = stripGameVideoLine(document.getElementById("editDescription").value).trim();
   const videoUrl = document.getElementById("editVideoUrl").value.trim();
   if (videoUrl) {
-    if (!gameAutofillValidYoutubeUrl(videoUrl)) { tg.showAlert('Перевір адресу YouTube-огляду.'); return; }
+    if (!validGameYouTubeUrl(videoUrl)) { tg.showAlert('Перевір адресу YouTube-огляду.'); return; }
     description = description ? `${description}\n\n🎥 Відеоогляд: ${videoUrl}` : `🎥 Відеоогляд: ${videoUrl}`;
   }
   formData.append("description", description);
   formData.append("tags", document.getElementById("editTags").value);
   formData.append("rules_url", document.getElementById("editRulesUrl").value.trim());
-  if (!document.getElementById("editCover").files[0]) {
-    const proposedCover = document.getElementById('editGameAutofillCoverUrl').value.trim();
-    if (proposedCover) formData.append('cover_source_url',proposedCover);
-  }
 
   const originalCoverFile = document.getElementById("editCover").files[0];
   const rulesFile = document.getElementById("editRules").files[0];
@@ -8378,10 +8356,6 @@ async function submitGame() {
   }
   formData.append("description", description);
   formData.append("tags", document.getElementById("inputTags").value);
-  if (!document.getElementById("inputCover").files[0]) {
-    const sourceCover = document.getElementById('gameAutofillCoverUrl').value.trim();
-    if (sourceCover) formData.append('cover_source_url',sourceCover);
-  }
   formData.append("rules_url", document.getElementById("inputRulesUrl").value.trim());
   formData.append("added_by", username);
 
@@ -8420,7 +8394,6 @@ async function submitGame() {
   document.getElementById("inputRulesUrl").value = "";
   document.getElementById("inputRules").value = "";
   document.getElementById('inputVideoUrl').value = '';
-  gameAutofillReset();
 
   if (data.status === 'pending') {
     tg.showAlert('Гру надіслано на модерацію ✅ Після схвалення вона з’явиться у бібліотеці.');
@@ -13586,214 +13559,25 @@ async function quizSaveQuestion(event) {
 
 
 
-/* ================== STYLOTEKA GAME AUTOFILL 5.3.45 ================== */
-let gameAutofillMode = 'add';
-function gameAutofillUi(suffix) {
-  return document.getElementById((gameAutofillMode==='edit'?'editGameAutofill':'gameAutofill')+suffix);
-}
-function gameAutofillVideoUrl(description) {
+/* ================== STYLOTEKA GAME LINKS AND MANUAL LOOKUP ================== */
+function extractGameVideoUrl(description) {
   const m=String(description||'').match(/(?:^|\n)🎥 Відеоогляд:\s*(https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11})[^\s]*)/u);
   return m?m[1]:'';
 }
-function gameAutofillStripVideo(description) {
+function stripGameVideoLine(description) {
   return String(description||'').replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu,'').trim();
 }
-function gameAutofillValidYoutubeUrl(url) {
+function validGameYouTubeUrl(url) {
   return /^https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]{11}|youtu\.be\/[\w-]{11})(?:[&#?].*)?$/i.test(url);
 }
-let gameAutofillPreviewData = null;
-let gameAutofillSelectedRules = '';
-let gameAutofillSelectedVideo = '';
-let gameAutofillSearchLinks = {};
-let gameAutofillRequestCounter = 0;
-
-function gameAutofillReset() {
-  gameAutofillRequestCounter += 1;
-  gameAutofillPreviewData = null;
-  gameAutofillSelectedRules = '';
-  gameAutofillSelectedVideo = '';
-  gameAutofillSearchLinks = {};
-  const matches = gameAutofillUi('Matches'); if(matches) matches.replaceChildren();
-  const preview = gameAutofillUi('Preview'); if(preview) { preview.replaceChildren(); preview.hidden=true; }
-  const credits = gameAutofillUi('Credits'); if(credits) credits.hidden=true;
-  const status = gameAutofillUi('Status');
-  if (status) {status.textContent = 'Знайдемо дані, покажемо джерела та запропонуємо заповнити поля без автоматичного збереження.';status.classList.remove('error');}
-  const cover = gameAutofillUi('CoverUrl'); if(cover) cover.value='';
-}
-function gameAutofillStatus(message, error=false) {
-  const el=gameAutofillUi('Status');
-  if(el) {el.textContent=message; el.classList.toggle('error',!!error);}
-}
-function gameAutofillLink(text, href) {
-  const a=document.createElement('a');
-  a.textContent=text;
-  a.className='game-autofill-link';
-  a.href=href;
-  a.target='_blank'; a.rel='noopener noreferrer';
-  return a;
-}
-function gameAutofillExternalLinks(root,links) {
-  if(!root || !links) return;
-  const wrap=document.createElement('div');wrap.className='game-autofill-external-links';
-  const labels={bgg:'Пошук на BGG ↗',youtube:'Пошук відео ↗',rules:'Пошук правил ↗'};
-  for(const kind of ['bgg','youtube','rules']) {
-    const href=links[kind]; if(!/^https:\/\//i.test(href||'')) continue;
-    wrap.append(gameAutofillLink(labels[kind],href));
-  }
-  root.append(wrap);
-}
-async function gameAutofillRequest(payload) {
-  const response=await fetch('/api/games/autofill',{
-    method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),
-    body:JSON.stringify({...payload,_tg_init_data:telegramInitData}),cache:'no-store'
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data.error || 'Помилка пошуку');
-  return data;
-}
-async function gameAutofillSearch() {
-  const query=(document.getElementById(gameAutofillMode==='edit'?'editName':'inputName')?.value||'').trim();
-  if(query.length<2) {gameAutofillStatus('Введи назву гри (не менше 2 символів).',true);return;}
-  const token=++gameAutofillRequestCounter;
-  const btn=gameAutofillUi('Button'); if(btn)btn.disabled=true;
-  const matches=gameAutofillUi('Matches'); matches?.replaceChildren();
-  const preview=gameAutofillUi('Preview'); if(preview){preview.replaceChildren();preview.hidden=true;}
-  gameAutofillStatus('Шукаю гру за назвою…');
-  try {
-    const data=await gameAutofillRequest({query});
-    if(token!==gameAutofillRequestCounter)return;
-    gameAutofillSearchLinks=data.search_links||{};
-    const candidates=data.candidates||[];
-    if(candidates.length) {
-      gameAutofillStatus('Обери точну гру та видання зі списку:');
-      for(const g of candidates) {
-        const button=document.createElement('button');button.type='button';button.className='game-autofill-match';
-        button.textContent=`🎲 ${g.name}${g.year?' · '+g.year:''}`;
-        button.addEventListener('click',()=>gameAutofillSelect(g.id,query));
-        matches.append(button);
-      }
-      gameAutofillUi('Credits').hidden=false;
-    } else {
-      const warning=(data.provider_error==='bgg_token_invalid')?'Токен BGG недійсний — перевір налаштування Render.':
-        (!data.configured?'Автоматичні дані BGG поки не підключені. Потрібен BGG_API_TOKEN у Render.':'Точного збігу не знайдено. Перевір назву або видання.');
-      gameAutofillStatus(warning,true);
-      gameAutofillExternalLinks(matches,gameAutofillSearchLinks);
-    }
-  } catch(e) {
-    if(token===gameAutofillRequestCounter)gameAutofillStatus(e.message||'Не вдалося знайти гру.',true);
-  } finally {if(token===gameAutofillRequestCounter && btn)btn.disabled=false;}
-}
-function gameAutofillChoice(root,kind,item,idx) {
-  const label=document.createElement('label');label.className='game-autofill-choice';
-  const input=document.createElement('input');input.type='radio';input.name='gameAutofill'+kind;
-  input.value=item.url; input.checked=idx===0;
-  input.addEventListener('change',()=>{
-    if(kind==='Rules')gameAutofillSelectedRules=item.url;
-    else gameAutofillSelectedVideo=item.url;
-  });
-  const text=document.createElement('span');text.textContent=item.title+(item.channel?' · '+item.channel:'');
-  label.append(input,text);root.append(label);
-}
-async function gameAutofillSelect(id,query) {
-  const token=++gameAutofillRequestCounter;
-  const btn=gameAutofillUi('Button');if(btn)btn.disabled=true;
-  const preview=gameAutofillUi('Preview');if(preview){preview.replaceChildren();preview.hidden=true;}
-  gameAutofillStatus('Завантажую характеристики, правила й огляди…');
-  try {
-    const data=await gameAutofillRequest({query,bgg_id:id});
-    if(token!==gameAutofillRequestCounter)return;
-    gameAutofillPreviewData=data.game;
-    gameAutofillSearchLinks=data.search_links||{};
-    gameAutofillSelectedRules=data.rules?.[0]?.url||'';
-    gameAutofillSelectedVideo=data.videos?.[0]?.url||'';
-    if(!preview)return;
-    const head=document.createElement('div');head.className='game-autofill-preview-head';
-    if(data.game.cover_url){const img=document.createElement('img');img.src=data.game.cover_url;img.alt='Обкладинка '+data.game.name;img.loading='lazy';head.append(img);}
-    const details=document.createElement('div');
-    const title=document.createElement('strong');title.textContent=data.game.name;details.append(title);
-    const subtitle=document.createElement('p');subtitle.textContent=data.game.tags||'Характеристики не вказані';details.append(subtitle);
-    details.append(gameAutofillLink('Джерело: BoardGameGeek ↗',data.game.bgg_url));
-    head.append(details);preview.append(head);
-    const desc=document.createElement('p');desc.className='game-autofill-description';desc.textContent=data.game.description||'Опис ще не знайдено.';preview.append(desc);
-    const videoHead=document.createElement('h3');videoHead.textContent='🎥 Відеоогляди';preview.append(videoHead);
-    if(data.videos?.length) for(let i=0;i<data.videos.length;i++)gameAutofillChoice(preview,'Video',data.videos[i],i);
-    else {
-      const text=document.createElement('p');text.className='game-autofill-hint';
-      text.textContent='Перевірений відеоогляд недоступний: '+(data.provider_errors?.youtube==='youtube_not_configured'?'потрібен YOUTUBE_API_KEY.':'пошук не дав результату.');preview.append(text);
-    }
-    const ruleHead=document.createElement('h3');ruleHead.textContent='📖 Правила';preview.append(ruleHead);
-    if(data.rules?.length) for(let i=0;i<data.rules.length;i++)gameAutofillChoice(preview,'Rules',data.rules[i],i);
-    else {
-      const text=document.createElement('p');text.className='game-autofill-hint';
-      text.textContent='Посилання на правила не знайдено автоматично. Для вебпошуку потрібен BRAVE_SEARCH_API_KEY.';preview.append(text);
-    }
-    gameAutofillExternalLinks(preview,gameAutofillSearchLinks);
-    gameAutofillEditOptions(preview,data.game);
-    const apply=document.createElement('button');apply.type='button';apply.className='game-autofill-apply';
-    apply.textContent='✓ Перенести вибрані дані у форму';
-    apply.addEventListener('click',gameAutofillApply);preview.append(apply);
-    preview.hidden=false;
-    gameAutofillUi('Credits').hidden=false;
-    gameAutofillStatus('Перевір обрану гру. Натисни «Перенести» — дані ще не опублікуються.');
-    preview.scrollIntoView({block:'nearest',behavior:'smooth'});
-  }catch(e){if(token===gameAutofillRequestCounter)gameAutofillStatus(e.message||'Помилка завантаження характеристик.',true);}
-  finally{if(token===gameAutofillRequestCounter && btn)btn.disabled=false;}
-}
-function gameAutofillEditOptions(preview, game) {
-  if(gameAutofillMode!=='edit')return;
-  const panel=document.createElement('div');panel.className='game-autofill-field-options';
-  const heading=document.createElement('h3');heading.textContent='Що оновити у вже доданій грі?';panel.append(heading);
-  const hint=document.createElement('p');hint.className='game-autofill-hint';
-  hint.textContent='Заповнені поля залишаємо як є. Познач ті, які бажаєш замінити, потім натисни «Перенести».';panel.append(hint);
-  const values={
-    name:game.name||'',description:game.description||'',tags:game.tags||'',
-    rules:gameAutofillSelectedRules||'',video:gameAutofillSelectedVideo||'',cover:game.cover_url||''
-  };
-  const current={
-    name:document.getElementById('editName').value,
-    description:document.getElementById('editDescription').value,
-    tags:document.getElementById('editTags').value,
-    rules:document.getElementById('editRulesUrl').value,
-    video:document.getElementById('editVideoUrl').value,
-    cover:currentGame?.cover_url||''
-  };
-  const labels={name:'Назва',description:'Опис',tags:'Характеристики та жанр',
-    rules:'Посилання на правила',video:'YouTube-огляд',cover:'Обкладинка'};
-  for(const field of ['name','description','tags','rules','video','cover']) {
-    if(!values[field])continue;
-    const label=document.createElement('label');label.className='game-autofill-choice';
-    const input=document.createElement('input');input.type='checkbox';input.dataset.autofillField=field;
-    input.checked=!String(current[field]||'').trim();
-    const span=document.createElement('span');
-    span.textContent=labels[field]+(current[field]?' · уже заповнено, залишити без змін':' · порожнє поле');
-    label.append(input,span);panel.append(label);
-  }
-  preview.append(panel);
-}
-function gameAutofillApply() {
-  const data=gameAutofillPreviewData;if(!data)return;
-  if(gameAutofillMode==='edit') {
-    if(!currentGame)return;
-    const fields=new Set(Array.from(gameAutofillUi('Preview')?.querySelectorAll('input[data-autofill-field]:checked')||[])
-      .map(el=>el.dataset.autofillField));
-    if(!fields.size) {gameAutofillStatus('Обери хоча б одне поле для оновлення.');return;}
-    if(fields.has('name')) document.getElementById('editName').value=data.name||'';
-    if(fields.has('description')) document.getElementById('editDescription').value=data.description||'';
-    if(fields.has('tags')) document.getElementById('editTags').value=data.tags||'';
-    if(fields.has('rules')) document.getElementById('editRulesUrl').value=gameAutofillSelectedRules||'';
-    if(fields.has('video')) document.getElementById('editVideoUrl').value=gameAutofillSelectedVideo||'';
-    if(fields.has('cover')) gameAutofillUi('CoverUrl').value=data.cover_url||'';
-    gameAutofillStatus('Вибрані поля перенесено. Перевір їх і натисни «Зберегти зміни». До цього нічого не змінено в бібліотеці.');
-  } else {
-    document.getElementById('inputName').value=data.name||'';
-    document.getElementById('inputDescription').value=data.description||'';
-    document.getElementById('inputTags').value=data.tags||'';
-    document.getElementById('inputRulesUrl').value=gameAutofillSelectedRules||'';
-    document.getElementById('inputVideoUrl').value=gameAutofillSelectedVideo||'';
-    gameAutofillUi('CoverUrl').value=data.cover_url||'';
-    gameAutofillStatus('Дані перенесено. Можеш відредагувати поля. Лише кнопка внизу зберігає гру.');
-  }
-  if(tg?.HapticFeedback)tg.HapticFeedback.notificationOccurred('success');
+function openGameReferenceSearch(mode,kind) {
+  const field=document.getElementById(mode==='edit'?'editName':'inputName');
+  const game=(field?.value||'').trim();
+  if(!game) { if(tg?.showAlert)tg.showAlert('Спочатку введи назву гри.'); return; }
+  const q=encodeURIComponent(game+(kind==='video'?' настільна гра огляд українською':' настільна гра правила pdf'));
+  const url=kind==='video'?'https://www.youtube.com/results?search_query='+q:'https://www.google.com/search?q='+q;
+  if(typeof tg?.openLink==='function')tg.openLink(url,{try_instant_view:false});
+  else window.open(url,'_blank','noopener,noreferrer');
 }
 
 </script>
@@ -15536,45 +15320,16 @@ body {
 </body>
 </html>
 
-<style id="styloteka-autofill-v5345">
-  .game-autofill {margin:12px 0 17px;padding:13px;border-radius:18px;
-    border:1px solid rgba(102,203,255,.38);background:linear-gradient(145deg,rgba(27,62,100,.5),rgba(60,30,100,.34));}
-  .game-autofill-main,.game-autofill-apply {display:block;width:100%;min-height:46px;border-radius:15px;
-    border:1px solid rgba(94,229,255,.66);color:#e8f8ff;font:700 14px inherit;
-    background:linear-gradient(115deg,rgba(22,152,203,.63),rgba(143,61,188,.59));
-    box-shadow:0 4px 20px rgba(0,184,255,.15);padding:10px 13px;cursor:pointer;}
-  .game-autofill-main:disabled{opacity:.6;cursor:wait;}
-  .game-autofill-status,.game-autofill-hint {font-size:12px;color:#bed3e8;line-height:1.6;margin:9px 0;overflow-wrap:anywhere;}
-  .game-autofill-status.error{color:#ffd1d1;}
-  .game-autofill-matches{display:grid;gap:8px;margin-top:8px;}
-  .game-autofill-match{border:1px solid rgba(135,177,230,.4);border-radius:12px;text-align:left;
-    padding:11px 12px;background:rgba(13,35,72,.7);color:#e6f6ff;cursor:pointer;font:600 13px inherit;}
-  .game-autofill-match:active,.game-autofill-choice:active{border-color:#38d4ff;}
-  .game-autofill-preview[hidden],.game-autofill-credits[hidden]{display:none!important;}
-  .game-autofill-preview {margin-top:14px;padding-top:13px;border-top:1px solid rgba(170,219,255,.2);}
-  .game-autofill-preview-head{display:grid;grid-template-columns:minmax(0,90px) minmax(0,1fr);gap:12px;align-items:start;}
-  .game-autofill-preview-head img{display:block;width:90px;max-height:132px;object-fit:contain;border-radius:12px;}
-  .game-autofill-preview-head strong{font-size:16px;color:#fff;line-height:1.35;overflow-wrap:anywhere;}
-  .game-autofill-preview-head p{font-size:12px;line-height:1.5;margin:5px 0 8px;}
-  .game-autofill-preview h3{margin:12px 0 7px;font-size:13px;color:#e5ecff;}
-  .game-autofill-description{font-size:13px;color:#d6e8f7;line-height:1.58;margin:12px 0;}
-  .game-autofill-choice{display:flex;align-items:flex-start;gap:8px;border:1px solid rgba(134,177,221,.33);
-    background:rgba(5,26,55,.55);border-radius:12px;padding:10px;margin-bottom:7px;cursor:pointer;}
-  .game-autofill-choice input{flex:none;margin:2px 0 0;accent-color:#32d1ff;width:18px;height:18px;}
-  .game-autofill-field-options{margin:12px 0;padding:11px;border:1px solid rgba(97,194,251,.33);border-radius:13px;background:rgba(5,25,57,.5);}
-  .game-autofill-field-options .game-autofill-choice:has(input:checked){border-color:rgba(61,228,255,.7);background:rgba(28,86,121,.32);}
-  .game-autofill-choice span{min-width:0;font-size:12px;line-height:1.5;overflow-wrap:anywhere;}
-  .game-autofill-external-links{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0;}
-  .game-autofill-link{color:#9be0ff!important;font-size:12px;text-decoration:underline;text-underline-offset:3px;}
-  .game-autofill-external-links .game-autofill-link{border:1px solid rgba(125,192,249,.28);border-radius:12px;
-    padding:7px 9px;text-decoration:none;background:rgba(42,79,119,.26);}
-  .game-autofill-apply{margin:11px 0 1px;}
-  .game-autofill-credits{display:flex;flex-direction:column;gap:4px;font-size:10px;margin-top:12px;color:#aac0d5;}
-  .game-autofill-credits a{color:#c0ecff;text-decoration:none;}
-  .game-video-link{display:inline-flex!important;align-items:center;min-height:44px;padding:8px 13px;
+<style id="styloteka-manual-game-links-v5348">
+  .game-reference-search {display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 17px;}
+  .game-reference-btn {flex:1 1 130px;min-height:44px;border-radius:16px;
+    border:1px solid rgba(115,199,250,.42);color:#d7edff;
+    background:rgba(20,48,83,.34);font:inherit;font-size:13px;font-weight:600;
+    padding:10px 12px;cursor:pointer;white-space:normal;text-align:center;}
+  .game-reference-btn:active {border-color:#4fdcff;background:rgba(35,90,122,.4);}
+  .game-reference-hint {color:#bed3e8;font-size:12px;line-height:1.6;margin:8px 0;overflow-wrap:anywhere;}
+  .game-video-link {display:inline-flex!important;align-items:center;min-height:44px;padding:8px 13px;
     border:1px solid rgba(80,211,255,.46);border-radius:14px;margin:8px 0 10px;}
   .game-video-link[style*="none"]{display:none!important;}
-  @media (max-width:359px){.game-autofill{padding:10px}.game-autofill-preview-head{grid-template-columns:72px minmax(0,1fr)}
-    .game-autofill-preview-head img{width:72px;}}
 </style>
 
