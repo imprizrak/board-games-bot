@@ -9309,13 +9309,16 @@ function diceDraw(sides, result, spin=0){
  const m=diceMeshes[sides===100?10:sides], target=sides===100?value:Math.max(0,value-1);const face=m.f[target];
  const center=face.reduce((a,i)=>a.map((x,j)=>x+m.v[i][j]/face.length),[0,0,0]);const norm=a=>{const l=Math.hypot(...a);return a.map(x=>x/l)};const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
  const z=norm(center),x=norm(cross(Math.abs(z[1])>.9?[1,0,0]:[0,1,0],z)),y=cross(z,x);
- const a=spin*6.8+.22,b=spin*9.1+.28;const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b);
- const pts=m.v.map(v=>{let X=dot(v,x),Y=dot(v,y),Z=dot(v,z);let Y1=Y*ca-Z*sa,Z1=Y*sa+Z*ca;return [X*cb+Z1*sb,Y1,-X*sb+Z1*cb]});
+ const a=spin*6.8+.10,b=spin*9.1+.12, cAngle=spin*4.7;const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b);
+ const pts=m.v.map(v=>{let X=dot(v,x),Y=dot(v,y),Z=dot(v,z);let Y1=Y*ca-Z*sa,Z1=Y*sa+Z*ca;const X2=X*cb+Z1*sb;return [X2*Math.cos(cAngle)-Y1*Math.sin(cAngle),X2*Math.sin(cAngle)+Y1*Math.cos(cAngle),-X*sb+Z1*cb]});
  const scale=values.length===2?78:100,cx=values.length===2?w*(index? .75:.25):w/2,cy=h/2;
  const project=v=>[cx+v[0]*scale*3/(3-v[2]),cy-v[1]*scale*3/(3-v[2])];
  const faces=m.f.map((f,i)=>({f,i,z:f.reduce((s,j)=>s+pts[j][2],0)/f.length})).sort((a,b)=>a.z-b.z);
  ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=15;ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(cx,cy+scale*.85,scale*.72,12,0,0,Math.PI*2);ctx.fill();ctx.restore();
- for(const {f,i,z:depth} of faces){const p=f.map(j=>pts[j]);const n=cross(p[1].map((v,j)=>v-p[0][j]),p[2].map((v,j)=>v-p[0][j]));if(n[2]<=0)continue;const q=p.map(project);ctx.beginPath();q.forEach(([X,Y],j)=>j?ctx.lineTo(X,Y):ctx.moveTo(X,Y));ctx.closePath();const light=Math.round(85+100*Math.max(0,norm(n)[2]));const g=ctx.createLinearGradient(cx,cy-scale,cx,cy+scale);g.addColorStop(0,`rgb(${light+25},${light+25},${light+25})`);g.addColorStop(1,`rgb(${light-45},${light-45},${light-45})`);ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=1.6;ctx.stroke();const c=project(p.reduce((a,v)=>a.map((x,j)=>x+v[j]/p.length),[0,0,0]));ctx.fillStyle='#fff';ctx.font=`bold ${Math.round((sides>=12?20:30)*Math.max(.5,norm(n)[2]))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(sides===100?(index===0?String(i*10).padStart(2,'0'):i):i+1,...c);}
+ // Back facets first: faint edges remain visible through the crystal.
+ for(const {f} of faces){const p=f.map(j=>pts[j]);const n=cross(p[1].map((v,j)=>v-p[0][j]),p[2].map((v,j)=>v-p[0][j]));if(n[2]>0)continue;ctx.beginPath();p.map(project).forEach(([X,Y],j)=>j?ctx.lineTo(X,Y):ctx.moveTo(X,Y));ctx.closePath();ctx.fillStyle='rgba(255,255,255,.035)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.17)';ctx.lineWidth=1;ctx.stroke();}
+ for(const {f,i} of faces){const p=f.map(j=>pts[j]);const n=cross(p[1].map((v,j)=>v-p[0][j]),p[2].map((v,j)=>v-p[0][j]));if(n[2]<=0)continue;const q=p.map(project);const nz=norm(n)[2];ctx.save();ctx.beginPath();q.forEach(([X,Y],j)=>j?ctx.lineTo(X,Y):ctx.moveTo(X,Y));ctx.closePath();const g=ctx.createLinearGradient(cx-scale,cy-scale,cx+scale,cy+scale);g.addColorStop(0,'rgba(255,255,255,.46)');g.addColorStop(.34,'rgba(255,255,255,.12)');g.addColorStop(.65,'rgba(255,255,255,.035)');g.addColorStop(1,'rgba(255,255,255,.29)');ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.72)';ctx.lineWidth=1.5;ctx.stroke();ctx.clip();const c=project(p.reduce((a,v)=>a.map((x,j)=>x+v[j]/p.length),[0,0,0]));ctx.beginPath();q.forEach(([X,Y],j)=>{const xx=c[0]+(X-c[0])*.91,yy=c[1]+(Y-c[1])*.91;j?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.closePath();ctx.strokeStyle='rgba(255,255,255,.23)';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#fff';ctx.shadowColor='rgba(0,0,0,.85)';ctx.shadowBlur=4;ctx.font=`bold ${Math.round((sides>=12?20:30)*Math.max(.5,nz))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(sides===100?(index===0?String(i*10).padStart(2,'0'):i):i+1,...c);ctx.restore();}
+
  });
 }
 function diceRandom(n){return Math.floor(Math.random()*n)+1;}
@@ -9345,8 +9348,8 @@ function rollDice() {
 
   const sides=selectedSides, finalResult=diceRandom(sides);
   subEl.textContent=`Кидаємо d${sides}…`;resultEl.textContent='…';
-  const begin=performance.now(), duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:1250;
-  function frame(now){const t=duration?Math.min(1,(now-begin)/duration):1;diceDraw(sides,finalResult,3*Math.pow(1-t,2));if(t<1){diceFrame=requestAnimationFrame(frame);return;}
+  const begin=performance.now(), duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:2000;
+  function frame(now){const t=duration?Math.min(1,(now-begin)/duration):1;diceDraw(sides,finalResult,3.8*Math.pow(1-t,3));if(t<1){diceFrame=requestAnimationFrame(frame);return;}
     resultEl.textContent=finalResult;subEl.textContent=`d${sides} · результат ${finalResult}`;
     diceHistory.unshift(`d${sides}: ${finalResult}`);if(diceHistory.length>8)diceHistory.pop();document.getElementById('diceHistory').textContent=diceHistory.join('   •   ');
     const preview=document.getElementById('widgetDiceSummary');if(preview)preview.textContent=`Останній: d${sides} → ${finalResult}`;
