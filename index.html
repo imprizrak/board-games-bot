@@ -5909,8 +5909,12 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
         <span class="ios-widget-flip-visual" aria-hidden="true"><span>F</span><span>L</span><span>I</span><span>P</span><b>7</b></span>
         <span class="ios-widget-bottom"><strong>Flip Seven</strong><small id="widgetFlipSummary">Підрахунок балів за раундами</small></span>
       </button>
+      <button type="button" class="ios-widget ios-widget-extra" onclick="extraOpen('timer')" aria-label="Таймер ходу"><span class="ios-widget-top"><span class="ios-widget-icon" aria-hidden="true">◷</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span><span class="ios-widget-extra-visual" aria-hidden="true">01:00</span><span class="ios-widget-bottom"><strong>Таймер ходу</strong><small>Контроль часу</small></span></button>
+      <button type="button" class="ios-widget ios-widget-extra" onclick="extraOpen('teams')" aria-label="Команди"><span class="ios-widget-top"><span class="ios-widget-icon" aria-hidden="true">♧</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span><span class="ios-widget-extra-visual" aria-hidden="true">● ● / ● ●</span><span class="ios-widget-bottom"><strong>Команди</strong><small>Випадковий розподіл</small></span></button>
+      <button type="button" class="ios-widget ios-widget-extra" onclick="extraOpen('roles')" aria-label="Таємні ролі"><span class="ios-widget-top"><span class="ios-widget-icon" aria-hidden="true">◇</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span><span class="ios-widget-extra-visual" aria-hidden="true">?  ?  ?</span><span class="ios-widget-bottom"><strong>Таємні ролі</strong><small>Прихована роздача</small></span></button>
+      <button type="button" class="ios-widget ios-widget-extra" onclick="extraOpen('score')" aria-label="Підрахунок очок"><span class="ios-widget-top"><span class="ios-widget-icon" aria-hidden="true">▤</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span><span class="ios-widget-extra-visual" aria-hidden="true">12 + 8</span><span class="ios-widget-bottom"><strong>Підрахунок очок</strong><small>Азул, Крила, 7 Чудес</small></span></button>
     </div>
-    <div class="extra-grid"><button class="btn secondary" onclick="extraOpen('timer')">Таймер ходу</button><button class="btn secondary" onclick="extraOpen('teams')">Команди</button><button class="btn secondary" onclick="extraOpen('roles')">Таємні ролі</button><button class="btn secondary" onclick="extraOpen('score')">Підрахунок очок</button></div><p class="ios-widgets-hint">Натисни на віджет, щоб відкрити інструмент</p>
+    <p class="ios-widgets-hint">Натисни на віджет, щоб відкрити інструмент</p>
   </section>
 
   <div id="toolWidgetDetailBar" class="ios-widget-detail-bar" hidden>
@@ -15708,5 +15712,18 @@ function extraScoreFields(){const game=ex('exScoreGame').value;const fields=game
 function extraScore(){const a=[...document.querySelectorAll('.ex-score')].map(x=>Number(x.value)||0),g=ex('exScoreGame').value;const total=g==='Азул'?a[0]+2*a[1]+7*a[2]+10*a[3]:g==='7 Чудес'?a[0]+Math.floor(a[1]/3)+a.slice(2).reduce((x,y)=>x+y,0):a.reduce((x,y)=>x+y,0);ex('extraResult').textContent='Підсумок: '+total+' очок';}
 async function extraAsk(){const b=ex('exAsk'),q=ex('exQuestion').value.trim(),rules=ex('exRuleText').value.trim();if(!q||!rules){ex('extraResult').textContent='Додайте текст правил і запитання.';return;}b.disabled=true;ex('extraResult').textContent='Аналізую правила…';try{const r=await fetch('/api/rules-assistant',{method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({game_id:currentGame.id,question:q,rules})});const data=await r.json();if(ex('exAsk')===b)ex('extraResult').textContent=data.answer||data.error||'Помилка';}catch(e){if(ex('exAsk')===b)ex('extraResult').textContent='Не вдалося отримати відповідь.';}finally{b.disabled=false;}}
 </script>
+<style id="styloteka-widget-polish-v5360">
+html:root:root:root:root:root:root:root:root:root:root body :is(.ios-widget-icon,.ios-widget-d20,.ios-widget-dice-mini,.ios-widget-picker-dots i,.ios-widget-flip-visual span,.ios-widget-flip-visual b) {background:linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.06)) !important;color:#fff !important;border-color:rgba(255,255,255,.25) !important;box-shadow:inset 0 1px 1px rgba(255,255,255,.25) !important;filter:none !important;text-shadow:none !important;}
+html:root:root:root:root:root:root:root:root:root:root body :is(.ios-widget-counter-visual strong,.ios-widgets-kicker,.ios-widget-arrow,.ios-widget-extra-visual) {color:#fff !important;text-shadow:none !important;}
+.ios-widget-extra-visual {display:flex;align-items:center;justify-content:center;min-height:38px;font-size:clamp(20px,6vw,30px);font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.04em;}
+html:root:root:root:root:root:root:root:root:root:root body :is(.btn,.ev-rsvp-btn,.ev-add-participant-btn,.ev-repeat-btn,.ev-start-session-btn,.game-reference-btn,.ios-widget-back,.die-btn,.tool-tab-btn,.counters-subtab-btn) {min-height:44px;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;line-height:1.25;}
+html:root:root:root:root:root:root:root:root:root:root body :is(.close-btn,.fab) {min-width:44px;min-height:44px;box-sizing:border-box;}
+html:root:root:root:root:root:root:root:root:root:root body #extraModal .extra-box :is(button,input,select,textarea) {min-height:44px;max-width:100%;box-sizing:border-box;font-size:16px;}
+html:root:root:root:root:root:root:root:root:root:root body #extraModal .extra-box button {white-space:normal;overflow-wrap:anywhere;line-height:1.3;padding:12px;}
+#extraModal .extra-box label {min-width:0;overflow-wrap:anywhere;}
+#extraModal .extra-result {overflow-wrap:anywhere;}
+.ios-widget-grid > button {min-width:0;max-width:100%;box-sizing:border-box;}
+@media(max-width:355px){.ios-widget-extra-visual{font-size:20px}.ios-widget-extra .ios-widget-bottom strong{font-size:15px}}
+</style>
 </body>
 </html>
