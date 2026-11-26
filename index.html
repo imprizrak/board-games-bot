@@ -5852,7 +5852,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
       <button class="lib-genre-chip" data-genre="Сімейна">Сімейна</button>
       <button class="lib-genre-chip" id="libFavChip" data-genre="__favorites__">★ Улюблені</button>
     </div>
-    <button class="btn secondary" onclick="extraOpen('pick')">У що зіграємо?</button><div class="grid" id="gamesGrid"></div>
+    <div class="lib-picker-row"><button id="libraryPickerButton" class="btn secondary" type="button" onclick="extraOpen('pick')">У що зіграємо?</button></div><div class="grid" id="gamesGrid"></div>
     <button class="fab" onclick="openAddModal()">
       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
@@ -15853,5 +15853,13 @@ function gcToggleMenu(){if(!isAdmin)return;const d=document.getElementById('gcDr
 function gcEdit(auto){if(!isAdmin||!currentGame)return;gcCloseMenu();openEditModal();if(auto)autoGameForm('edit');}
 document.addEventListener('click',e=>{if(!e.target.closest('#gcDropdown,#gcMenu'))gcCloseMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')gcCloseMenu();});
-</script></body>
+</script><style id="styloteka-picker-fit-v5369">
+html:root:root:root:root:root:root:root:root:root body #view-library #libmode-games .lib-picker-row {
+ display:block!important; box-sizing:border-box!important; width:auto!important; min-width:0!important; margin:12px var(--ui-page-pad,14px) 8px!important; padding:0!important;
+}
+html:root:root:root:root:root:root:root:root:root body #view-library #libraryPickerButton {
+ display:flex!important; align-items:center!important; justify-content:center!important; box-sizing:border-box!important; width:100%!important; max-width:100%!important; min-width:0!important; min-height:44px!important; height:auto!important; margin:0!important; padding:11px 12px!important; border-radius:18px!important; white-space:normal!important; overflow-wrap:anywhere!important; text-align:center!important; line-height:1.25!important;
+}
+</style>
+</body>
 </html>
