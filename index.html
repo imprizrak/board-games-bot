@@ -5842,7 +5842,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
 
   <div class="lib-mode active" id="libmode-games">
     <div class="lib-search-row">
-      <input type="text" class="lib-search-input" id="librarySearch" placeholder="Пошук за назвою або тегами...">
+      <input type="text" class="lib-search-input" id="librarySearch" placeholder="Назва, теги або 4 гравці...">
     </div>
     <div class="lib-genre-row" id="libGenreRow">
       <button class="lib-genre-chip" data-genre="Стратегія">Стратегія</button>
@@ -6019,10 +6019,6 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
 <div class="view active" id="view-events">
   <header>Події</header>
   <div class="neon-page-subtitle">Зустрічі, настільні ігри та творчість</div>
-  <label class="neon-event-search-wrap" for="eventSearch">
-    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
-    <input type="search" id="eventSearch" placeholder="Пошук подій…" autocomplete="off" aria-label="Пошук подій">
-  </label>
   <div class="events-subtabs" role="tablist" aria-label="Події">
     <button type="button" class="events-subtab-btn active" data-events-mode="upcoming">Майбутні</button>
     <button type="button" class="events-subtab-btn" data-events-mode="history">Історія</button>
@@ -8043,12 +8039,28 @@ function libraryRecordViewed(game) {
   try { localStorage.setItem(libraryStorageKey(), JSON.stringify([key, ...libraryRecentKeys().filter(id => id !== key)].slice(0,8))); } catch (_) {}
   libraryRenderCompass();
 }
+// Match an exact requested player count against the existing player-count tags.
+function libraryPlayerQuery(query) {
+  const match = query.match(/^(?:на\s+)?([0-9]+)\s*грав(?:ець|ця|ці|ців)$/iu);
+  return match && Number(match[1]) > 0 ? Number(match[1]) : null;
+}
+function librarySupportsPlayers(game, count) {
+  const raw = String(game?.tags || '');
+  const ranges = raw.matchAll(/(?:^|[\s,;|·(])([0-9]+)(?:\s*[–—-]\s*([0-9]+))?\s*грав(?:ець|ця|ці|ців)(?![а-яіїєґ])/giu);
+  for (const match of ranges) {
+    const min = Number(match[1]), max = Number(match[2] || match[1]);
+    if (min > 0 && min <= count && count <= max) return true;
+  }
+  return false;
+}
 function libraryVisibleGames() {
   const query = (document.getElementById('librarySearch')?.value || '').trim().toLocaleLowerCase('uk');
+  const playerCount = libraryPlayerQuery(query);
   const found = allGames.filter(g => {
     if (activeGenreFilter === '__favorites__' && !g.is_favorite) return false;
     if (activeGenreFilter && activeGenreFilter !== '__favorites__' && !String(g.tags || '').toLocaleLowerCase('uk').includes(activeGenreFilter.toLocaleLowerCase('uk'))) return false;
     if (!query) return true;
+    if (playerCount !== null) return librarySupportsPlayers(g, playerCount);
     return [g.name,g.tags,g.description].some(v => String(v || '').toLocaleLowerCase('uk').includes(query));
   });
   if (librarySortMode === 'name_asc') found.sort((a,b) => String(a.name||'').localeCompare(String(b.name||''),'uk'));
@@ -8558,15 +8570,6 @@ function neonDetectEventKind(ev) {
   if (/(розмальов|фарбув|малюван|мініатюр|фігур|майстер.клас|творч|painting|miniature|workshop)/i.test(text)) return 'art';
   return 'games';
 }
-function neonVisibleEvents(events) {
-  const query = (document.getElementById('eventSearch')?.value || '').trim().toLocaleLowerCase('uk');
-  return (Array.isArray(events) ? events : []).filter(ev => {
-    if (!query) return true;
-    return String([ev.title, ev.description, ev.event_date, ev.event_time].filter(Boolean).join(' ')).toLocaleLowerCase('uk').includes(query);
-  });
-}
-function neonRefreshEvents() { renderEvents(lastEventsData); }
-document.getElementById('eventSearch')?.addEventListener('input', neonRefreshEvents);
 
 async function loadEvents(mode = eventsMode) {
   eventsMode = mode === 'history' ? 'history' : 'upcoming';
@@ -11579,14 +11582,9 @@ function renderEvents(events) {
   const list = document.getElementById('eventsList');
   list.innerHTML = '';
   const historyMode = eventsMode === 'history';
-  const totalLoadedEvents = Array.isArray(events) ? events.length : 0;
-  events = neonVisibleEvents(events);
+  events = Array.isArray(events) ? events : [];
 
   if (!events || !events.length) {
-    if (totalLoadedEvents) {
-      list.innerHTML = '<div class="events-empty neon-events-filter-empty"><span aria-hidden="true">✦</span><strong>Нічого не знайдено</strong><small>Спробуй змінити пошуковий запит.</small></div>';
-      return;
-    }
     if (historyMode) {
       list.innerHTML = '<div class="events-empty">Історія подій поки порожня.</div>';
     } else {
