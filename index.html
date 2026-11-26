@@ -12429,6 +12429,7 @@ async function openAdminEventReceipts(ev){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button type="button" class="event-receipt-file" data-receipt="${Number(item.id)}">📄 Відкрити квитанцію</button>
+        <button type="button" data-delete-receipt="${Number(item.id)}" style="color:#ff8585;border-color:rgba(255,90,90,.5)">🗑 Видалити квитанцію</button>
         ${item.status==='pending'?`<button type="button" data-review="approved" data-receipt="${Number(item.id)}">✅ Підтвердити</button>
         <button type="button" data-review="rejected" data-receipt="${Number(item.id)}">❌ Відхилити</button>`:''}
       </div></div>`).join(''):'<p>Заявок на оплату ще немає.</p>';
@@ -12437,6 +12438,18 @@ async function openAdminEventReceipts(ev){
       if(!rr.ok){tg.showAlert('Не вдалося отримати файл.');return;}
       const blob=await rr.blob();const url=URL.createObjectURL(blob);window.open(url,'_blank','noopener');
       setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }));
+    content.querySelectorAll('[data-delete-receipt]').forEach(btn=>btn.addEventListener('click',async()=>{
+      const id=Number(btn.dataset.deleteReceipt);
+      if(!window.confirm('Видалити квитанцію назавжди? Учасник залишиться у списку. Банківський переказ не скасовується.'))return;
+      btn.disabled=true;
+      try{
+        const rr=await fetch(`/api/admin/event-receipts/${id}`,{method:'DELETE',headers:telegramAuthHeaders()});
+        const y=await rr.json().catch(()=>({}));
+        if(!rr.ok)throw Error(y.error==='receipt_not_found'?'Квитанцію вже видалено або не знайдено.':'Не вдалося видалити квитанцію.');
+        tg.showAlert(y.file_deleted?'Квитанцію видалено.':'Запис видалено, але файл у сховищі не вдалося видалити.');
+        loadEvents();await openAdminEventReceipts(ev);
+      }catch(e){tg.showAlert(e.message);}finally{if(btn.isConnected)btn.disabled=false;}
     }));
     content.querySelectorAll('[data-review]').forEach(btn=>btn.addEventListener('click',async()=>{
       const decision=btn.dataset.review,receiptId=Number(btn.dataset.receipt);

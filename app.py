@@ -4431,6 +4431,34 @@ def admin_view_event_receipt_file(receipt_id):
         return jsonify({'error': 'receipt_file_unavailable'}), 503
 
 
+@app.route('/api/admin/event-receipts/<int:receipt_id>', methods=['DELETE'])
+def admin_delete_event_receipt(receipt_id):
+    denied = _admin_required_response()
+    if denied: return denied
+    try:
+        r = requests.delete(EVENT_RECEIPTS_REST,
+            headers={**HEADERS, 'Prefer': 'return=representation'},
+            params={'id': f'eq.{receipt_id}'}, timeout=20)
+        r.raise_for_status()
+        rows = r.json()
+        if not rows: return jsonify({'error': 'receipt_not_found'}), 404
+        path = rows[0].get('receipt_path')
+        file_deleted = not bool(path)
+        if path:
+            try:
+                f = requests.delete(f'{STORAGE}/{RECEIPT_BUCKET}',
+                    headers={**HEADERS, 'Content-Type': 'application/json'},
+                    json={'prefixes': [path]}, timeout=20)
+                f.raise_for_status()
+                file_deleted = True
+            except requests.RequestException:
+                logging.exception('Receipt storage cleanup failed for receipt %s', receipt_id)
+        return jsonify({'status': 'deleted', 'file_deleted': file_deleted})
+    except (requests.RequestException, ValueError):
+        logging.exception('Receipt deletion failed')
+        return jsonify({'error': 'receipt_delete_unavailable'}), 503
+
+
 @app.route('/api/admin/event-receipts/<int:receipt_id>/review', methods=['POST'])
 def admin_review_event_receipt(receipt_id):
     denied = _admin_required_response()
