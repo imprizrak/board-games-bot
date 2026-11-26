@@ -11755,7 +11755,6 @@ function renderEvents(events) {
           if (!response.ok || reply.status !== 'deleted') {
             const messages = {
               event_has_payment_history: 'Подія має історію оплат. Видалення заблоковано для збереження платежів.',
-              event_has_receipts: 'Подія має квитанції. Видалення заблоковано для збереження платежів.',
               payment_check_unavailable: 'Не вдалося перевірити платежі. Спробуй пізніше.',
               event_has_dependencies: 'Подія має пов’язані записи. База даних не дозволила видалення.',
               event_not_found: 'Подію вже видалено або не знайдено.'
@@ -11781,7 +11780,7 @@ function renderEvents(events) {
           tg.showAlert('Помилка з’єднання. Онови список подій і перевір результат.');
         } finally { deleteButton.disabled = false; }
       };
-      const message = 'Видалити подію та список учасників? Цю дію неможливо скасувати.';
+      const message = 'Видалити подію та список учасників? Пов’язані квитанції можуть бути видалені. Оплата не повертається автоматично. Цю дію неможливо скасувати.';
       try { tg.showConfirm(message, confirmDelete); }
       catch (_) { confirmDelete(window.confirm(message)); }
     });

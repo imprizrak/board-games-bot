@@ -6401,13 +6401,6 @@ def delete_event(event_id):
     except requests.RequestException:
         return jsonify({'error':'payment_check_unavailable'}),503
     try:
-        linked_receipts = requests.get(EVENT_RECEIPTS_REST,headers=HEADERS,
-            params={'event_id': f'eq.{event_id}', 'select':'id','limit':1},timeout=20)
-        linked_receipts.raise_for_status()
-        if linked_receipts.json(): return jsonify({'error':'event_has_receipts'}),409
-    except requests.RequestException:
-        return jsonify({'error':'payment_check_unavailable'}),503
-    try:
         current = requests.get(EVENTS_REST, headers=HEADERS,
             params={"id": f"eq.{event_id}", "select": "cover_url"}, timeout=20)
         current.raise_for_status()
