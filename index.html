@@ -5686,7 +5686,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
   top: calc(var(--tg-ui-top, 76px) + 8px) !important;
 }
 </style>
-</head>
+<style>#dice3d{display:block;width:min(100%,340px);height:auto;margin:0 auto;pointer-events:none}#panel-dice .roll-result{font-size:36px;color:#fff!important;animation:none!important;transform:none!important}#panel-dice .roll-area{cursor:pointer;touch-action:manipulation}</style></head>
 <body>
 <div id="stylotekaOfflineRibbon" class="styloteka-offline-ribbon" role="status" aria-live="polite" hidden>
   <span>📴 Немає з’єднання — доступні тільки збережені дані. Запис, магазин і платежі працюють онлайн.</span>
@@ -5852,7 +5852,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
       <button class="lib-genre-chip" data-genre="Сімейна">Сімейна</button>
       <button class="lib-genre-chip" id="libFavChip" data-genre="__favorites__">★ Улюблені</button>
     </div>
-    <div class="grid" id="gamesGrid"></div>
+    <button class="btn secondary" onclick="extraOpen('pick')">У що зіграємо?</button><div class="grid" id="gamesGrid"></div>
     <button class="fab" onclick="openAddModal()">
       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
@@ -5910,7 +5910,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
         <span class="ios-widget-bottom"><strong>Flip Seven</strong><small id="widgetFlipSummary">Підрахунок балів за раундами</small></span>
       </button>
     </div>
-    <p class="ios-widgets-hint">Натисни на віджет, щоб відкрити інструмент</p>
+    <div class="extra-grid"><button class="btn secondary" onclick="extraOpen('timer')">Таймер ходу</button><button class="btn secondary" onclick="extraOpen('teams')">Команди</button><button class="btn secondary" onclick="extraOpen('roles')">Таємні ролі</button><button class="btn secondary" onclick="extraOpen('score')">Підрахунок очок</button></div><p class="ios-widgets-hint">Натисни на віджет, щоб відкрити інструмент</p>
   </section>
 
   <div id="toolWidgetDetailBar" class="ios-widget-detail-bar" hidden>
@@ -5948,7 +5948,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
       <button class="die-btn" data-sides="100">d100</button>
     </div>
     <div class="roll-area" id="roll-area" onclick="rollDice()">
-      <div class="roll-result" id="diceResult">—</div>
+      <canvas id="dice3d" width="340" height="240" aria-hidden="true"></canvas><div class="roll-result" id="diceResult" aria-live="polite">—</div>
       <div class="roll-sub" id="diceSub">Обраний кубик: d4. Тисни, щоб кинути.</div>
     </div>
     <div class="roll-history" id="diceHistory"></div>
@@ -7253,7 +7253,7 @@ button,.btn{font-family:inherit}
     <a id="viewVideo" class="rules-link game-video-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">▶ Відеоогляд гри ↗</a>
     <div class="game-detail-stats" id="viewGameStats"></div>
     <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила</a>
-    <p id="viewNoRules" style="color:var(--muted);"></p>
+    <button class="btn secondary" onclick="extraOpen('rules')">Запитати про правила</button><p id="viewNoRules" style="color:var(--muted);"></p>
     <div class="quick-start" id="quickStartSection">
       <div class="quick-start-title">Швидкий старт</div>
       <div class="quick-start-grid" id="quickStartGrid"></div>
@@ -9294,12 +9294,37 @@ async function ensureToolProfiles(force = false) {
 /* ==================== КУБИКИ ==================== */
 let selectedSides = 4;
 const diceHistory = [];
+const diceMeshes = {"4":{"v":[[0.5773502691896258,0.5773502691896258,0.5773502691896258],[0.5773502691896258,-0.5773502691896258,-0.5773502691896258],[-0.5773502691896258,0.5773502691896258,-0.5773502691896258],[-0.5773502691896258,-0.5773502691896258,0.5773502691896258]],"f":[[2,0,1],[3,0,2],[2,1,3],[1,0,3]]},"6":{"v":[[-0.5773502691896258,-0.5773502691896258,-0.5773502691896258],[-0.5773502691896258,-0.5773502691896258,0.5773502691896258],[-0.5773502691896258,0.5773502691896258,-0.5773502691896258],[-0.5773502691896258,0.5773502691896258,0.5773502691896258],[0.5773502691896258,-0.5773502691896258,-0.5773502691896258],[0.5773502691896258,-0.5773502691896258,0.5773502691896258],[0.5773502691896258,0.5773502691896258,-0.5773502691896258],[0.5773502691896258,0.5773502691896258,0.5773502691896258]],"f":[[4,0,2,6],[5,1,0,4],[7,5,4,6],[2,0,1,3],[6,2,3,7],[7,3,1,5]]},"8":{"v":[[-1.0,-0.0,-0.0],[1.0,0.0,0.0],[-0.0,-1.0,-0.0],[0.0,1.0,0.0],[-0.0,-0.0,-1.0],[0.0,0.0,1.0]],"f":[[2,0,4],[4,1,2],[5,0,2],[2,1,5],[3,1,4],[4,0,3],[5,1,3],[3,0,5]]},"10":{"v":[[-0.49750776499750776,0.0,0.1055728081055728],[-0.4024922359024923,-0.29242772579242776,-0.1055728081055728],[-0.4024922359024923,0.29242772579242776,-0.1055728081055728],[-0.15373835565373836,-0.47315799947315795,0.1055728081055728],[-0.15373835565373836,0.47315799947315795,0.1055728081055728],[0.0,0.0,-1.0],[-0.0,-0.0,1.0],[0.15373835565373836,-0.47315799947315795,-0.1055728081055728],[0.15373835565373836,0.47315799947315795,-0.1055728081055728],[0.4024922359024923,-0.29242772579242776,0.1055728081055728],[0.4024922359024923,0.29242772579242776,0.1055728081055728],[0.49750776499750776,-0.0,-0.1055728081055728]],"f":[[6,0,1,3],[1,0,2,5],[7,3,1,5],[11,9,7,5],[3,7,9,6],[5,8,10,11],[6,9,11,10],[6,10,8,4],[4,2,0,6],[2,4,8,5]]},"12":{"v":[[-0.5773502691896257,-0.5773502691896257,-0.5773502691896257],[-0.5773502691896257,0.5773502691896257,-0.5773502691896257],[0.35682208977308993,0.0,-0.9341723589627156],[-0.35682208977308993,-0.0,-0.9341723589627156],[-0.0,-0.9341723589627156,0.35682208977308993],[0.5773502691896257,-0.5773502691896257,-0.5773502691896257],[-0.0,-0.9341723589627156,-0.35682208977308993],[-0.9341723589627156,0.35682208977308993,-0.0],[-0.9341723589627156,-0.35682208977308993,-0.0],[-0.5773502691896257,-0.5773502691896257,0.5773502691896257],[-0.35682208977309,0.0,0.9341723589627158],[-0.5773502691896257,0.5773502691896257,0.5773502691896257],[0.0,0.9341723589627156,0.35682208977308993],[-0.0,0.9341723589627156,-0.35682208977308993],[0.5773502691896257,0.5773502691896257,-0.5773502691896257],[0.9341723589627156,-0.35682208977308993,-0.0],[0.35682208977309,-0.0,0.9341723589627158],[0.5773502691896257,-0.5773502691896257,0.5773502691896257],[0.5773502691896257,0.5773502691896257,0.5773502691896257],[0.9341723589627156,0.35682208977308993,0.0]],"f":[[10,11,7,8,9],[1,3,0,8,7],[10,9,4,17,16],[15,17,4,6,5],[9,8,0,6,4],[15,5,2,14,19],[5,6,0,3,2],[12,13,1,7,11],[2,3,1,13,14],[12,11,10,16,18],[16,17,15,19,18],[14,13,12,18,19]]},"20":{"v":[[0.0,-0.5257311121191336,-0.85065080835204],[0.0,-0.5257311121191336,0.85065080835204],[0.0,0.5257311121191336,-0.85065080835204],[0.0,0.5257311121191336,0.85065080835204],[-0.85065080835204,0.0,-0.5257311121191336],[0.85065080835204,0.0,-0.5257311121191336],[-0.85065080835204,0.0,0.5257311121191336],[0.85065080835204,0.0,0.5257311121191336],[-0.5257311121191336,-0.85065080835204,0.0],[-0.5257311121191336,0.85065080835204,0.0],[0.5257311121191336,-0.85065080835204,0.0],[0.5257311121191336,0.85065080835204,0.0]],"f":[[4,0,8],[4,9,2],[5,0,2],[2,0,4],[1,8,10],[10,0,5],[8,0,10],[6,9,4],[4,8,6],[6,8,1],[6,1,3],[3,9,6],[9,3,11],[2,9,11],[5,2,11],[7,10,5],[3,1,7],[7,1,10],[11,3,7],[5,11,7]]}};
+const diceCanvas = document.getElementById('dice3d');
+const diceCtx = diceCanvas.getContext('2d');
+let diceFrame=0;
+function diceDraw(sides, result, spin=0){
+ const ctx=diceCtx;if(!ctx)return; const w=diceCanvas.width,h=diceCanvas.height;ctx.clearRect(0,0,w,h);
+ const values=sides===100?[Math.floor((result===100?0:result)/10), (result===100?0:result)%10]:[result];
+ values.forEach((value,index)=>{
+ const m=diceMeshes[sides===100?10:sides], target=sides===100?value:Math.max(0,value-1);const face=m.f[target];
+ const center=face.reduce((a,i)=>a.map((x,j)=>x+m.v[i][j]/face.length),[0,0,0]);const norm=a=>{const l=Math.hypot(...a);return a.map(x=>x/l)};const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+ const z=norm(center),x=norm(cross(Math.abs(z[1])>.9?[1,0,0]:[0,1,0],z)),y=cross(z,x);
+ const a=spin*6.8+.22,b=spin*9.1+.28;const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b);
+ const pts=m.v.map(v=>{let X=dot(v,x),Y=dot(v,y),Z=dot(v,z);let Y1=Y*ca-Z*sa,Z1=Y*sa+Z*ca;return [X*cb+Z1*sb,Y1,-X*sb+Z1*cb]});
+ const scale=values.length===2?78:100,cx=values.length===2?w*(index? .75:.25):w/2,cy=h/2;
+ const project=v=>[cx+v[0]*scale*3/(3-v[2]),cy-v[1]*scale*3/(3-v[2])];
+ const faces=m.f.map((f,i)=>({f,i,z:f.reduce((s,j)=>s+pts[j][2],0)/f.length})).sort((a,b)=>a.z-b.z);
+ ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=15;ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(cx,cy+scale*.85,scale*.72,12,0,0,Math.PI*2);ctx.fill();ctx.restore();
+ for(const {f,i,z:depth} of faces){const p=f.map(j=>pts[j]);const n=cross(p[1].map((v,j)=>v-p[0][j]),p[2].map((v,j)=>v-p[0][j]));if(n[2]<=0)continue;const q=p.map(project);ctx.beginPath();q.forEach(([X,Y],j)=>j?ctx.lineTo(X,Y):ctx.moveTo(X,Y));ctx.closePath();const light=Math.round(85+100*Math.max(0,norm(n)[2]));const g=ctx.createLinearGradient(cx,cy-scale,cx,cy+scale);g.addColorStop(0,`rgb(${light+25},${light+25},${light+25})`);g.addColorStop(1,`rgb(${light-45},${light-45},${light-45})`);ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=1.6;ctx.stroke();const c=project(p.reduce((a,v)=>a.map((x,j)=>x+v[j]/p.length),[0,0,0]));ctx.fillStyle='#fff';ctx.font=`bold ${Math.round((sides>=12?20:30)*Math.max(.5,norm(n)[2]))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(sides===100?(index===0?String(i*10).padStart(2,'0'):i):i+1,...c);}
+ });
+}
+function diceRandom(n){return Math.floor(Math.random()*n)+1;}
+
+diceDraw(4,1);
 
 document.querySelectorAll(".die-btn").forEach(btn => {
   btn.addEventListener("click", () => {
+    if(isRolling)return;
     document.querySelectorAll(".die-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     selectedSides = parseInt(btn.dataset.sides, 10);
+    diceDraw(selectedSides,1); document.getElementById("diceResult").textContent="—";
     document.getElementById("diceSub").textContent = `Обраний кубик: d${selectedSides}. Тисни, щоб кинути.`;
   });
 });
@@ -9314,38 +9339,15 @@ function rollDice() {
   const areaEl = document.getElementById("roll-area") || document.querySelector(".roll-area");
   const subEl = document.getElementById("diceSub");
 
-  resultEl.classList.remove("bounce");
-  resultEl.classList.add("rolling");
-  areaEl.classList.add("rolling");
-  subEl.textContent = `Кидаємо d${selectedSides}...`;
-
-  const shakeDuration = 650;
-  const tickEvery = 60;
-  let elapsed = 0;
-
-  const ticker = setInterval(() => {
-    resultEl.textContent = Math.floor(Math.random() * selectedSides) + 1;
-    elapsed += tickEvery;
-    if (elapsed >= shakeDuration) {
-      clearInterval(ticker);
-      const finalResult = Math.floor(Math.random() * selectedSides) + 1;
-      resultEl.classList.remove("rolling");
-      areaEl.classList.remove("rolling");
-      resultEl.textContent = finalResult;
-      void resultEl.offsetWidth;
-      resultEl.classList.add("bounce");
-
-      subEl.textContent = `d${selectedSides} · результат ${finalResult}`;
-      diceHistory.unshift(`d${selectedSides}: ${finalResult}`);
-      if (diceHistory.length > 8) diceHistory.pop();
-      document.getElementById("diceHistory").textContent = diceHistory.join("   •   ");
-      const preview = document.getElementById('widgetDiceSummary');
-      if (preview) preview.textContent = `Останній: d${selectedSides} → ${finalResult}`;
-
-      if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
-      isRolling = false;
-    }
-  }, tickEvery);
+  const sides=selectedSides, finalResult=diceRandom(sides);
+  subEl.textContent=`Кидаємо d${sides}…`;resultEl.textContent='…';
+  const begin=performance.now(), duration=matchMedia('(prefers-reduced-motion: reduce)').matches?0:1250;
+  function frame(now){const t=duration?Math.min(1,(now-begin)/duration):1;diceDraw(sides,finalResult,3*Math.pow(1-t,2));if(t<1){diceFrame=requestAnimationFrame(frame);return;}
+    resultEl.textContent=finalResult;subEl.textContent=`d${sides} · результат ${finalResult}`;
+    diceHistory.unshift(`d${sides}: ${finalResult}`);if(diceHistory.length>8)diceHistory.pop();document.getElementById('diceHistory').textContent=diceHistory.join('   •   ');
+    const preview=document.getElementById('widgetDiceSummary');if(preview)preview.textContent=`Останній: d${sides} → ${finalResult}`;
+    isRolling=false;try{tg.HapticFeedback?.impactOccurred('medium')}catch(e){}
+  }diceFrame=requestAnimationFrame(frame);
 }
 
 /* ==================== ВИБІР ГРАВЦЯ ДОТИКОМ (у стилі Chwazi) ==================== */
@@ -15686,5 +15688,25 @@ html:root:root:root:root:root:root:root:root:root body #viewModal .quick-start-t
 html:root:root:root:root:root:root:root:root:root body #viewModal button:active {scale:.97;}
 @media(prefers-reduced-transparency:reduce){html:root:root:root:root:root:root:root:root:root body #viewModal .sheet,html:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-stat,html:root:root:root:root:root:root:root:root:root body #viewModal button{background:#303030 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}}
 </style>
+<style>.extra-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.extra-box{display:grid;gap:12px}.extra-box input,.extra-box select,.extra-box textarea{width:100%;box-sizing:border-box}.extra-result{white-space:pre-wrap;overflow-wrap:anywhere}.extra-box button{margin:4px 0}</style>
+<div class="modal" id="extraModal" style="z-index:99999"><div class="sheet"><button class="close-btn" onclick="extraClose()">×</button><h2 id="extraTitle"></h2><div class="extra-box" id="extraBody"></div><div class="extra-result" id="extraResult" aria-live="polite"></div></div></div>
+<script>
+let extraTimer=null,extraDeadline=0,extraRemaining=60,extraRoles=[],extraRoleIndex=0;
+const ex=id=>document.getElementById(id);
+function extraClose(){clearInterval(extraTimer);extraTimer=null;extraRoles=[];ex('extraModal').classList.remove('open');ex('extraBody').innerHTML='';ex('extraResult').textContent='';}
+function extraOpen(mode){extraClose();ex('extraModal').classList.add('open');const titles={pick:'У що зіграємо?',timer:'Таймер ходу',teams:'Генератор команд',roles:'Таємні ролі',score:'Підрахунок очок',rules:'Помічник із правил'};ex('extraTitle').textContent=titles[mode];const fields={pick:`<label>Гравців<input id="exPlayers" type="number" min="1" max="100" value="4"></label><label>Максимум хвилин<input id="exMinutes" type="number" min="1" placeholder="Будь-яка тривалість"></label><label>Складність<select id="exDifficulty"><option value="">Будь-яка</option><option>Легка</option><option>Середня</option><option>Складна</option></select></label><label>Жанр<input id="exGenre" placeholder="Будь-який"></label><button class="btn" onclick="extraPick(false)">Підібрати</button><button class="btn" onclick="extraPick(true)">Випадкова гра</button>`,timer:`<label>Секунд на хід<input id="exSeconds" type="number" min="1" max="3600" value="60"></label><button class="btn" onclick="extraStart(true)">Почати / наступний хід</button><button class="btn" onclick="extraPause()">Пауза</button><button class="btn" onclick="extraStart(false)">Продовжити</button>`,teams:`<label>Імена, кожне з нового рядка<textarea id="exNames"></textarea></label><label>Команд<input id="exTeams" type="number" min="2" value="2"></label><button class="btn" onclick="extraTeams()">Розподілити</button>`,roles:`<p>Передавайте телефон по черзі. Ролі показуються лише одному гравцеві.</p><label>Імена, по одному на рядок<textarea id="exNames"></textarea></label><label>Ролі, по одній на рядок<textarea id="exRoles"></textarea></label><button class="btn" onclick="extraDeal()">Роздати</button>`,score:`<label>Гра<select id="exScoreGame" onchange="extraScoreFields()"><option>Азул</option><option>Крила</option><option>7 Чудес</option></select></label><div id="exScoreFields"></div><button class="btn" onclick="extraScore()">Підрахувати</button>`,rules:`<p id="exRuleGame"></p><label>Текст або уривок офіційних правил<textarea id="exRuleText" rows="6" maxlength="40000"></textarea></label><label>Запитання<textarea id="exQuestion" maxlength="1000"></textarea></label><button class="btn" id="exAsk" onclick="extraAsk()">Запитати</button>`};ex('extraBody').innerHTML=fields[mode];if(mode==='score')extraScoreFields();if(mode==='rules')ex('exRuleGame').textContent=currentGame?.name||'';}
+function extraPick(random){const n=Number(ex('exPlayers').value),m=Number(ex('exMinutes').value),d=ex('exDifficulty').value.toLowerCase(),g=ex('exGenre').value.trim().toLowerCase();if(!Number.isInteger(n)||n<1||m<0){ex('extraResult').textContent='Перевірте параметри';return;}let list=allGames.filter(x=>{const t=String(x.tags||'').toLowerCase();const duration=libraryCardMetadata(x).duration;const nums=duration.match(/\d+/g)||[];const max=Math.max(...nums.map(Number))*(/год/i.test(duration)?60:1);return librarySupportsPlayers(x,n)&&(!m||(nums.length&&max<=m))&&(!d||t.includes(d))&&(!g||t.includes(g));});if(random&&list.length)list=[list[Math.floor(Math.random()*list.length)]];ex('extraResult').replaceChildren();if(!list.length){ex('extraResult').textContent='Немає відповідних ігор із зазначеними параметрами.';return;}for(const game of list){const b=document.createElement('button');b.className='btn secondary';b.textContent=game.name;b.onclick=()=>{extraClose();openViewModal(game)};ex('extraResult').append(b);}}
+function extraTick(){extraRemaining=Math.max(0,Math.ceil((extraDeadline-Date.now())/1000));ex('extraResult').textContent=extraRemaining?`${Math.floor(extraRemaining/60)}:${String(extraRemaining%60).padStart(2,'0')}`:'Час вийшов!';if(!extraRemaining){clearInterval(extraTimer);extraTimer=null;navigator.vibrate?.(200);}}
+function extraStart(reset){clearInterval(extraTimer);if(reset)extraRemaining=Math.max(1,Math.min(3600,Number(ex('exSeconds').value)||60));extraDeadline=Date.now()+extraRemaining*1000;extraTick();if(extraRemaining)extraTimer=setInterval(extraTick,200);}
+function extraPause(){if(extraTimer){extraTick();clearInterval(extraTimer);extraTimer=null;}}
+function extraLines(id){return ex(id).value.split(/\n/).map(x=>x.trim()).filter(Boolean)}
+function extraShuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function extraTeams(){const a=extraShuffle(extraLines('exNames')),n=Number(ex('exTeams').value);if(!Number.isInteger(n)||n<2||n>a.length){ex('extraResult').textContent='Перевірте кількість команд та гравців';return;}const t=Array.from({length:n},()=>[]);a.forEach((x,i)=>t[i%n].push(x));ex('extraResult').textContent=t.map((x,i)=>`Команда ${i+1}: ${x.join(', ')}`).join('\n');}
+function extraDeal(){const names=extraLines('exNames'),roles=extraShuffle(extraLines('exRoles'));if(!names.length||names.length!==roles.length){ex('extraResult').textContent='Кількість імен і ролей має збігатися';return;}extraRoles=names.map((name,i)=>({name,role:roles[i]}));extraRoleIndex=0;extraNextRole();}
+function extraNextRole(){ex('extraResult').textContent='';ex('extraBody').replaceChildren();const r=extraRoles[extraRoleIndex];if(!r){ex('extraResult').textContent='Усі ролі роздано';extraRoles=[];return;}const p=document.createElement('p');p.textContent='Передайте телефон: '+r.name;const b=document.createElement('button');b.className='btn';b.textContent='Показати мою роль';b.onclick=()=>{p.textContent=r.role;b.textContent='Приховати та передати';b.onclick=()=>{extraRoleIndex++;extraNextRole()}};ex('extraBody').append(p,b);}
+function extraScoreFields(){const game=ex('exScoreGame').value;const fields=game==='Азул'?['Очки під час гри','Повні ряди','Повні стовпці','Повні набори кольору']:game==='Крила'?['Птахи','Бонусні карти','Цілі раундів','Яйця','Їжа на картах','Підкладені карти']:['Військові очки','Монети (кількість)','Чудо','Цивільні','Комерційні','Гільдії','Наука (готові очки)'];ex('exScoreFields').innerHTML=fields.map((x,i)=>`<label>${x}<input class="ex-score" type="number" value="0" step="1"></label>`).join('');}
+function extraScore(){const a=[...document.querySelectorAll('.ex-score')].map(x=>Number(x.value)||0),g=ex('exScoreGame').value;const total=g==='Азул'?a[0]+2*a[1]+7*a[2]+10*a[3]:g==='7 Чудес'?a[0]+Math.floor(a[1]/3)+a.slice(2).reduce((x,y)=>x+y,0):a.reduce((x,y)=>x+y,0);ex('extraResult').textContent='Підсумок: '+total+' очок';}
+async function extraAsk(){const b=ex('exAsk'),q=ex('exQuestion').value.trim(),rules=ex('exRuleText').value.trim();if(!q||!rules){ex('extraResult').textContent='Додайте текст правил і запитання.';return;}b.disabled=true;ex('extraResult').textContent='Аналізую правила…';try{const r=await fetch('/api/rules-assistant',{method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({game_id:currentGame.id,question:q,rules})});const data=await r.json();if(ex('exAsk')===b)ex('extraResult').textContent=data.answer||data.error||'Помилка';}catch(e){if(ex('exAsk')===b)ex('extraResult').textContent='Не вдалося отримати відповідь.';}finally{b.disabled=false;}}
+</script>
 </body>
 </html>
