@@ -7245,7 +7245,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка перегляду гри -->
 <div class="modal" id="viewModal">
   <div class="sheet">
-    <button class="close-btn" aria-label="Закрити" onclick="closeModal('viewModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div class="gc-nav"><button onclick="closeModal('viewModal')">‹ Назад</button><div class="gc-nav-right"><button aria-label="Поділитися" onclick="gcShare()">↗</button><button id="gcFavorite" aria-label="Обране" onclick="gcFavorite()">♡</button><button id="gcMenu" class="group-admin-only" style="display:none" aria-label="Меню" onclick="document.getElementById('gcAdmin').hidden=!document.getElementById('gcAdmin').hidden">•••</button></div></div>
     <div class="game-detail-hero">
       <div class="game-detail-cover" id="viewCoverHero">🎲</div>
       <div class="game-detail-head">
@@ -7253,19 +7253,20 @@ button,.btn{font-family:inherit}
         <div class="game-detail-tags" id="viewTags"></div>
       </div>
     </div>
-    <p id="viewDescription"></p>
-    <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила</a>
-    <button class="btn secondary" onclick="extraOpen('rules')">Запитати про правила</button><p id="viewNoRules" style="color:var(--muted);"></p>
+    <details class="gc-panel" id="gcAbout" open><summary>ⓘ　Про гру</summary><p id="viewDescription"></p></details>
+    <section class="game-media-section"><div class="gc-heading"><h3>▱　Компоненти гри</h3><button id="gcAll" onclick="gcGallery(0)" hidden>Дивитися всі</button></div><div id="viewComponents" class="game-components"></div><p id="viewComponentsEmpty">Фото компонентів ще не додані.</p></section>
+    <section class="game-media-section"><h3><span style="color:#ff3535">▶</span>　Відеоогляд і правила</h3><div id="viewPlayer" class="game-player"><button type="button" id="viewPlay" onclick="playGameReview()">▶ Відтворити відео</button><p id="viewVideoHint"></p></div><a id="viewVideo" target="_blank" rel="noopener noreferrer">Відкрити в YouTube ↗</a></section>
+
+    <div class="gc-actions"><a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила</a>
+    <button class="btn secondary" onclick="extraOpen('rules')">Запитати про правила</button></div><p id="viewNoRules" style="color:var(--muted);"></p>
     <div class="quick-start" id="quickStartSection">
-      <div class="quick-start-title">Швидкий старт</div>
+      
       <div class="quick-start-grid" id="quickStartGrid"></div>
     </div>
-    <button class="btn secondary icon-inline group-admin-only" style="margin-top:20px; justify-content:center; display:none;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
-    <button class="btn icon-inline group-admin-only" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center; display:none;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button>
-    <a id="viewVideo" class="game-video-link game-review-card" target="_blank" rel="noopener noreferrer" href="https://www.youtube.com/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3Z" fill="currentColor" stroke="none"/></svg>
-      <span><strong>YouTube — огляд правил гри</strong><small id="viewVideoHint">Знайти огляд українською</small></span><span aria-hidden="true">↗</span>
-    </a>
+    <div id="gcAdmin" hidden><button class="btn secondary icon-inline group-admin-only" style="margin-top:20px; justify-content:center; display:none;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
+    <button class="btn icon-inline group-admin-only" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center; display:none;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button></div>
+
+    <div id="gcLightbox" hidden role="dialog" aria-label="Фото компонентів"><button onclick="gcCloseGallery()">✕</button><img id="gcLarge" alt="Компоненти гри"><div><button onclick="gcGallery(gcIndex-1)">‹</button><span id="gcCount"></span><button onclick="gcGallery(gcIndex+1)">›</button></div></div>
   </div>
 </div>
 
@@ -7299,6 +7300,7 @@ button,.btn{font-family:inherit}
 
     <label>Відеоогляд на YouTube (необов'язково)</label>
     <input type="url" id="editVideoUrl" placeholder="https://www.youtube.com/watch?v=...">
+    <label>Фото компонентів (HTTPS-посилання, кожне з нового рядка)</label><textarea id="editComponents" rows="3" placeholder="https://..."></textarea>
     <div class="game-reference-hint">За потреби знайди огляд і встав посилання вручну. Поточне посилання можна залишити.</div>
 
     <label>Або новий файл з правилами (PDF, необов'язково)</label>
@@ -7339,6 +7341,7 @@ button,.btn{font-family:inherit}
 
     <label>Відеоогляд на YouTube (необов'язково)</label>
     <input type="url" id="inputVideoUrl" placeholder="https://www.youtube.com/watch?v=...">
+    <label>Фото компонентів (HTTPS-посилання, кожне з нового рядка)</label><textarea id="inputComponents" rows="3" placeholder="https://..."></textarea>
     <div class="game-reference-hint">Посилання на відео стане окремою кнопкою в картці гри.</div>
 
     <label>Або файл з правилами (PDF)</label>
@@ -8129,7 +8132,7 @@ function libraryShowPick(game,source) {
   const heading=document.getElementById('libraryPickTitle'); if (heading) heading.textContent=game.name||'Без назви';
   const eyebrow=document.getElementById('libraryPickEyebrow'); if (eyebrow) eyebrow.textContent=source==='daily'?'✨ РЕКОМЕНДАЦІЯ ДНЯ':'🎲 ВИПАДКОВИЙ ВИБІР';
   const tags=document.getElementById('libraryPickTags'); if(tags) tags.textContent=game.tags||'Настільна гра';
-  const desc=document.getElementById('libraryPickDescription'); if(desc) desc.textContent=game.description||'Переглянь гру, щоб дізнатися деталі та відкрити правила.';
+  const desc=document.getElementById('libraryPickDescription'); if(desc) desc.textContent=stripGameVideoLine(game.description)||'Переглянь гру, щоб дізнатися деталі та відкрити правила.';
   const again=document.getElementById('libraryPickAgain'); if(again) again.style.display = source==='daily'?'none':'';
   document.getElementById('libraryPickModal')?.classList.add('open');
   if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -8279,6 +8282,7 @@ function openEditModal() {
   document.getElementById("editName").value = currentGame.name || "";
   document.getElementById("editDescription").value = stripGameVideoLine(currentGame.description || "");
   document.getElementById("editVideoUrl").value = extractGameVideoUrl(currentGame.description || "");
+  document.getElementById("editComponents").value = componentUrls(currentGame.description).join("\n");
   document.getElementById("editTags").value = currentGame.tags || "";
   document.getElementById("editCover").value = "";
   document.getElementById("editRulesUrl").value = currentGame.rules_url || "";
@@ -8305,6 +8309,7 @@ async function submitEdit() {
     if (!validGameYouTubeUrl(videoUrl)) { tg.showAlert('Перевір адресу YouTube-огляду.'); return; }
     description = description ? `${description}\n\n🎥 Відеоогляд: ${videoUrl}` : `🎥 Відеоогляд: ${videoUrl}`;
   }
+  description = appendComponents(description, document.getElementById("editComponents").value);
   formData.append("description", description);
   formData.append("tags", document.getElementById("editTags").value);
   formData.append("rules_url", document.getElementById("editRulesUrl").value.trim());
@@ -8352,6 +8357,7 @@ async function deleteCurrentGame() {
 
 function closeModal(id) {
   document.getElementById(id).classList.remove("open");
+  if(id === "viewModal") resetGamePlayer();
 }
 
 async function submitGame() {
@@ -8372,6 +8378,7 @@ async function submitGame() {
     }
     description = description ? `${description}\n\n🎥 Відеоогляд: ${videoUrl}` : `🎥 Відеоогляд: ${videoUrl}`;
   }
+  description = appendComponents(description, document.getElementById("inputComponents").value);
   formData.append("description", description);
   formData.append("tags", document.getElementById("inputTags").value);
   formData.append("rules_url", document.getElementById("inputRulesUrl").value.trim());
@@ -8411,7 +8418,7 @@ async function submitGame() {
   document.getElementById("inputCover").value = "";
   document.getElementById("inputRulesUrl").value = "";
   document.getElementById("inputRules").value = "";
-  document.getElementById('inputVideoUrl').value = '';
+  document.getElementById('inputVideoUrl').value = ''; document.getElementById('inputComponents').value = '';
 
   if (data.status === 'pending') {
     tg.showAlert('Гру надіслано на модерацію ✅ Після схвалення вона з’явиться у бібліотеці.');
@@ -10737,7 +10744,7 @@ function renderGameDetailHeader(game) {
       ? `<img src="${escapeHtml(game.cover_url)}" alt="${escapeHtml(game.name || '')}" decoding="async">`
       : '🎲';
   }
-  if (tagsRoot) tagsRoot.textContent = game.tags || 'Настільна гра';
+  if(tagsRoot){const meta=libraryCardMetadata(game);tagsRoot.replaceChildren();for(const [icon,value] of [['♙',meta.players],['◷',meta.duration],['◇',meta.category]]){const item=document.createElement('div');const i=document.createElement('span');i.textContent=icon;item.append(i,document.createTextNode(value||'—'));tagsRoot.append(item);}}
 
 
 }
@@ -10988,15 +10995,9 @@ function openViewModal(game) {
   renderGameDetailHeader(game);
   document.getElementById('viewName').textContent = game.name;
   const rawDescription = String(game.description || '');
-  const savedVideo = extractGameVideoUrl(rawDescription);
-  const videoLink = document.getElementById('viewVideo');
-  const videoHint = document.getElementById('viewVideoHint');
-  if (videoLink) {
-    const direct = savedVideo && validGameYouTubeUrl(savedVideo);
-    videoLink.href = direct ? savedVideo : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(String(game.name || '') + ' настільна гра огляд правил українською');
-    if (videoHint) videoHint.textContent = direct ? 'Відкрити збережений відеоогляд' : 'Автопошук огляду українською';
-  }
-  document.getElementById('viewDescription').textContent = rawDescription.replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu, '').trim();
+  renderGameMedia(game);
+  document.getElementById("gcAbout").open=true;document.getElementById("gcAdmin").hidden=true;gcCloseGallery();gcUpdateFavorite();
+  document.getElementById('viewDescription').textContent = stripGameVideoLine(rawDescription);
   const rulesLink = document.getElementById('viewRules');
   const noRules = document.getElementById('viewNoRules');
   if (game.rules_url) { rulesLink.href = game.rules_url; rulesLink.style.display = 'inline-block'; noRules.textContent = ''; }
@@ -13603,7 +13604,7 @@ function extractGameVideoUrl(description) {
   return m?m[1]:'';
 }
 function stripGameVideoLine(description) {
-  return String(description||'').replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu,'').trim();
+  return String(description||'').replace(/(?:^|\n)📷 Компонент: [^\n]*/gu,'').replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu,'').trim();
 }
 function validGameYouTubeUrl(url) {
   return /^https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]{11}|youtu\.be\/[\w-]{11})(?:[&#?].*)?$/i.test(url);
@@ -15761,5 +15762,56 @@ html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-rev
 #viewModal .game-review-card small{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px;}
 @media(max-width:360px){html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-hero{grid-template-columns:82px minmax(0,1fr)!important;gap:8px!important;padding-right:42px!important;}}
 </style>
-</body>
+
+<script>
+let gameMediaEpoch=0, gameReviewId='';
+function componentUrls(d){return [...String(d||'').matchAll(/(?:^|\n)📷 Компонент: (https:\/\/[^\s]+)/gu)].map(m=>m[1]).slice(0,12);}
+function appendComponents(d,raw){return [d,...[...new Set(raw.split(/\s+/).filter(x=>{try{return new URL(x).protocol==='https:';}catch{return false;}}))].slice(0,12).map(x=>'📷 Компонент: '+x)].filter(Boolean).join('\n');}
+function reviewId(url){try{const u=new URL(url);const id=u.hostname==='youtu.be'?u.pathname.slice(1):u.searchParams.get('v');return /^[\w-]{11}$/.test(id||'')?id:'';}catch{return '';}}
+function resetGamePlayer(){gameMediaEpoch++;gameReviewId='';document.getElementById('viewPlayer').style.backgroundImage='none';const f=document.querySelector('#viewPlayer iframe');if(f)f.remove();document.getElementById('viewPlay').hidden=false;}
+function playGameReview(){if(!gameReviewId){window.open(document.getElementById('viewVideo').href,'_blank','noopener,noreferrer');return;}const f=document.createElement('iframe');f.title='YouTube — відеоогляд правил';f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';f.src='https://www.youtube-nocookie.com/embed/'+gameReviewId+'?autoplay=1&playsinline=1&rel=0';document.getElementById('viewPlay').hidden=true;document.getElementById('viewPlayer').append(f);}
+function renderGameMedia(game){resetGamePlayer();const epoch=gameMediaEpoch, gallery=document.getElementById('viewComponents'),empty=document.getElementById('viewComponentsEmpty'),link=document.getElementById('viewVideo'),hint=document.getElementById('viewVideoHint'),btn=document.getElementById('viewPlay');gallery.replaceChildren();gcUpdateCount();empty.hidden=false;for(const url of componentUrls(game.description)){const img=document.createElement('img');img.alt='Компоненти гри '+game.name;img.loading='lazy';img.referrerPolicy='no-referrer';img.onload=()=>{if(epoch===gameMediaEpoch)empty.hidden=true;};img.onerror=()=>{img.remove();gcUpdateCount();if(epoch===gameMediaEpoch&&!gallery.querySelector('img'))empty.hidden=false;};img.src=url;img.tabIndex=0;img.setAttribute('role','button');img.onclick=()=>gcGallery([...gallery.querySelectorAll('img')].indexOf(img));img.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();img.click();}};gallery.append(img);gcUpdateCount();}link.href='https://www.youtube.com/results?search_query='+encodeURIComponent(game.name+' настільна гра огляд правил українською');function ready(id){gameReviewId=id;document.getElementById('viewPlayer').style.backgroundImage='url(https://i.ytimg.com/vi/'+id+'/hqdefault.jpg)';link.href='https://www.youtube.com/watch?v='+id;btn.textContent='▶ Відтворити відео';hint.textContent='Якщо відтворення недоступне, відкрий відео в YouTube.';}const id=reviewId(extractGameVideoUrl(game.description));if(id){ready(id);return;}btn.textContent='Знайти огляд ↗';hint.textContent='Підбираємо відео…';fetch('/api/game-review?name='+encodeURIComponent(game.name),{headers:telegramAuthHeaders()}).then(r=>r.ok?r.json():{}).then(r=>{if(epoch!==gameMediaEpoch)return;if(/^[\w-]{11}$/.test(r.video_id||''))ready(r.video_id);else hint.textContent='Відео не підібрано. Скористайся пошуком YouTube.';}).catch(()=>{if(epoch===gameMediaEpoch)hint.textContent='Автопідбір недоступний. Скористайся пошуком YouTube.';});}
+</script>
+<style>
+#viewModal .game-media-section{margin:18px 0;min-width:0;color:white}#viewModal .game-media-section h3{font-size:17px;margin:0 0 10px}#viewModal .game-components{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:8px}#viewModal .game-components img{width:100%;height:160px;object-fit:contain;border-radius:14px;background:rgba(255,255,255,.05)}#viewModal .game-player{position:relative;aspect-ratio:16/9;display:grid;place-content:center;text-align:center;background:rgba(0,0,0,.4);border:1px solid #ffffff30;border-radius:16px;overflow:hidden;padding:12px;box-sizing:border-box}#viewModal .game-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}#viewModal .game-player p,#viewComponentsEmpty{font-size:13px;color:#ccc;margin:8px 0}#viewModal #viewVideo{display:block;margin:10px 0;color:white;text-decoration:underline}#viewModal [hidden]{display:none!important}
+</style>
+<style id="gc65">
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .sheet{width:min(100%,560px)!important;max-height:calc(100dvh - 16px)!important;padding:12px!important;overflow-y:auto!important;box-sizing:border-box!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-nav,html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-nav-right,html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-nav button{min-height:44px!important;width:auto!important;padding:8px 14px!important;margin:0!important;border-radius:24px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-nav-right button{min-width:44px!important;padding:6px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-hero{grid-template-columns:minmax(0,42%) minmax(0,1fr)!important;padding:12px 0!important;gap:12px!important;align-items:center!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-cover{aspect-ratio:4/5!important;background:transparent!important;border:0!important;box-shadow:none!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewName{font-size:clamp(19px,5vw,30px)!important;line-height:1.15!important;overflow-wrap:anywhere;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewTags{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px!important;margin-top:12px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewTags div{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:0;min-height:58px;padding:5px 2px;border:1px solid #ffffff35;border-radius:13px;background:#ffffff0d;font-size:clamp(10px,2.7vw,13px);overflow-wrap:anywhere;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewTags span{font-size:20px;line-height:1.1;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal :is(.gc-panel,.game-media-section){margin:10px 0!important;padding:13px!important;border:1px solid #ffffff35!important;border-radius:18px!important;background:linear-gradient(145deg,#ffffff16,#ffffff06)!important;box-shadow:inset 0 1px 1px #ffffff25!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-panel summary{font-size:16px;font-weight:650;cursor:pointer;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewDescription{font-size:14px!important;line-height:1.45!important;margin:8px 0 0!important;white-space:pre-wrap;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-heading h3{margin:0!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcAll{font-size:11px!important;padding:6px!important;min-height:36px!important;width:auto!important;margin:0!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-components{display:flex!important;overflow-x:auto!important;scroll-snap-type:x mandatory;gap:8px!important;margin-top:10px;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-components img{flex:0 0 29%;width:29%!important;height:auto!important;aspect-ratio:1!important;object-fit:contain!important;scroll-snap-align:start;cursor:pointer;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-player{background-size:cover!important;background-position:center!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay{background:#d71920!important;border:0!important;box-shadow:none!important;min-height:44px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewVideoHint{background:#0009;border-radius:8px;padding:4px;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-actions,html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .quick-start-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-actions :is(a,button),html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .quick-start-grid button{width:100%!important;min-height:44px!important;height:auto!important;margin:0!important;padding:10px 6px!important;white-space:normal!important;font-size:12px!important;text-align:center!important;box-sizing:border-box!important;border-radius:24px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-actions a{background:#ffffff12;border:1px solid #ffffff35;align-content:center;text-decoration:none;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .quick-start{margin:8px 0!important;padding:0!important;border:0!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcLightbox{position:fixed;inset:0;z-index:99999;background:#080a0ef5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcLarge{width:100%;max-height:70dvh;object-fit:contain;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcLightbox button{width:auto!important;min-width:44px!important;min-height:44px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcLightbox div{display:flex;align-items:center;gap:20px;}
+</style><script>
+let gcIndex=0;
+function gcUpdateCount(){const n=document.querySelectorAll('#viewComponents img').length,b=document.getElementById('gcAll');b.hidden=!n;b.textContent='Дивитися всі ('+n+') ›';}
+function gcGallery(i){const imgs=[...document.querySelectorAll('#viewComponents img')];if(!imgs.length)return;gcIndex=(i+imgs.length)%imgs.length;document.getElementById('gcLarge').src=imgs[gcIndex].src;document.getElementById('gcCount').textContent=(gcIndex+1)+' / '+imgs.length;document.getElementById('gcLightbox').hidden=false;}
+function gcCloseGallery(){document.getElementById('gcLightbox').hidden=true;document.getElementById('gcLarge').removeAttribute('src');}
+function gcFavKey(){return 'gcFavorite:'+String(currentGame?.id||currentGame?.name||'');}
+function gcUpdateFavorite(){let yes=false;try{yes=localStorage.getItem(gcFavKey())==='1';}catch{}const b=document.getElementById('gcFavorite');b.textContent=yes?'♥':'♡';b.setAttribute('aria-pressed',String(yes));}
+function gcFavorite(){try{const k=gcFavKey();localStorage.getItem(k)==='1'?localStorage.removeItem(k):localStorage.setItem(k,'1');}catch{}gcUpdateFavorite();}
+async function gcShare(){const text=currentGame?.name||'';try{if(navigator.share)await navigator.share({title:text,text});else if(navigator.clipboard)await navigator.clipboard.writeText(text);else tg.showAlert(text);}catch(e){if(e.name!=='AbortError')tg.showAlert(text);}}
+</script></body>
 </html>

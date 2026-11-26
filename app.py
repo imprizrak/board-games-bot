@@ -7947,6 +7947,20 @@ def rules_assistant():
     except Exception:
         return jsonify(error='Не вдалося отримати відповідь ШІ. Спробуйте пізніше.'), 502
 
+
+@app.route('/api/game-review')
+def game_review():
+    if not _request_telegram_user(): return jsonify(error='unauthorized'), 401
+    name = request.args.get('name','').strip()[:150]
+    key = os.environ.get('YOUTUBE_API_KEY','')
+    if not name or not key: return jsonify(video_id=None)
+    try:
+        r = requests.get('https://www.googleapis.com/youtube/v3/search', params={'key':key,'part':'snippet','type':'video','videoEmbeddable':'true','videoSyndicated':'true','maxResults':1,'relevanceLanguage':'uk','q':name+' настільна гра огляд правил українською'},timeout=8)
+        r.raise_for_status()
+        items=r.json().get('items',[])
+        return jsonify(video_id=items[0]['id']['videoId'] if items else None)
+    except Exception: return jsonify(video_id=None)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     app.run(host="0.0.0.0", port=port)
