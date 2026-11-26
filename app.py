@@ -6408,20 +6408,40 @@ def delete_event(event_id):
     except requests.RequestException:
         return jsonify({'error':'payment_check_unavailable'}),503
     try:
-        current = requests.get(
-            EVENTS_REST,
-            headers=HEADERS,
-            params={"id": f"eq.{event_id}", "select": "cover_url"},
-            timeout=20,
-        )
-        if current.ok and current.json():
-            delete_file(current.json()[0].get("cover_url"))
-    except Exception:
-        logging.exception("Не вдалось видалити обкладинку події")
+        current = requests.get(EVENTS_REST, headers=HEADERS,
+            params={"id": f"eq.{event_id}", "select": "cover_url"}, timeout=20)
+        current.raise_for_status()
+        rows = current.json()
+        if not rows:
+            return jsonify({"error": "event_not_found"}), 404
+        posts = requests.get(EVENT_GROUP_POSTS_REST, headers=HEADERS,
+            params={"event_id": f"eq.{event_id}", "select": "chat_id,message_id"}, timeout=20)
+        posts.raise_for_status()
+        group_posts = posts.json()
+        resp = requests.delete(EVENTS_REST,
+            headers={**HEADERS, "Prefer": "return=representation"},
+            params={"id": f"eq.{event_id}"}, timeout=30)
+        if resp.status_code == 409:
+            return jsonify({"error": "event_has_dependencies"}), 409
+        resp.raise_for_status()
+        if not resp.json():
+            return jsonify({"error": "event_not_deleted"}), 409
+    except (requests.RequestException, ValueError):
+        logging.exception("Event deletion failed: %s", event_id)
+        return jsonify({"error": "event_delete_failed"}), 503
 
-    resp = requests.delete(EVENTS_REST, headers=HEADERS, params={"id": f"eq.{event_id}"}, timeout=30)
-    resp.raise_for_status()
-    return jsonify({"status": "deleted"})
+    warnings = []
+    try:
+        if rows[0].get("cover_url"):
+            delete_file(rows[0]["cover_url"])
+    except Exception:
+        logging.exception("Event cover cleanup failed")
+        warnings.append("cover_cleanup_failed")
+    for post in group_posts:
+        ok, result = telegram_api_post("deleteMessage", post)
+        if not ok and "message to delete not found" not in str(result).lower():
+            warnings.append("telegram_post_not_deleted")
+    return jsonify({"status": "deleted", "warnings": warnings})
 
 
 @app.route("/api/events/<int:event_id>/rsvp", methods=["POST"])

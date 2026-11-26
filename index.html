@@ -11676,11 +11676,11 @@ function renderEvents(events) {
               <strong>Styloteka <span class="ev-post-category">· ${categoryName}</span></strong>
               <span class="ev-date">${formatEventDate(ev.event_date)}${ev.event_time ? ' · ' + String(ev.event_time).slice(0,5) : ''}</span>
             </div>
-            ${!historyMode && isAdmin
+            ${isAdmin
               ? `<div class="ev-admin-actions">
-                  <button class="ev-admin-edit" data-id="${ev.id}" aria-label="Редагувати подію" title="Редагувати">
+                  ${!historyMode ? `<button class="ev-admin-edit" data-id="${ev.id}" aria-label="Редагувати подію" title="Редагувати">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11a2.2 2.2 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
-                  </button>
+                  </button>` : ''}
                   <button class="ev-admin-del" data-id="${ev.id}" aria-label="Видалити подію" title="Видалити"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg></button>
                 </div>`
               : ''}
@@ -11741,31 +11741,57 @@ function renderEvents(events) {
     card.querySelector('.event-open-quests')?.addEventListener('click', () => openEventQuestsParticipants(ev));
     card.querySelector('.ev-payment-check')?.addEventListener('click',()=>checkMonobankEventPayment(ev.id));
 
+    const deleteButton = card.querySelector('.ev-admin-del');
+    deleteButton?.addEventListener('click', () => {
+      const confirmDelete = async ok => {
+        if (!ok || deleteButton.disabled) return;
+        deleteButton.disabled = true;
+        try {
+          const response = await fetch(`/api/events/${ev.id}`, {
+            method: 'DELETE', headers: telegramAuthHeaders({'Content-Type':'application/json'}),
+            body: JSON.stringify({_tg_init_data:telegramInitData})
+          });
+          const reply = await response.json().catch(() => ({}));
+          if (!response.ok || reply.status !== 'deleted') {
+            const messages = {
+              event_has_payment_history: 'Подія має історію оплат. Видалення заблоковано для збереження платежів.',
+              event_has_receipts: 'Подія має квитанції. Видалення заблоковано для збереження платежів.',
+              payment_check_unavailable: 'Не вдалося перевірити платежі. Спробуй пізніше.',
+              event_has_dependencies: 'Подія має пов’язані записи. База даних не дозволила видалення.',
+              event_not_found: 'Подію вже видалено або не знайдено.'
+            };
+            tg.showAlert(messages[reply.error] || (response.status === 403 || response.status === 401 ? 'Потрібні права адміністратора.' : 'Не вдалося видалити подію. Спробуй пізніше.'));
+            return;
+          }
+          lastEventsData = lastEventsData.filter(item => String(item.id) !== String(ev.id));
+          for (const mode of ['upcoming', 'history']) {
+            try {
+              const key = 'styloteka_public_events_offline_v5319_' + mode;
+              const cached = JSON.parse(localStorage.getItem(key) || 'null');
+              if (Array.isArray(cached?.items)) {
+                cached.items = cached.items.filter(item => String(item.id) !== String(ev.id));
+                localStorage.setItem(key, JSON.stringify(cached));
+              }
+            } catch (_) {}
+          }
+          renderEvents(lastEventsData);
+          await loadEvents();
+          if (reply.warnings?.length) tg.showAlert('Подію видалено, але не всі пов’язані публікації або файли вдалося прибрати.');
+        } catch (_) {
+          tg.showAlert('Помилка з’єднання. Онови список подій і перевір результат.');
+        } finally { deleteButton.disabled = false; }
+      };
+      const message = 'Видалити подію та список учасників? Цю дію неможливо скасувати.';
+      try { tg.showConfirm(message, confirmDelete); }
+      catch (_) { confirmDelete(window.confirm(message)); }
+    });
+
     if (!historyMode) {
       if (!mine) {
         card.querySelector('.ev-rsvp-btn')?.addEventListener('click', () => receiptMode?openEventJoinPayment(ev):isPaid?startMonobankEventPayment(ev.id):toggleRsvp(ev.id));
       }
 
       card.querySelector('.ev-admin-edit')?.addEventListener('click', () => openEditEventModal(ev));
-
-      card.querySelector('.ev-admin-del')?.addEventListener('click', () =>
-        tg.showConfirm(`Видалити подію "${ev.title}"?`, async ok => {
-          if (!ok) return;
-          const response=await fetch(`/api/events/${ev.id}`, {
-            method:'DELETE',
-            headers:telegramAuthHeaders({'Content-Type':'application/json'}),
-            body:JSON.stringify({_tg_init_data:telegramInitData})
-          });
-          const reply=await response.json().catch(()=>({}));
-          if(!response.ok){
-            const message=reply.error==='event_has_payment_history'
-              ? 'Подію з платіжною історією не можна видалити автоматично. Спочатку врегулюй оплати та повернення.'
-              : 'Не вдалося видалити подію. Спробуй пізніше.';
-            tg.showAlert(message);return;
-          }
-          loadEvents();
-        })
-      );
 
       card.querySelector('.ev-add-participant-btn')?.addEventListener('click', () => openAddParticipantModal(ev.id));
 
