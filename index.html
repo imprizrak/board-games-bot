@@ -7277,7 +7277,7 @@ button,.btn{font-family:inherit}
     <h2>Редагувати гру</h2>
 
     <label>Назва гри</label>
-    <input type="text" id="editName">
+    <input type="text" id="editName"><button type="button" class="btn" onclick="autoGameForm('edit')">Автозаповнення за назвою</button><p id="editAutoStatus" aria-live="polite"></p>
 
     <div class="game-reference-search" aria-label="Пошук матеріалів для гри">
       <button type="button" class="game-reference-btn" onclick="openGameReferenceSearch('edit','video')">▶ Знайти відео ↗</button>
@@ -7318,7 +7318,7 @@ button,.btn{font-family:inherit}
     <div class="game-submit-note" id="gameSubmitNote">Учасники можуть запропонувати гру. Вона з’явиться у бібліотеці після перевірки адміністратором.</div>
 
     <label>Назва гри</label>
-    <input type="text" id="inputName" placeholder="Наприклад, Каркассон">
+    <input type="text" id="inputName" placeholder="Наприклад, Каркассон"><button type="button" class="btn" onclick="autoGameForm('input')">Автозаповнення за назвою</button><p id="inputAutoStatus" aria-live="polite"></p>
 
     <div class="game-reference-search" aria-label="Пошук матеріалів для гри">
       <button type="button" class="game-reference-btn" onclick="openGameReferenceSearch('add','video')">▶ Знайти відео ↗</button>
@@ -8280,6 +8280,7 @@ function openEditModal() {
   if (!isAdmin) { tg.showAlert("Редагувати ігри можуть лише адміністратори Telegram-групи."); return; }
   if (!currentGame) return;
   document.getElementById("editName").value = currentGame.name || "";
+  autoFormCovers.edit=null;
   document.getElementById("editDescription").value = stripGameVideoLine(currentGame.description || "");
   document.getElementById("editVideoUrl").value = extractGameVideoUrl(currentGame.description || "");
   document.getElementById("editComponents").value = componentUrls(currentGame.description).join("\n");
@@ -8310,6 +8311,7 @@ async function submitEdit() {
     description = description ? `${description}\n\n🎥 Відеоогляд: ${videoUrl}` : `🎥 Відеоогляд: ${videoUrl}`;
   }
   description = appendComponents(description, document.getElementById("editComponents").value);
+  description=autoSaveCover(description,"edit",currentGame);
   formData.append("description", description);
   formData.append("tags", document.getElementById("editTags").value);
   formData.append("rules_url", document.getElementById("editRulesUrl").value.trim());
@@ -8379,6 +8381,7 @@ async function submitGame() {
     description = description ? `${description}\n\n🎥 Відеоогляд: ${videoUrl}` : `🎥 Відеоогляд: ${videoUrl}`;
   }
   description = appendComponents(description, document.getElementById("inputComponents").value);
+  description=autoSaveCover(description,"input");
   formData.append("description", description);
   formData.append("tags", document.getElementById("inputTags").value);
   formData.append("rules_url", document.getElementById("inputRulesUrl").value.trim());
@@ -8413,6 +8416,7 @@ async function submitGame() {
 
   closeModal("addModal");
   document.getElementById("inputName").value = "";
+  autoFormCovers.input=null;
   document.getElementById("inputDescription").value = "";
   document.getElementById("inputTags").value = "";
   document.getElementById("inputCover").value = "";
@@ -10737,6 +10741,7 @@ async function loadCommunity() {
 }
 
 function renderGameDetailHeader(game) {
+  game={...game,cover_url:game.cover_url||autoCover(game.description)};
   const coverRoot = document.getElementById('viewCoverHero');
   const tagsRoot = document.getElementById('viewTags');
   if (coverRoot) {
@@ -10996,6 +11001,7 @@ function openViewModal(game) {
   document.getElementById('viewName').textContent = game.name;
   const rawDescription = String(game.description || '');
   renderGameMedia(game);
+  autoGameView(game);
   document.getElementById("gcAbout").open=true;document.getElementById("gcAdmin").hidden=true;gcCloseGallery();gcUpdateFavorite();
   document.getElementById('viewDescription').textContent = stripGameVideoLine(rawDescription);
   const rulesLink = document.getElementById('viewRules');
@@ -13604,7 +13610,7 @@ function extractGameVideoUrl(description) {
   return m?m[1]:'';
 }
 function stripGameVideoLine(description) {
-  return String(description||'').replace(/(?:^|\n)📷 Компонент: [^\n]*/gu,'').replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu,'').trim();
+  return String(description||'').replace(/(?:^|\n)🖼 Обкладинка: [^\n]*/gu,'').replace(/(?:^|\n)📷 Компонент: [^\n]*/gu,'').replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu,'').trim();
 }
 function validGameYouTubeUrl(url) {
   return /^https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[\w-]{11}|youtu\.be\/[\w-]{11})(?:[&#?].*)?$/i.test(url);
@@ -15813,5 +15819,14 @@ function gcFavKey(){return 'gcFavorite:'+String(currentGame?.id||currentGame?.na
 function gcUpdateFavorite(){let yes=false;try{yes=localStorage.getItem(gcFavKey())==='1';}catch{}const b=document.getElementById('gcFavorite');b.textContent=yes?'♥':'♡';b.setAttribute('aria-pressed',String(yes));}
 function gcFavorite(){try{const k=gcFavKey();localStorage.getItem(k)==='1'?localStorage.removeItem(k):localStorage.setItem(k,'1');}catch{}gcUpdateFavorite();}
 async function gcShare(){const text=currentGame?.name||'';try{if(navigator.share)await navigator.share({title:text,text});else if(navigator.clipboard)await navigator.clipboard.writeText(text);else tg.showAlert(text);}catch(e){if(e.name!=='AbortError')tg.showAlert(text);}}
-</script></body>
+</script><script>
+const autoFormCovers={input:null,edit:null};
+function autoCover(d){return (String(d||'').match(/(?:^|\n)🖼 Обкладинка: (https:\/\/[^\s]+)/u)||[])[1]||'';}
+function autoSaveCover(d,p,g){const v=autoFormCovers[p],name=document.getElementById(p+'Name').value.trim();const url=v&&v.name===name?v.url:autoCover(g?.description);return url?d+'\n🖼 Обкладинка: '+url:d;}
+async function autoLookup(name){const r=await fetch('/api/game-autofill?name='+encodeURIComponent(name),{headers:telegramAuthHeaders()});const d=await r.json();if(!r.ok)throw Error(d.error||'Помилка пошуку');return d;}
+function autoText(d){return [d.description,...[['Видавництво',d.publisher],['Вік',d.age],['Мова',d.language],['Складність',d.difficulty],['Джерело',d.source_url]].filter(x=>x[1]).map(x=>x.join(': '))].filter(Boolean).join('\n');}
+async function autoGameForm(p){const field=document.getElementById(p+'Name'),name=field.value.trim(),status=document.getElementById(p+'AutoStatus');if(!name){status.textContent='Введи назву гри.';return;}status.textContent='Шукаємо інформацію…';try{const d=await autoLookup(name);if(field.value.trim()!==name)return;for(const [k,v] of Object.entries({Description:autoText(d),Tags:d.tags,RulesUrl:d.rules_url,Components:(d.components||[]).join('\n')})){const el=document.getElementById(p+k);if(v&&!el.value.trim())el.value=v;}if(d.cover_url)autoFormCovers[p]={name,url:d.cover_url};status.textContent='Заповнено доступні порожні поля. Перевір джерело та збережи.';if(!document.getElementById(p+'VideoUrl').value){const r=await fetch('/api/game-review?name='+encodeURIComponent(name),{headers:telegramAuthHeaders()});const v=await r.json();if(field.value.trim()===name&&/^[\w-]{11}$/.test(v.video_id||'')&&!document.getElementById(p+'VideoUrl').value)document.getElementById(p+'VideoUrl').value='https://www.youtube.com/watch?v='+v.video_id;}}catch(e){status.textContent=e.message;}}
+async function autoGameView(game){if(game.cover_url&&game.tags&&stripGameVideoLine(game.description)&&componentUrls(game.description).length&&game.rules_url)return;const epoch=gameMediaEpoch;try{const d=await autoLookup(game.name);if(epoch!==gameMediaEpoch||!document.getElementById('viewModal').classList.contains('open'))return;const merged={...game,cover_url:game.cover_url||autoCover(game.description)||d.cover_url,tags:game.tags||d.tags,description:game.description||''};if(!stripGameVideoLine(merged.description))merged.description=autoText(d)+'\n'+merged.description;if(!componentUrls(merged.description).length)merged.description=appendComponents(merged.description,(d.components||[]).join('\n'));renderGameDetailHeader(merged);document.getElementById('viewDescription').textContent=stripGameVideoLine(merged.description);if(!game.rules_url&&d.rules_url){const link=document.getElementById('viewRules');link.href=d.rules_url;link.style.display='inline-block';document.getElementById('viewNoRules').textContent='';}if(!componentUrls(game.description).length&&componentUrls(merged.description).length)renderGameMedia(merged);}catch(e){console.warn('Game autofill unavailable',e);}}
+</script>
+</body>
 </html>
