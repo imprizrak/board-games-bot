@@ -7254,8 +7254,6 @@ button,.btn{font-family:inherit}
       </div>
     </div>
     <p id="viewDescription"></p>
-    <a id="viewVideo" class="rules-link game-video-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">▶ Відеоогляд гри ↗</a>
-    <div class="game-detail-stats" id="viewGameStats"></div>
     <a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила</a>
     <button class="btn secondary" onclick="extraOpen('rules')">Запитати про правила</button><p id="viewNoRules" style="color:var(--muted);"></p>
     <div class="quick-start" id="quickStartSection">
@@ -7264,6 +7262,10 @@ button,.btn{font-family:inherit}
     </div>
     <button class="btn secondary icon-inline group-admin-only" style="margin-top:20px; justify-content:center; display:none;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
     <button class="btn icon-inline group-admin-only" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center; display:none;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button>
+    <a id="viewVideo" class="game-video-link game-review-card" target="_blank" rel="noopener noreferrer" href="https://www.youtube.com/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3Z" fill="currentColor" stroke="none"/></svg>
+      <span><strong>YouTube — огляд правил гри</strong><small id="viewVideoHint">Знайти огляд українською</small></span><span aria-hidden="true">↗</span>
+    </a>
   </div>
 </div>
 
@@ -10727,8 +10729,7 @@ async function loadCommunity() {
   }
 }
 
-function renderGameDetailStats(game) {
-  const statsRoot = document.getElementById('viewGameStats');
+function renderGameDetailHeader(game) {
   const coverRoot = document.getElementById('viewCoverHero');
   const tagsRoot = document.getElementById('viewTags');
   if (coverRoot) {
@@ -10738,16 +10739,7 @@ function renderGameDetailStats(game) {
   }
   if (tagsRoot) tagsRoot.textContent = game.tags || 'Настільна гра';
 
-  const rows = (homeHistoryCache || []).filter(h => String(h.game_name || '').trim().toLowerCase() === String(game.name || '').trim().toLowerCase());
-  const playCount = rows.length;
-  const wins = rows.filter(h => String(h.winner || '').trim()).length;
-  const last = rows[0]?.played_at ? formatEventDate(String(rows[0].played_at).slice(0,10)) : '—';
-  if (statsRoot) {
-    statsRoot.innerHTML = `
-      <div class="game-detail-stat"><strong>${playCount}</strong><span>партій</span></div>
-      <div class="game-detail-stat"><strong>${wins}</strong><span>з переможцем</span></div>
-      <div class="game-detail-stat"><strong>${escapeHtml(last)}</strong><span>остання</span></div>`;
-  }
+
 }
 
 
@@ -10993,15 +10985,16 @@ function openViewModal(game) {
   if (!game) return;
   libraryRecordViewed(game);
   currentGame = game;
-  renderGameDetailStats(game);
+  renderGameDetailHeader(game);
   document.getElementById('viewName').textContent = game.name;
   const rawDescription = String(game.description || '');
-  const videoMatch = rawDescription.match(/(?:^|\n)🎥 Відеоогляд:\s*(https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11})[^\s]*)/u);
+  const savedVideo = extractGameVideoUrl(rawDescription);
   const videoLink = document.getElementById('viewVideo');
+  const videoHint = document.getElementById('viewVideoHint');
   if (videoLink) {
-    if (videoMatch) {
-      videoLink.href = videoMatch[1]; videoLink.style.display = 'inline-flex';
-    } else { videoLink.removeAttribute('href'); videoLink.style.display = 'none'; }
+    const direct = savedVideo && validGameYouTubeUrl(savedVideo);
+    videoLink.href = direct ? savedVideo : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(String(game.name || '') + ' настільна гра огляд правил українською');
+    if (videoHint) videoHint.textContent = direct ? 'Відкрити збережений відеоогляд' : 'Автопошук огляду українською';
   }
   document.getElementById('viewDescription').textContent = rawDescription.replace(/(?:^|\n)🎥 Відеоогляд:\s*https:\/\/[^\s]+/gu, '').trim();
   const rulesLink = document.getElementById('viewRules');
@@ -15756,6 +15749,17 @@ html:root:root:root:root:root:root:root:root:root:root body #panel-dice .die-btn
 .bottom-nav {box-sizing:border-box!important;}
 .bottom-nav button span:last-child {white-space:normal!important;line-height:1.1!important;}
 @media(max-width:355px){.ios-widget {padding:10px!important;}.ios-widget-bottom strong{font-size:15px!important;}.ios-widget-bottom small{font-size:11px!important;}.extra-grid{grid-template-columns:minmax(0,1fr);}.ios-widget-wide .ios-widget-dice-visual{width:100px;height:94px;}.ios-widget-d20{width:64px;height:70px;}.ios-widget-dice-mini{width:36px;height:36px;}}
+</style>
+<style id="styloteka-game-card-v5363">
+html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-hero{grid-template-columns:minmax(0,112px) minmax(0,1fr)!important;align-items:center!important;padding-right:48px!important;gap:12px!important;}
+html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-cover{width:100%!important;height:auto!important;aspect-ratio:1/1!important;min-width:0!important;min-height:0!important;padding:5px!important;overflow:hidden!important;position:relative!important;display:grid!important;place-items:center!important;}
+html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-cover img{position:absolute!important;inset:5px!important;width:calc(100% - 10px)!important;height:calc(100% - 10px)!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center!important;transform:none!important;}
+html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-review-card{display:flex!important;align-items:center!important;gap:12px!important;width:100%!important;box-sizing:border-box!important;min-height:64px!important;height:auto!important;margin:16px 0 0!important;padding:12px!important;white-space:normal!important;text-decoration:none!important;color:#fff!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:18px!important;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;}
+#viewModal .game-review-card svg{width:26px!important;height:26px!important;flex:0 0 26px!important;}
+#viewModal .game-review-card span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere;}
+#viewModal .game-review-card strong,#viewModal .game-review-card small{display:block;line-height:1.35;}
+#viewModal .game-review-card small{font-size:12px;color:rgba(255,255,255,.72);margin-top:4px;}
+@media(max-width:360px){html:root:root:root:root:root:root:root:root:root:root body #viewModal .game-detail-hero{grid-template-columns:82px minmax(0,1fr)!important;gap:8px!important;padding-right:42px!important;}}
 </style>
 </body>
 </html>
