@@ -5895,7 +5895,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
         <span class="ios-widget-bottom"><strong>Кубики</strong><small id="widgetDiceSummary">Віртуальні d4–d100</small></span>
       </button>
       <button type="button" class="ios-widget ios-widget-picker" onclick="openToolPanel('picker')" aria-label="Відкрити випадковий вибір гравця">
-        <span class="ios-widget-top"><span class="ios-widget-icon picker-icon" aria-hidden="true">✋</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
+        <span class="ios-widget-top"><span class="ios-widget-icon picker-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><path d="M5 19l4-4m10 4-4-4"/></svg></span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
         <span class="ios-widget-picker-dots" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="ios-widget-bottom"><strong>Вибір гравця</strong><small>Доторкніться разом</small></span>
       </button>
@@ -15727,6 +15727,35 @@ html:root:root:root:root:root:root:root:root:root:root body #extraModal .extra-b
 #extraModal .extra-result {overflow-wrap:anywhere;}
 .ios-widget-grid > button {min-width:0;max-width:100%;box-sizing:border-box;}
 @media(max-width:355px){.ios-widget-extra-visual{font-size:20px}.ios-widget-extra .ios-widget-bottom strong{font-size:15px}}
+</style>
+<style id="styloteka-responsive-v5362">
+:is(.ios-widget,.ios-widget-top,.ios-widget-bottom,.ios-widget-detail-bar,.tool-panel,.game-detail-head,.game-detail-stat,.extra-box,.extra-grid) {min-width:0;box-sizing:border-box;}
+.ios-widget-grid {grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;}
+.ios-widget {height:auto!important;min-height:164px!important;gap:8px!important;padding:14px!important;}
+.ios-widget-wide {grid-column:1/-1;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;align-items:center;}
+.ios-widget-wide .ios-widget-top {grid-column:1/-1;}
+.ios-widget-wide .ios-widget-bottom {grid-column:1;grid-row:2;}
+.ios-widget-wide :is(.ios-widget-dice-visual,.ios-widget-flip-visual) {position:relative!important;inset:auto!important;grid-column:2;grid-row:2;justify-self:center;max-width:100%;transform:none!important;}
+.ios-widget-wide .ios-widget-flip-visual {gap:3px;}
+.ios-widget-flip-visual :is(span,b) {min-width:0;width:clamp(16px,5vw,30px);height:clamp(29px,9vw,46px);font-size:clamp(13px,4vw,22px);}
+.ios-widget-extra-visual {white-space:normal!important;overflow-wrap:anywhere;line-height:1.2;}
+.ios-widget-icon svg {width:24px;height:24px;}
+.ios-widget-bottom small {font-size:12px!important;line-height:1.35;color:rgba(255,255,255,.78)!important;}
+.dice-buttons {grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;}
+.die-btn {aspect-ratio:auto!important;min-height:48px!important;min-width:0;padding:8px 3px!important;}
+html:root:root:root:root:root:root:root:root:root:root body #panel-dice .die-btn.active {background:rgba(255,255,255,.29)!important;border:2px solid #fff!important;}
+#dice3d {max-width:100%;height:auto;}
+:is(.ev-buttons,.ev-admin-actions,.event-checkin-actions,.library-pick-actions,.counters-actions,.flip7-actions-row,.flip7-mod-row,.game-moderation-actions,.event-submission-actions) {flex-wrap:wrap;min-width:0;}
+:is(.ev-buttons,.event-checkin-actions,.library-pick-actions,.counters-actions,.flip7-actions-row,.game-moderation-actions,.event-submission-actions)>button {min-width:0;max-width:100%;height:auto;min-height:44px;white-space:normal;overflow-wrap:anywhere;line-height:1.25;}
+:is(.sheet,[class$="-sheet"]) {box-sizing:border-box;max-width:100%;max-height:88vh;max-height:88dvh;overflow-y:auto;overscroll-behavior-y:contain;}
+.sheet :is(input,textarea,select) {box-sizing:border-box;min-width:0;max-width:100%;}
+.sheet h2 {overflow-wrap:anywhere;padding-inline-end:42px;}
+.extra-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+.game-detail-stats {grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+.game-detail-stat span {overflow-wrap:anywhere;font-size:11px;line-height:1.25;}
+.bottom-nav {box-sizing:border-box!important;}
+.bottom-nav button span:last-child {white-space:normal!important;line-height:1.1!important;}
+@media(max-width:355px){.ios-widget {padding:10px!important;}.ios-widget-bottom strong{font-size:15px!important;}.ios-widget-bottom small{font-size:11px!important;}.extra-grid{grid-template-columns:minmax(0,1fr);}.ios-widget-wide .ios-widget-dice-visual{width:100px;height:94px;}.ios-widget-d20{width:64px;height:70px;}.ios-widget-dice-mini{width:36px;height:36px;}}
 </style>
 </body>
 </html>
