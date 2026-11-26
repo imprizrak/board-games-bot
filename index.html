@@ -7245,7 +7245,7 @@ button,.btn{font-family:inherit}
 <!-- Модалка перегляду гри -->
 <div class="modal" id="viewModal">
   <div class="sheet">
-    <div class="gc-nav"><button onclick="closeModal('viewModal')">‹ Назад</button><div class="gc-nav-right"><button aria-label="Поділитися" onclick="gcShare()">↗</button><button id="gcFavorite" aria-label="Обране" onclick="gcFavorite()">♡</button><button id="gcMenu" class="group-admin-only" style="display:none" aria-label="Меню" onclick="document.getElementById('gcAdmin').hidden=!document.getElementById('gcAdmin').hidden">•••</button></div></div>
+    <div class="gc-nav"><button onclick="closeModal('viewModal')">‹ Назад</button><div class="gc-nav-right"><button aria-label="Поділитися" onclick="gcShare()">↗</button><button id="gcFavorite" aria-label="Обране" onclick="gcFavorite()">♡</button><button id="gcMenu" class="group-admin-only" style="display:none" aria-label="Меню" aria-expanded="false" onclick="gcToggleMenu()">•••</button><div id="gcDropdown" hidden><button onclick="gcEdit(false)">Редагувати гру</button><button onclick="gcEdit(true)">Оновити інформацію автоматично</button><button onclick="gcCloseMenu();deleteCurrentGame()">Видалити гру</button></div></div></div>
     <div class="game-detail-hero">
       <div class="game-detail-cover" id="viewCoverHero">🎲</div>
       <div class="game-detail-head">
@@ -7263,8 +7263,7 @@ button,.btn{font-family:inherit}
       
       <div class="quick-start-grid" id="quickStartGrid"></div>
     </div>
-    <div id="gcAdmin" hidden><button class="btn secondary icon-inline group-admin-only" style="margin-top:20px; justify-content:center; display:none;" onclick="openEditModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2 2 0 0 0-3-3l-10 10L4 20Z"/></svg> Редагувати</button>
-    <button class="btn icon-inline group-admin-only" style="background:var(--danger-bg); color:var(--danger-text); margin-top:10px; justify-content:center; display:none;" onclick="deleteCurrentGame()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg> Видалити гру</button></div>
+    <div id="gcAdmin" class="group-admin-only" style="display:none"><button class="btn secondary" onclick="gcEdit(false)">Редагувати гру</button><button class="btn secondary" onclick="gcEdit(true)">Оновити інформацію автоматично</button></div>
 
     <div id="gcLightbox" hidden role="dialog" aria-label="Фото компонентів"><button onclick="gcCloseGallery()">✕</button><img id="gcLarge" alt="Компоненти гри"><div><button onclick="gcGallery(gcIndex-1)">‹</button><span id="gcCount"></span><button onclick="gcGallery(gcIndex+1)">›</button></div></div>
   </div>
@@ -7290,6 +7289,7 @@ button,.btn{font-family:inherit}
     <label>Теги (напр. "2-4 гравці, 60 хв, Стратегія")</label>
     <input type="text" id="editTags" placeholder="2-4 гравці, 60 хв, Стратегія">
 
+    <label>Посилання на нову обкладинку (HTTPS, необов’язково)</label><input type="url" id="editCoverUrl" placeholder="https://…">
     <label>Нова обкладинка (залиш порожнім, щоб не змінювати)</label>
     <input type="file" id="editCover" accept="image/*">
     <div style="color:var(--muted); font-size:13px; margin-top:6px;">Фон буде автоматично прибраний перед завантаженням, а обкладинка збережеться як PNG з прозорістю.</div>
@@ -8281,11 +8281,13 @@ function openEditModal() {
   if (!currentGame) return;
   document.getElementById("editName").value = currentGame.name || "";
   autoFormCovers.edit=null;
+  document.getElementById("editAutoStatus").textContent="";
   document.getElementById("editDescription").value = stripGameVideoLine(currentGame.description || "");
   document.getElementById("editVideoUrl").value = extractGameVideoUrl(currentGame.description || "");
   document.getElementById("editComponents").value = componentUrls(currentGame.description).join("\n");
   document.getElementById("editTags").value = currentGame.tags || "";
   document.getElementById("editCover").value = "";
+  document.getElementById("editCoverUrl").value = autoCover(currentGame.description)||"";
   document.getElementById("editRulesUrl").value = currentGame.rules_url || "";
   document.getElementById("editRules").value = "";
   closeModal("viewModal");
@@ -8311,7 +8313,9 @@ async function submitEdit() {
     description = description ? `${description}\n\n🎥 Відеоогляд: ${videoUrl}` : `🎥 Відеоогляд: ${videoUrl}`;
   }
   description = appendComponents(description, document.getElementById("editComponents").value);
-  description=autoSaveCover(description,"edit",currentGame);
+  const manualCover=document.getElementById("editCoverUrl").value.trim();
+  if(manualCover && !/^https:\/\/[^\s]+$/i.test(manualCover)){tg.showAlert("Вкажи HTTPS-посилання на обкладинку.");return;}
+  if(manualCover) description+='\n🖼 Обкладинка: '+manualCover;
   formData.append("description", description);
   formData.append("tags", document.getElementById("editTags").value);
   formData.append("rules_url", document.getElementById("editRulesUrl").value.trim());
@@ -8319,6 +8323,7 @@ async function submitEdit() {
   const originalCoverFile = document.getElementById("editCover").files[0];
   const rulesFile = document.getElementById("editRules").files[0];
   if (originalCoverFile) {
+    formData.set("description",description.replace(/(?:^|\n)🖼 Обкладинка: https:\/\/[^\s]+/gu,""));
     try {
       const coverFile = await prepareTransparentGameCover(originalCoverFile);
       formData.append("cover", coverFile);
@@ -8359,7 +8364,7 @@ async function deleteCurrentGame() {
 
 function closeModal(id) {
   document.getElementById(id).classList.remove("open");
-  if(id === "viewModal") resetGamePlayer();
+  if(id === "viewModal") {gcCloseMenu();resetGamePlayer();}
 }
 
 async function submitGame() {
@@ -10741,7 +10746,7 @@ async function loadCommunity() {
 }
 
 function renderGameDetailHeader(game) {
-  game={...game,cover_url:game.cover_url||autoCover(game.description)};
+  game={...game,cover_url:autoCover(game.description)||game.cover_url};
   const coverRoot = document.getElementById('viewCoverHero');
   const tagsRoot = document.getElementById('viewTags');
   if (coverRoot) {
@@ -11002,7 +11007,7 @@ function openViewModal(game) {
   const rawDescription = String(game.description || '');
   renderGameMedia(game);
   autoGameView(game);
-  document.getElementById("gcAbout").open=true;document.getElementById("gcAdmin").hidden=true;gcCloseGallery();gcUpdateFavorite();
+  document.getElementById("gcAbout").open=true;gcCloseMenu();document.getElementById("gcAdmin").style.display=isAdmin?"":"none";document.getElementById("gcMenu").style.display=isAdmin?"":"none";gcCloseGallery();gcUpdateFavorite();
   document.getElementById('viewDescription').textContent = stripGameVideoLine(rawDescription);
   const rulesLink = document.getElementById('viewRules');
   const noRules = document.getElementById('viewNoRules');
@@ -15825,8 +15830,8 @@ function autoCover(d){return (String(d||'').match(/(?:^|\n)🖼 Обкладин
 function autoSaveCover(d,p,g){const v=autoFormCovers[p],name=document.getElementById(p+'Name').value.trim();const url=v&&v.name===name?v.url:autoCover(g?.description);return url?d+'\n🖼 Обкладинка: '+url:d;}
 async function autoLookup(name){const r=await fetch('/api/game-autofill?name='+encodeURIComponent(name),{headers:telegramAuthHeaders()});const d=await r.json();if(!r.ok)throw Error(d.error||'Помилка пошуку');return d;}
 function autoText(d){return [d.description,...[['Видавництво',d.publisher],['Вік',d.age],['Мова',d.language],['Складність',d.difficulty],['Джерело',d.source_url]].filter(x=>x[1]).map(x=>x.join(': '))].filter(Boolean).join('\n');}
-async function autoGameForm(p){const field=document.getElementById(p+'Name'),name=field.value.trim(),status=document.getElementById(p+'AutoStatus');if(!name){status.textContent='Введи назву гри.';return;}status.textContent='Шукаємо інформацію…';try{const d=await autoLookup(name);if(field.value.trim()!==name)return;for(const [k,v] of Object.entries({Description:autoText(d),Tags:d.tags,RulesUrl:d.rules_url,Components:(d.components||[]).join('\n')})){const el=document.getElementById(p+k);if(v&&!el.value.trim())el.value=v;}if(d.cover_url)autoFormCovers[p]={name,url:d.cover_url};status.textContent='Заповнено доступні порожні поля. Перевір джерело та збережи.';if(!document.getElementById(p+'VideoUrl').value){const r=await fetch('/api/game-review?name='+encodeURIComponent(name),{headers:telegramAuthHeaders()});const v=await r.json();if(field.value.trim()===name&&/^[\w-]{11}$/.test(v.video_id||'')&&!document.getElementById(p+'VideoUrl').value)document.getElementById(p+'VideoUrl').value='https://www.youtube.com/watch?v='+v.video_id;}}catch(e){status.textContent=e.message;}}
-async function autoGameView(game){if(game.cover_url&&game.tags&&stripGameVideoLine(game.description)&&componentUrls(game.description).length&&game.rules_url)return;const epoch=gameMediaEpoch;try{const d=await autoLookup(game.name);if(epoch!==gameMediaEpoch||!document.getElementById('viewModal').classList.contains('open'))return;const merged={...game,cover_url:game.cover_url||autoCover(game.description)||d.cover_url,tags:game.tags||d.tags,description:game.description||''};if(!stripGameVideoLine(merged.description))merged.description=autoText(d)+'\n'+merged.description;if(!componentUrls(merged.description).length)merged.description=appendComponents(merged.description,(d.components||[]).join('\n'));renderGameDetailHeader(merged);document.getElementById('viewDescription').textContent=stripGameVideoLine(merged.description);if(!game.rules_url&&d.rules_url){const link=document.getElementById('viewRules');link.href=d.rules_url;link.style.display='inline-block';document.getElementById('viewNoRules').textContent='';}if(!componentUrls(game.description).length&&componentUrls(merged.description).length)renderGameMedia(merged);}catch(e){console.warn('Game autofill unavailable',e);}}
+async function autoGameForm(p){const field=document.getElementById(p+'Name'),name=field.value.trim(),status=document.getElementById(p+'AutoStatus');if(!name){status.textContent='Введи назву гри.';return;}status.textContent='Шукаємо інформацію…';try{const d=await autoLookup(name);if(field.value.trim()!==name)return;for(const [k,v] of Object.entries({Description:autoText(d),Tags:d.tags,RulesUrl:d.rules_url,Components:(d.components||[]).join('\n')})){const el=document.getElementById(p+k);if(v&&!el.value.trim())el.value=v;}if(d.cover_url){autoFormCovers[p]={name,url:d.cover_url};if(p==='edit'&&!currentGame?.cover_url&&!document.getElementById('editCoverUrl').value)document.getElementById('editCoverUrl').value=d.cover_url;}status.textContent='Заповнено доступні порожні поля. Перевір джерело та збережи.';if(!document.getElementById(p+'VideoUrl').value){const r=await fetch('/api/game-review?name='+encodeURIComponent(name),{headers:telegramAuthHeaders()});const v=await r.json();if(field.value.trim()===name&&/^[\w-]{11}$/.test(v.video_id||'')&&!document.getElementById(p+'VideoUrl').value)document.getElementById(p+'VideoUrl').value='https://www.youtube.com/watch?v='+v.video_id;}}catch(e){status.textContent=e.message;}}
+async function autoGameView(game){if(game.cover_url&&game.tags&&stripGameVideoLine(game.description)&&componentUrls(game.description).length&&game.rules_url)return;const epoch=gameMediaEpoch;try{const d=await autoLookup(game.name);if(epoch!==gameMediaEpoch||!document.getElementById('viewModal').classList.contains('open'))return;const merged={...game,cover_url:autoCover(game.description)||game.cover_url||d.cover_url,tags:game.tags||d.tags,description:game.description||''};if(!stripGameVideoLine(merged.description))merged.description=autoText(d)+'\n'+merged.description;if(!componentUrls(merged.description).length)merged.description=appendComponents(merged.description,(d.components||[]).join('\n'));renderGameDetailHeader(merged);document.getElementById('viewDescription').textContent=stripGameVideoLine(merged.description);if(!game.rules_url&&d.rules_url){const link=document.getElementById('viewRules');link.href=d.rules_url;link.style.display='inline-block';document.getElementById('viewNoRules').textContent='';}if(!componentUrls(game.description).length&&componentUrls(merged.description).length)renderGameMedia(merged);}catch(e){console.warn('Game autofill unavailable',e);}}
 </script>
 <style id="gc67-safe-header">
 #viewModal { --gc-safe-top: max(8px, env(safe-area-inset-top,0px)); box-sizing:border-box; }
@@ -15836,5 +15841,17 @@ html:root:root:root:root:root:root:root:root:root:root:root:root body #viewModal
 html:root:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-nav-right {margin-left:auto;gap:6px!important;flex-shrink:0;}
 html:root:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-nav button {flex-shrink:0;min-height:44px!important;}
 </style>
-</body>
+<style id="gc68-edit">
+html:root:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcAdmin:not([style*="none"]){margin-top:14px;display:grid;gap:8px;}
+#gcDropdown[hidden]{display:none!important;}
+#gcDropdown{position:absolute;right:0;top:100%;z-index:100;display:grid;gap:6px;width:min(260px,100%);padding:8px;border:1px solid #ffffff40;border-radius:16px;background:#24262cf5;box-shadow:0 8px 24px #0008;}
+#gcDropdown button,#gcAdmin button{width:100%!important;min-height:44px!important;height:auto!important;white-space:normal!important;margin:0!important;padding:10px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root:root body #viewModal .sheet{max-height:calc(100dvh - var(--gc-safe-top, 8px) - max(8px,env(safe-area-inset-bottom,0px)))!important;overflow-y:auto!important;}
+</style><script>
+function gcCloseMenu(){document.getElementById('gcDropdown').hidden=true;document.getElementById('gcMenu').setAttribute('aria-expanded','false');}
+function gcToggleMenu(){if(!isAdmin)return;const d=document.getElementById('gcDropdown');d.hidden=!d.hidden;document.getElementById('gcMenu').setAttribute('aria-expanded',String(!d.hidden));}
+function gcEdit(auto){if(!isAdmin||!currentGame)return;gcCloseMenu();openEditModal();if(auto)autoGameForm('edit');}
+document.addEventListener('click',e=>{if(!e.target.closest('#gcDropdown,#gcMenu'))gcCloseMenu();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')gcCloseMenu();});
+</script></body>
 </html>
