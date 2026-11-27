@@ -7971,7 +7971,7 @@ def catalog_game_metadata(name, deadline=None, diagnostics=None):
     deadline = deadline or time.monotonic()+12
     # Public retailer search; no credentials. Only fetch fixed trusted hosts.
     from html.parser import HTMLParser
-    from urllib.parse import urljoin
+    from urllib.parse import urljoin, parse_qs
     class Page(HTMLParser):
         def __init__(self):
             super().__init__(); self.links=[]; self.scripts=[]; self.active=False; self.buf=''; self.anchor=None; self.anchor_text=''; self.meta={}; self.images=[]; self.title=''; self.in_title=False
@@ -8012,7 +8012,7 @@ def catalog_game_metadata(name, deadline=None, diagnostics=None):
             if u.scheme!='https' or u.hostname not in (host,'www.'+host) or u.username or u.port not in (None,443): return None
             remaining=deadline-time.monotonic()
             if remaining<=0: return None
-            r=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (compatible; Styloteka/5.3.74)','Accept':'text/html,application/xhtml+xml','Accept-Language':'uk,en;q=0.8'},timeout=min(4,remaining),allow_redirects=False)
+            r=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (compatible; Styloteka/5.3.74)','Accept':'text/html,application/xhtml+xml','Accept-Language':'uk,en;q=0.8'},timeout=min(2 if host=='google.com' else 4,remaining),allow_redirects=False)
             diagnostics[host]='HTTP '+str(r.status_code)
             if r.status_code in (301,302,303,307,308) and r.headers.get('Location'):
                 url=urljoin(url,r.headers['Location']); continue
@@ -8024,17 +8024,36 @@ def catalog_game_metadata(name, deadline=None, diagnostics=None):
     def lookup(host, paths):
         base='https://'+host
         try:
-            for search in paths:
-                page=fetch(base+search+quote(name),host)
-                if not page: continue
-                candidates=[]
-                for href,label in page.links:
-                    url=urljoin(base,href); u=urlparse(url)
-                    if u.hostname in (host,'www.'+host) and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
-                        slug=unquote(u.path).casefold()
-                        if matches(label) or matches(slug.rsplit('/',1)[-1]): candidates.insert(0,url)
-                        elif any(t in slug for t in re.findall(r'[^\W\d_]{4,}',name.casefold())): candidates.append(url)
-                diagnostics[host]=f"HTTP 200; кандидатів: {len(candidates)}"
+            # Google results are discovery only; product pages remain the evidence.
+            candidates_google=[]
+            try:
+                query=name+' настільна гра site:'+host
+                google=fetch('https://www.google.com/search?hl=uk&num=8&q='+quote(query),'google.com')
+                if google:
+                    for href,label in google.links:
+                        u=urlparse(urljoin('https://www.google.com',href))
+                        if u.hostname in ('google.com','www.google.com') and u.path=='/url':
+                            href=(parse_qs(u.query).get('q') or parse_qs(u.query).get('url') or [''])[0]
+                            u=urlparse(href)
+                        if u.scheme=='https' and u.hostname in (host,'www.'+host) and len(u.path)>5 and not u.username:
+                            candidates_google.append(u._replace(query='',fragment='').geturl())
+                diagnostics['google:'+host]=f'посилань: {len(set(candidates_google))}' if google else 'пошук недоступний'
+            except Exception as exc:
+                diagnostics['google:'+host]=type(exc).__name__
+            for search in (None,*paths):
+                if search is None:
+                    candidates=list(dict.fromkeys(candidates_google))
+                else:
+                    page=fetch(base+search+quote(name),host)
+                    if not page: continue
+                    candidates=[]
+                    for href,label in page.links:
+                        url=urljoin(base,href); u=urlparse(url)
+                        if u.hostname in (host,'www.'+host) and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
+                            slug=unquote(u.path).casefold()
+                            if matches(label) or matches(slug.rsplit('/',1)[-1]): candidates.insert(0,url)
+                            elif any(t in slug for t in re.findall(r'[^\W\d_]{4,}',name.casefold())): candidates.append(url)
+                    diagnostics[host]=f"HTTP 200; кандидатів: {len(candidates)}"
                 for url in list(dict.fromkeys(candidates))[:5]:
                     detail=fetch(url,host)
                     if not detail: continue
