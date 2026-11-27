@@ -8191,6 +8191,33 @@ _core_run_lock = Lock()
 _core_state = {'last_run': None, 'checks': [], 'proposals': [], 'runs': 0}
 _core_errors = deque(maxlen=40)
 _core_cursor = 0
+_core_memory_url = f"{SUPABASE_URL}/rest/v1/styloteka_ai_memory"
+_core_memory_ok = False
+_core_history = []
+_core_attempts = {}
+
+def core_restore():
+    global _core_cursor, _core_memory_ok
+    try:
+        r=requests.get(_core_memory_url,headers=HEADERS,params={'id':'eq.core','select':'state'},timeout=5)
+        r.raise_for_status(); rows=r.json()
+        if rows:
+            d=rows[0]['state']
+            _core_cursor=int(d.get('cursor',0)); _core_attempts.update(d.get('attempts',{})); _core_history.extend(d.get('history',[])[-30:]); _core_state.update(d.get('dashboard',{}))
+        _core_memory_ok=True
+    except Exception:
+        _core_memory_ok=False
+
+def core_save():
+    global _core_memory_ok
+    try:
+        with _core_lock:
+            state={'cursor':_core_cursor,'attempts':dict(list(_core_attempts.items())[-500:]),'history':_core_history[-30:],'dashboard':dict(_core_state)}
+        r=requests.post(_core_memory_url,headers={**HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},json={'id':'core','state':state},timeout=5)
+        r.raise_for_status(); _core_memory_ok=True
+    except Exception:
+        _core_memory_ok=False
+
 class CoreErrorHandler(logging.Handler):
     def emit(self, record):
         # Never expose log messages, credentials, request URLs or tracebacks.
@@ -8209,7 +8236,11 @@ def core_scan():
         checks.append({'name':'Бібліотека', 'status':'OK', 'detail':str(len(rows))+' ігор перевірено'})
         _core_cursor = _core_cursor+len(rows) if len(rows)==20 else 0
         missing = [g for g in rows if not g.get('cover_url') or not g.get('description') or '📷 Компонент:' not in (g.get('description') or '')]
-        for g in missing[:2]:
+        for g in sorted(missing,key=lambda g:_core_attempts.get(str(g['id']),0))[:2]:
+            gid=str(g['id'])
+            if time.time()-_core_attempts.get(gid,0)<86400: continue
+            _core_attempts[gid]=time.time()
+            if len(_core_attempts)>500: _core_attempts.pop(min(_core_attempts,key=_core_attempts.get),None)
             try:
                 d = public_game_metadata(str(g['name'])[:150])
                 fields = {}
@@ -8225,12 +8256,16 @@ def core_scan():
     finally:
         with _core_lock:
             _core_state.update(last_run=datetime.now(timezone.utc).isoformat(),checks=checks,proposals=proposals,runs=_core_state['runs']+1)
-        _core_run_lock.release()
+            _core_history.append({'time':_core_state['last_run'],'checks':checks,'found':sum(bool(p['fields']) for p in proposals)})
+            del _core_history[:-30]
+        try: core_save()
+        finally: _core_run_lock.release()
 
 def core_worker():
+    core_restore()
     while True:
         core_scan()
-        time.sleep(3600)
+        time.sleep(3600 if _core_state["checks"] and _core_state["checks"][0]["status"]=="OK" else 7200)
 
 @app.route('/api/admin/ai-core', methods=['GET','POST'])
 def core_dashboard():
@@ -8239,7 +8274,7 @@ def core_dashboard():
     if request.method == 'POST':
         if not _core_run_lock.locked(): Thread(target=core_scan,daemon=True).start()
     with _core_lock:
-        return jsonify(**_core_state, errors=list(_core_errors), running=_core_run_lock.locked(), automatic=os.environ.get('STYLOTEKA_CORE_ENABLED')=='1')
+        return jsonify(**_core_state, errors=list(_core_errors), running=_core_run_lock.locked(), memory=_core_memory_ok, history=list(_core_history), automatic=os.environ.get('STYLOTEKA_CORE_ENABLED')=='1')
 
 if os.environ.get('STYLOTEKA_CORE_ENABLED')=='1':
     Thread(target=core_worker,daemon=True).start()
