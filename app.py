@@ -7973,15 +7973,17 @@ def catalog_game_metadata(name, deadline=None):
     from urllib.parse import urljoin
     class Page(HTMLParser):
         def __init__(self):
-            super().__init__(); self.links=[]; self.scripts=[]; self.active=False; self.buf=''
+            super().__init__(); self.links=[]; self.scripts=[]; self.active=False; self.buf=''; self.anchor=None; self.anchor_text=''
         def handle_starttag(self, tag, attrs):
             a=dict(attrs)
-            if tag=='a' and a.get('href'): self.links.append(a['href'])
+            if tag=='a' and a.get('href'): self.anchor=a['href']; self.anchor_text='' 
             if tag=='script' and a.get('type')=='application/ld+json': self.active=True; self.buf=''
         def handle_data(self, data):
             if self.active: self.buf+=data
+            if self.anchor: self.anchor_text+=data
         def handle_endtag(self, tag):
             if tag=='script' and self.active: self.scripts.append(self.buf); self.active=False
+            if tag=='a' and self.anchor: self.links.append((self.anchor,self.anchor_text)); self.anchor=None
     def norm(s): return re.sub(r'[^\w]+','',s.casefold())
     def matches(title):
         a,b=norm(name),norm(title)
@@ -7997,33 +7999,51 @@ def catalog_game_metadata(name, deadline=None):
         if u.scheme!='https' or u.netloc!=host: return None
         remaining=deadline-time.monotonic()
         if remaining<=0: return None
-        r=requests.get(url,headers={'User-Agent':'Styloteka/5.3.72 catalog lookup'},timeout=min(3,remaining),allow_redirects=False)
+        r=requests.get(url,headers={'User-Agent':'Styloteka/5.3.73 catalog lookup'},timeout=min(3,remaining),allow_redirects=False)
         if r.status_code!=200: return None
         page=Page(); page.feed(r.text[:2000000]); return page
-    for host,search in [('geekach.com.ua','/search/?q='),('desktopgames.com.ua','/search/?q=')]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+    from html import unescape
+    def lookup(host, paths):
+        base='https://'+host
         try:
-            base='https://'+host
-            page=fetch(base+search+quote(name),host)
-            if not page: continue
-            candidates=[]
-            for href in page.links:
-                url=urljoin(base,href); u=urlparse(url)
-                if u.netloc==host and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
-                    slug=unquote(u.path).casefold()
-                    if any(t in slug for t in re.findall(r'[^\W\d_]{4,}',name.casefold())): candidates.append(url)
-            for url in candidates[:4]:
-                detail=fetch(url,host)
-                if not detail: continue
-                for raw in detail.scripts:
-                    try: items=list(products(json.loads(raw)))
-                    except Exception: continue
-                    for item in items:
-                        if not matches(str(item.get('name',''))): continue
-                        imgs=item.get('image',[]); imgs=[imgs] if isinstance(imgs,str) else imgs
-                        imgs=[urljoin(base,v) for v in imgs if isinstance(v,str)] if isinstance(imgs,list) else []
-                        imgs=list(dict.fromkeys(v for v in imgs if urlparse(v).scheme=='https' and urlparse(v).hostname))
-                        return dict(source_url=url,cover_url=imgs[0] if imgs else '',components=imgs[1:12],description='',tags='',publisher='',age='',language='',difficulty='',rules_url='')
-        except Exception: logging.warning('Catalog lookup unavailable (%s)',host)
+            for search in paths:
+                page=fetch(base+search+quote(name),host)
+                if not page: continue
+                candidates=[]
+                for href,label in page.links:
+                    url=urljoin(base,href); u=urlparse(url)
+                    if u.netloc==host and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
+                        slug=unquote(u.path).casefold()
+                        if matches(label): candidates.insert(0,url)
+                        elif any(t in slug for t in re.findall(r'[^\W\d_]{4,}',name.casefold())): candidates.append(url)
+                for url in list(dict.fromkeys(candidates))[:5]:
+                    detail=fetch(url,host)
+                    if not detail: continue
+                    for raw in detail.scripts:
+                        try: items=list(products(json.loads(raw)))
+                        except Exception: continue
+                        for item in items:
+                            if not matches(str(item.get('name',''))): continue
+                            imgs=item.get('image',[]); imgs=[imgs] if isinstance(imgs,(str,dict)) else imgs
+                            imgs=[v.get('url') or v.get('contentUrl') for v in imgs if isinstance(v,dict)] + [v for v in imgs if isinstance(v,str)] if isinstance(imgs,list) else []
+                            imgs=[urljoin(base,v) for v in imgs if isinstance(v,str)]
+                            imgs=list(dict.fromkeys(v for v in imgs if urlparse(v).scheme=='https' and urlparse(v).hostname))
+                            desc=unescape(re.sub(r'<[^>]*>',' ',str(item.get('description') or ''))).strip()[:1500]
+                            if imgs or desc:
+                                return dict(source_url=url,cover_url=imgs[0] if imgs else '',components=imgs[1:12],description=desc,tags='',publisher='',age='',language='',difficulty='',rules_url='')
+        except Exception: logging.warning('Catalog lookup unavailable (%s)',host,exc_info=True)
+        return None
+    sources=[('geekach.com.ua',('/search/?q=','/search/?query=')),('desktopgames.com.ua',('/ua/search/?q=','/search/?q=')),('woodcat.com.ua',('/search/?q=','/search/?query='))]
+    pool=ThreadPoolExecutor(max_workers=3)
+    jobs=[pool.submit(lookup,host,paths) for host,paths in sources]
+    try:
+        for job in as_completed(jobs,timeout=max(.01,deadline-time.monotonic())):
+            result=job.result()
+            if result: return result
+    except TimeoutError: pass
+    finally: pool.shutdown(wait=False,cancel_futures=True)
+
     return None
 
 def public_game_metadata(name):
