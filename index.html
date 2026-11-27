@@ -7081,6 +7081,7 @@ button,.btn{font-family:inherit}
         <span class="admin-users-open-arrow">→</span>
       </button>
     </div>
+    <div class="group-admin-only admin-users-entry" style="display:none"><button class="admin-users-open-btn" onclick="coreOpen()">Styloteka AI Core →</button></div>
     <div id="profileContent" class="profile-loading">Завантажую профіль…</div>
   </div>
 </div>
@@ -15870,5 +15871,17 @@ html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #vie
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay[hidden]{display:none!important;}
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewVideoHint{position:absolute;bottom:6px;left:8px;right:8px;margin:0!important;font-size:11px!important;pointer-events:none;}
 </style>
+<style>
+#coreDialog{position:fixed;inset: max(100px, env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));z-index:99999;overflow:auto;padding:18px;border:1px solid #ffffff44;border-radius:24px;background:#20232bee;color:white;backdrop-filter:blur(24px);box-sizing:border-box}#coreDialog[hidden]{display:none!important}#coreDialog button{min-height:44px;border:1px solid #ffffff44;border-radius:16px;background:#ffffff18;color:white;padding:10px 16px;white-space:normal}#coreDialog article{padding:12px;margin:10px 0;border:1px solid #ffffff33;border-radius:16px;overflow-wrap:anywhere}#coreDialog header{display:flex;align-items:center;justify-content:space-between;gap:8px}#coreDialog a{color:white}
+</style>
+<section id="coreDialog" hidden role="dialog" aria-label="Styloteka AI Core"><header><strong>Styloteka AI Core</strong><button onclick="coreClose()">✕</button></header><p>Моніторинг та пропозиції матеріалів</p><button id="coreRun" onclick="coreLoad(true)">Запустити перевірку</button><div id="coreResults" aria-live="polite"></div></section>
+<script>
+let coreTimer;
+function coreClose(){document.getElementById('coreDialog').hidden=true;clearInterval(coreTimer);}
+function coreOpen(){if(!isAdmin)return;document.getElementById('coreDialog').hidden=false;coreLoad(false);clearInterval(coreTimer);coreTimer=setInterval(()=>coreLoad(false),5000);}
+let coreBusy=false;
+async function coreLoad(run){if(coreBusy||!isAdmin)return;coreBusy=true;const root=document.getElementById('coreResults');try{const r=await fetch('/api/admin/ai-core',{method:run?'POST':'GET',headers:telegramAuthHeaders()});if(!r.ok)throw Error('Сервер: '+r.status);const d=await r.json();root.replaceChildren();const add=(title,detail)=>{const a=document.createElement('article'),b=document.createElement('strong'),p=document.createElement('p');b.textContent=title;p.textContent=detail;a.append(b,p);root.append(a);return a;};add(d.running?'Перевірка триває':'Стан системи', (d.automatic?'Автоматично щогодини':'Ручний режим')+' · Перевірок: '+d.runs+' · '+(d.last_run||'Ще не запускалась'));document.getElementById('coreRun').disabled=d.running;for(const c of d.checks)add(c.name+' · '+c.status,c.detail);for(const p of d.proposals){const a=add(p.name+' · '+p.status,Object.keys(p.fields).join(', ')||'Немає пропозицій');for(const [k,v] of Object.entries(p.fields)){const t=document.createElement('p');t.textContent=k+': '+(Array.isArray(v)?v.join('\n'):v);a.append(t);}if(p.source&&/^https:\/\//.test(p.source)){const l=document.createElement('a');l.href=p.source;l.target='_blank';l.rel='noopener noreferrer';l.textContent='Джерело';a.append(l);}}add('Журнал помилок',d.errors.map(e=>e.time+' '+e.level).join('\n')||'Помилок не зафіксовано');}catch(e){root.textContent=e.message;}finally{coreBusy=false;}}
+</script>
+
 </body>
 </html>

@@ -8184,6 +8184,66 @@ def _lookup_game_data(name,key):
         logging.exception('Game metadata lookup failed')
         return public_game_metadata(name)
 
+# AI Core 5.4.0: bounded read-only monitoring and enrichment proposals.
+from collections import deque
+_core_lock = Lock()
+_core_run_lock = Lock()
+_core_state = {'last_run': None, 'checks': [], 'proposals': [], 'runs': 0}
+_core_errors = deque(maxlen=40)
+_core_cursor = 0
+class CoreErrorHandler(logging.Handler):
+    def emit(self, record):
+        # Never expose log messages, credentials, request URLs or tracebacks.
+        with _core_lock:
+            _core_errors.append({'time': datetime.now(timezone.utc).isoformat(), 'level': record.levelname})
+_core_handler = CoreErrorHandler(level=logging.ERROR)
+logging.getLogger().addHandler(_core_handler)
+
+def core_scan():
+    global _core_cursor
+    if not _core_run_lock.acquire(blocking=False): return
+    checks, proposals = [], []
+    try:
+        r = requests.get(REST, headers=HEADERS, params={'select':'id,name,description,cover_url,tags','order':'id.asc','limit':20,'offset':_core_cursor}, timeout=10)
+        r.raise_for_status(); rows = r.json()
+        checks.append({'name':'Бібліотека', 'status':'OK', 'detail':str(len(rows))+' ігор перевірено'})
+        _core_cursor = _core_cursor+len(rows) if len(rows)==20 else 0
+        missing = [g for g in rows if not g.get('cover_url') or not g.get('description') or '📷 Компонент:' not in (g.get('description') or '')]
+        for g in missing[:2]:
+            try:
+                d = public_game_metadata(str(g['name'])[:150])
+                fields = {}
+                if not g.get('description') and d.get('description'): fields['description']=d['description']
+                if not g.get('cover_url') and d.get('cover_url'): fields['cover_url']=d['cover_url']
+                if '📷 Компонент:' not in (g.get('description') or '') and d.get('components'): fields['components']=d['components']
+                proposals.append({'id':g['id'],'name':g['name'],'fields':fields,'source':d.get('source_url',''),'status':'На перевірку' if fields else 'Матеріалів не знайдено'})
+            except Exception:
+                proposals.append({'id':g['id'],'name':g['name'],'fields':{},'status':'Помилка пошуку'})
+        checks.append({'name':'Пошук матеріалів','status':'OK' if any(p['fields'] for p in proposals) else 'INFO','detail':str(len(proposals))+' пошуків'})
+    except Exception:
+        checks.append({'name':'Бібліотека','status':'ERROR','detail':'Запит до бази не виконано'})
+    finally:
+        with _core_lock:
+            _core_state.update(last_run=datetime.now(timezone.utc).isoformat(),checks=checks,proposals=proposals,runs=_core_state['runs']+1)
+        _core_run_lock.release()
+
+def core_worker():
+    while True:
+        core_scan()
+        time.sleep(3600)
+
+@app.route('/api/admin/ai-core', methods=['GET','POST'])
+def core_dashboard():
+    denied = _admin_required_response()
+    if denied: return denied
+    if request.method == 'POST':
+        if not _core_run_lock.locked(): Thread(target=core_scan,daemon=True).start()
+    with _core_lock:
+        return jsonify(**_core_state, errors=list(_core_errors), running=_core_run_lock.locked(), automatic=os.environ.get('STYLOTEKA_CORE_ENABLED')=='1')
+
+if os.environ.get('STYLOTEKA_CORE_ENABLED')=='1':
+    Thread(target=core_worker,daemon=True).start()
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5050))
     app.run(host="0.0.0.0", port=port)
