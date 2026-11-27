@@ -7966,28 +7966,36 @@ _game_lookup_cache = {}
 _game_lookup_limits = {}
 _game_lookup_pending = {}
 _game_lookup_lock = Lock()
-def catalog_game_metadata(name, deadline=None):
+def catalog_game_metadata(name, deadline=None, diagnostics=None):
+    diagnostics = diagnostics if diagnostics is not None else {}
     deadline = deadline or time.monotonic()+12
     # Public retailer search; no credentials. Only fetch fixed trusted hosts.
     from html.parser import HTMLParser
     from urllib.parse import urljoin
     class Page(HTMLParser):
         def __init__(self):
-            super().__init__(); self.links=[]; self.scripts=[]; self.active=False; self.buf=''; self.anchor=None; self.anchor_text=''
+            super().__init__(); self.links=[]; self.scripts=[]; self.active=False; self.buf=''; self.anchor=None; self.anchor_text=''; self.meta={}; self.images=[]; self.title=''; self.in_title=False
         def handle_starttag(self, tag, attrs):
             a=dict(attrs)
+            if tag=='meta': self.meta[a.get('property') or a.get('name') or '']=a.get('content','')
+            if tag=='title': self.in_title=True
+            if tag=='img':
+                self.images.append((a.get('data-src') or a.get('src') or '',a.get('alt','')))
+                if self.anchor: self.anchor_text+=' '+a.get('alt','')
             if tag=='a' and a.get('href'): self.anchor=a['href']; self.anchor_text='' 
             if tag=='script' and a.get('type')=='application/ld+json': self.active=True; self.buf=''
         def handle_data(self, data):
+            if self.in_title: self.title+=data
             if self.active: self.buf+=data
             if self.anchor: self.anchor_text+=data
         def handle_endtag(self, tag):
+            if tag=='title': self.in_title=False
             if tag=='script' and self.active: self.scripts.append(self.buf); self.active=False
             if tag=='a' and self.anchor: self.links.append((self.anchor,self.anchor_text)); self.anchor=None
     def norm(s): return re.sub(r'[^\w]+','',s.casefold())
     def matches(title):
         a,b=norm(name),norm(title)
-        return bool(a and (a==b or (len(a)>=8 and a in b)))
+        return bool(a and (a==b or (len(a)>=4 and a in b)))
     def products(x):
         if isinstance(x,list):
             for v in x: yield from products(v)
@@ -7996,12 +8004,21 @@ def catalog_game_metadata(name, deadline=None):
             for k in ('@graph','itemListElement','item','mainEntity'): yield from products(x.get(k))
     def fetch(url,host):
         u=urlparse(url)
-        if u.scheme!='https' or u.netloc!=host: return None
+        if u.scheme!='https' or u.hostname not in (host,'www.'+host): return None
         remaining=deadline-time.monotonic()
         if remaining<=0: return None
-        r=requests.get(url,headers={'User-Agent':'Styloteka/5.3.73 catalog lookup'},timeout=min(3,remaining),allow_redirects=False)
-        if r.status_code!=200: return None
-        page=Page(); page.feed(r.text[:2000000]); return page
+        for _ in range(4):
+            u=urlparse(url)
+            if u.scheme!='https' or u.hostname not in (host,'www.'+host) or u.username or u.port not in (None,443): return None
+            remaining=deadline-time.monotonic()
+            if remaining<=0: return None
+            r=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (compatible; Styloteka/5.3.74)','Accept':'text/html,application/xhtml+xml','Accept-Language':'uk,en;q=0.8'},timeout=min(4,remaining),allow_redirects=False)
+            diagnostics[host]='HTTP '+str(r.status_code)
+            if r.status_code in (301,302,303,307,308) and r.headers.get('Location'):
+                url=urljoin(url,r.headers['Location']); continue
+            if r.status_code!=200: return None
+            page=Page(); page.feed(r.text[:3000000]); return page
+        return None
     from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
     from html import unescape
     def lookup(host, paths):
@@ -8013,10 +8030,11 @@ def catalog_game_metadata(name, deadline=None):
                 candidates=[]
                 for href,label in page.links:
                     url=urljoin(base,href); u=urlparse(url)
-                    if u.netloc==host and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
+                    if u.hostname in (host,'www.'+host) and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
                         slug=unquote(u.path).casefold()
-                        if matches(label): candidates.insert(0,url)
+                        if matches(label) or matches(slug.rsplit('/',1)[-1]): candidates.insert(0,url)
                         elif any(t in slug for t in re.findall(r'[^\W\d_]{4,}',name.casefold())): candidates.append(url)
+                diagnostics[host]=f"HTTP 200; кандидатів: {len(candidates)}"
                 for url in list(dict.fromkeys(candidates))[:5]:
                     detail=fetch(url,host)
                     if not detail: continue
@@ -8032,9 +8050,17 @@ def catalog_game_metadata(name, deadline=None):
                             desc=unescape(re.sub(r'<[^>]*>',' ',str(item.get('description') or ''))).strip()[:1500]
                             if imgs or desc:
                                 return dict(source_url=url,cover_url=imgs[0] if imgs else '',components=imgs[1:12],description=desc,tags='',publisher='',age='',language='',difficulty='',rules_url='')
-        except Exception: logging.warning('Catalog lookup unavailable (%s)',host,exc_info=True)
+                    title=detail.meta.get('og:title') or detail.title
+                    if matches(title) and detail.meta.get('og:type','').lower() in ('product','product.item'):
+                        cover=urljoin(url,detail.meta.get('og:image','')) if detail.meta.get('og:image') else ''
+                        desc=detail.meta.get('og:description') or detail.meta.get('description','')
+                        if cover or desc:
+                            return dict(source_url=url,cover_url=cover if urlparse(cover).scheme=='https' else '',components=[],description=desc[:1500],tags='',publisher='',age='',language='',difficulty='',rules_url='')
+        except Exception as exc:
+            diagnostics[host]=type(exc).__name__
+            logging.warning('Catalog lookup unavailable (%s)',host,exc_info=True)
         return None
-    sources=[('geekach.com.ua',('/search/?q=','/search/?query=')),('desktopgames.com.ua',('/ua/search/?q=','/search/?q=')),('woodcat.com.ua',('/search/?q=','/search/?query='))]
+    sources=[('geekach.com.ua',('/search/?q=','/search/?query=')),('desktopgames.com.ua',('/ua/search/?q=','/ua/search/?search=','/search/?q=')),('woodcat.com.ua',('/search/?q=','/search/?query='))]
     pool=ThreadPoolExecutor(max_workers=3)
     jobs=[pool.submit(lookup,host,paths) for host,paths in sources]
     try:
@@ -8048,10 +8074,14 @@ def catalog_game_metadata(name, deadline=None):
 
 def public_game_metadata(name):
     deadline=time.monotonic()+12
-    catalog = catalog_game_metadata(name, deadline)
-    if catalog: return catalog
+    diagnostics = {}
+    catalog = catalog_game_metadata(name, deadline, diagnostics)
+    logging.info("Catalog search diagnostics: %s", diagnostics)
+    if catalog:
+        catalog["diagnostics"]=dict(diagnostics)
+        return catalog
     # Public Wikimedia API, no API key. Only accept an exact title and board-game evidence.
-    out = dict(description='', tags='', publisher='', age='', language='', difficulty='', cover_url='', rules_url='', source_url='', components=[])
+    out = dict(description='', tags='', publisher='', age='', language='', difficulty='', cover_url='', rules_url='', source_url='', components=[], diagnostics=dict(diagnostics))
     normalize = lambda v: re.sub(r'[^\w]+', '', v.casefold())
     headers = {'User-Agent': 'Styloteka/5.3.70 (board game catalog; Wikimedia public API)'}
     for lang in ('uk', 'en'):
