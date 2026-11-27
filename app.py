@@ -7965,7 +7965,66 @@ def game_review():
 _game_lookup_cache = {}
 _game_lookup_limits = {}
 _game_lookup_lock = Lock()
+def catalog_game_metadata(name):
+    # Public retailer search; no credentials. Only fetch fixed trusted hosts.
+    from html.parser import HTMLParser
+    from urllib.parse import urljoin
+    class Page(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.links=[]; self.scripts=[]; self.active=False; self.buf=''
+        def handle_starttag(self, tag, attrs):
+            a=dict(attrs)
+            if tag=='a' and a.get('href'): self.links.append(a['href'])
+            if tag=='script' and a.get('type')=='application/ld+json': self.active=True; self.buf=''
+        def handle_data(self, data):
+            if self.active: self.buf+=data
+        def handle_endtag(self, tag):
+            if tag=='script' and self.active: self.scripts.append(self.buf); self.active=False
+    def norm(s): return re.sub(r'[^\w]+','',s.casefold())
+    def matches(title):
+        a,b=norm(name),norm(title)
+        return bool(a and (a==b or (len(a)>=8 and a in b)))
+    def products(x):
+        if isinstance(x,list):
+            for v in x: yield from products(v)
+        elif isinstance(x,dict):
+            if 'Product' in ([x.get('@type')] if isinstance(x.get('@type'),str) else (x.get('@type') or [])): yield x
+            for k in ('@graph','itemListElement','item','mainEntity'): yield from products(x.get(k))
+    def fetch(url,host):
+        u=urlparse(url)
+        if u.scheme!='https' or u.netloc!=host: return None
+        r=requests.get(url,headers={'User-Agent':'Styloteka/5.3.71 catalog lookup'},timeout=5,allow_redirects=False)
+        if r.status_code!=200: return None
+        page=Page(); page.feed(r.text[:2000000]); return page
+    for host,search in [('geekach.com.ua','/search/?q='),('desktopgames.com.ua','/search/?q=')]:
+        try:
+            base='https://'+host
+            page=fetch(base+search+quote(name),host)
+            if not page: continue
+            candidates=[]
+            for href in page.links:
+                url=urljoin(base,href); u=urlparse(url)
+                if u.netloc==host and u.scheme=='https' and not u.query and len(u.path)>5 and url not in candidates:
+                    slug=unquote(u.path).casefold()
+                    if any(t in slug for t in re.findall(r'[a-z]{4,}',name.casefold())): candidates.append(url)
+            for url in candidates[:4]:
+                detail=fetch(url,host)
+                if not detail: continue
+                for raw in detail.scripts:
+                    try: items=list(products(json.loads(raw)))
+                    except Exception: continue
+                    for item in items:
+                        if not matches(str(item.get('name',''))): continue
+                        imgs=item.get('image',[]); imgs=[imgs] if isinstance(imgs,str) else imgs
+                        imgs=[urljoin(base,v) for v in imgs if isinstance(v,str)] if isinstance(imgs,list) else []
+                        imgs=list(dict.fromkeys(v for v in imgs if urlparse(v).scheme=='https' and urlparse(v).hostname))
+                        return dict(source_url=url,cover_url=imgs[0] if imgs else '',components=[],description='',tags='',publisher='',age='',language='',difficulty='',rules_url='',catalog_images=imgs[1:12])
+        except Exception: logging.warning('Catalog lookup unavailable (%s)',host)
+    return None
+
 def public_game_metadata(name):
+    catalog = catalog_game_metadata(name)
+    if catalog: return catalog
     # Public Wikimedia API, no API key. Only accept an exact title and board-game evidence.
     out = dict(description='', tags='', publisher='', age='', language='', difficulty='', cover_url='', rules_url='', source_url='', components=[])
     normalize = lambda v: re.sub(r'[^\w]+', '', v.casefold())
