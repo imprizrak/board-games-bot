@@ -7255,7 +7255,7 @@ button,.btn{font-family:inherit}
     </div>
     <details class="gc-panel" id="gcAbout" open><summary>ⓘ　Про гру</summary><p id="viewDescription"></p></details>
     <section class="game-media-section"><div class="gc-heading"><h3>▱　Компоненти гри</h3><button id="gcAll" onclick="gcGallery(0)" hidden>Дивитися всі</button></div><div id="viewComponents" class="game-components"></div><p id="viewComponentsEmpty">Фото компонентів ще не додані.</p></section>
-    <section class="game-media-section"><h3><span style="color:#ff3535">▶</span>　Відеоогляд і правила</h3><div id="viewPlayer" class="game-player"><button type="button" id="viewPlay" onclick="playGameReview()">▶ Відтворити відео</button><p id="viewVideoHint"></p></div><a id="viewVideo" target="_blank" rel="noopener noreferrer">Відкрити в YouTube ↗</a></section>
+    <section class="game-media-section"><h3><span style="color:#ff3535">▶</span>　Відеоогляд і правила</h3><div id="viewPlayer" class="game-player"><button type="button" id="viewPlay" aria-label="Відтворити або знайти відео" onclick="playGameReview()">▶ Відтворити відео</button><p id="viewVideoHint"></p></div><a id="viewVideo" target="_blank" rel="noopener noreferrer">Відкрити в YouTube ↗</a></section>
 
     <div class="gc-actions"><a id="viewRules" class="rules-link icon-inline" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/></svg> Відкрити правила</a>
     <button class="btn secondary" onclick="extraOpen('rules')">Запитати про правила</button></div><p id="viewNoRules" style="color:var(--muted);"></p>
@@ -15805,7 +15805,7 @@ html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #gcA
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-components{display:flex!important;overflow-x:auto!important;scroll-snap-type:x mandatory;gap:8px!important;margin-top:10px;}
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-components img{flex:0 0 29%;width:29%!important;height:auto!important;aspect-ratio:1!important;object-fit:contain!important;scroll-snap-align:start;cursor:pointer;}
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .game-player{background-size:cover!important;background-position:center!important;}
-html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay{background:#d71920!important;border:0!important;box-shadow:none!important;min-height:44px!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay{background:rgba(25,25,30,.48)!important;border:1px solid rgba(255,255,255,.55)!important;box-shadow:inset 0 1px 3px #ffffff45,0 4px 18px #0005!important;min-height:56px!important;}
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewVideoHint{background:#0009;border-radius:8px;padding:4px;}
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-actions,html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .quick-start-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
 html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .gc-actions :is(a,button),html:root:root:root:root:root:root:root:root:root:root:root body #viewModal .quick-start-grid button{width:100%!important;min-height:44px!important;height:auto!important;margin:0!important;padding:10px 6px!important;white-space:normal!important;font-size:12px!important;text-align:center!important;box-sizing:border-box!important;border-radius:24px!important;}
@@ -15863,6 +15863,12 @@ html:root:root:root:root:root:root:root:root:root body #view-library #libmode-ga
 html:root:root:root:root:root:root:root:root:root body #view-library #libraryPickerButton {
  display:flex!important; align-items:center!important; justify-content:center!important; box-sizing:border-box!important; width:100%!important; max-width:100%!important; min-width:0!important; min-height:44px!important; height:auto!important; margin:0!important; padding:11px 12px!important; border-radius:18px!important; white-space:normal!important; overflow-wrap:anywhere!important; text-align:center!important; line-height:1.25!important;
 }
+</style>
+<style id="styloteka-video-glass-v5376">
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay{position:absolute!important;top:50%!important;left:50%!important;transform:translate(-50%,-50%)!important;width:60px!important;height:60px!important;min-width:60px!important;max-width:60px!important;padding:0!important;margin:0!important;border-radius:50%!important;font-size:0!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:white!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay::after{content:"";display:block;width:0;height:0;border-top:11px solid transparent;border-bottom:11px solid transparent;border-left:17px solid white;margin:auto;transform:translateX(2px);}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewPlay[hidden]{display:none!important;}
+html:root:root:root:root:root:root:root:root:root:root:root body #viewModal #viewVideoHint{position:absolute;bottom:6px;left:8px;right:8px;margin:0!important;font-size:11px!important;pointer-events:none;}
 </style>
 </body>
 </html>
