@@ -5888,7 +5888,7 @@ body.tg-native-fullscreen.picker-fullscreen #panel-picker .picker-exit {
   </div>
 
   <section id="toolWidgetHub" class="ios-widgets-hub" aria-label="Віджети ігрових інструментів">
-    <div class="ios-widget-grid">
+    <div class="ios-widget-grid"><button type="button" class="ios-widget ios-widget-wide" onclick="kitChoose()"><span class="ios-widget-bottom"><strong>Інструменти за грою</strong><small>Обери гру з бібліотеки</small></span></button>
       <button type="button" class="ios-widget ios-widget-dice ios-widget-wide" onclick="openToolPanel('dice')" aria-label="Відкрити кубики">
         <span class="ios-widget-top"><span class="ios-widget-icon dice-icon" aria-hidden="true">⚄</span><span class="ios-widget-arrow" aria-hidden="true">↗</span></span>
         <span class="ios-widget-dice-visual" aria-hidden="true"><span class="ios-widget-d20">20</span><span class="ios-widget-dice-mini">6</span></span>
@@ -10969,13 +10969,14 @@ function openToolPanel(tool, mode = null) {
 
 function openGameTool(gameName, tool, mode = null) {
   closeModal('viewModal');
+  if(tool === 'librarykit') { kitOpen(gameName); return; }
   openToolPanel(tool, mode);
 }
 
 function quickToolsForGame(game) {
   const hay = `${game?.name || ''} ${game?.tags || ''} ${game?.description || ''}`.toLowerCase();
-  const tools = [];
-  if (/flip\s*7|flip\s*seven/.test(hay)) tools.push({ label:'Flip Seven', tool:'counters', mode:'flip7', primary:true });
+  const tools = [{label:'Інструменти гри',tool:'librarykit',primary:true}];
+  if (/flip\s*7|flip\s*seven|лови\s*7/.test(hay)) tools.push({ label:'Flip Seven', tool:'counters', mode:'flip7', primary:true });
   if (/d&d|dnd|dungeons|dragon|rpg|рольов/.test(hay)) {
     tools.push({ label:'Кубики', tool:'dice', primary:true });
   }
@@ -15907,5 +15908,17 @@ function ai55VisionOpen(){document.getElementById('ai55Vision').hidden=false;}
 async function ai55Admin(backup){const out=document.getElementById('ai55Report');out.textContent='Перевірка…';try{const r=await fetch('/api/admin/ai55',{method:backup?'POST':'GET',headers:telegramAuthHeaders()});const d=await r.json();if(!r.ok)throw Error(d.error||r.status);out.textContent=JSON.stringify(d,null,2);}catch(e){out.textContent=e.message;}}
 async function ai55VisionSend(){const out=document.getElementById('ai55Answer'),btn=document.getElementById('ai55Send'),f=document.getElementById('ai55Photo').files[0];if(!f||f.size>15000000){out.textContent='Оберіть фото до 15 МБ';return;}btn.disabled=true;let url;try{url=URL.createObjectURL(f);const img=new Image();img.src=url;await img.decode();const scale=Math.min(1,1024/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);const r=await fetch('/api/ai55/vision',{method:'POST',headers:telegramAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({image:c.toDataURL('image/jpeg',.8)})});const d=await r.json();out.textContent=d.answer||d.error||'Помилка';}catch(e){out.textContent='Не вдалося обробити фото';}finally{if(url)URL.revokeObjectURL(url);btn.disabled=false;}}
 </script>
-</body>
+<style>#kitModal .sheet,#kitChooseModal .sheet{max-width:540px;width:100%;box-sizing:border-box} .kit-card{padding:12px;margin:10px 0;border:1px solid rgba(150,150,150,.3);border-radius:18px;background:rgba(150,150,150,.08)} .kit-row{display:grid;grid-template-columns:minmax(0,1fr) 44px 76px 44px;gap:5px;align-items:center;margin:8px 0}.kit-row input{min-width:0;width:100%;text-align:center;padding:4px}.kit-row button{min-height:44px;border-radius:14px;background:rgba(150,150,150,.15);color:inherit}.kit-row span{overflow-wrap:anywhere} #kitModal input,#kitChooseModal select{max-width:100%;box-sizing:border-box} #kitModal .btn{margin-top:8px}</style><div class="modal" id="kitModal"><div class="sheet"><button class="btn secondary" onclick="closeModal('kitModal')">‹ Назад</button><h2 id="kitTitle"></h2><p>Ручні лічильники. Початкові значення встанови за правилами своєї редакції гри.</p><div id="kitPlayers"></div><button class="btn secondary" onclick="kitAdd()">+ Гравець</button><input id="kitField" maxlength="40" placeholder="Назва нового лічильника"><button class="btn secondary" onclick="kitAddField()">+ Лічильник</button><button class="btn secondary" onclick="kitReset()">Обнулити</button></div></div><div class="modal" id="kitChooseModal"><div class="sheet"><button class="btn secondary" onclick="closeModal('kitChooseModal')">‹ Назад</button><h2>Обери гру</h2><select id="kitSelect" aria-label="Гра"></select><button class="btn" onclick="if(document.getElementById('kitSelect').value){closeModal('kitChooseModal');kitOpen(document.getElementById('kitSelect').value)}">Відкрити інструменти</button></div></div><script>const libraryKitPresets = {
+'Coup':['Монети','Вплив'], 'Unmatched: Відьмак':['Здоров’я','Здоров’я помічника'], 'Бенг':['Здоров’я'], 'Каркассон':['Очки'], 'Прадавній жах':['Здоров’я','Розум','Підказки'], 'Евердел. Дзвінограй':['Очки','Ресурси'], 'Листи закоханих':['Жетони перемоги'], 'Кольт Експрес':['Здобич'], 'Саботер':['Золото'], 'Селестія':['Очки'], 'Spicy':['Очки'], 'Таємні Лідери':['Очки'], 'Верхогони':['Очки'], 'Влучні слова':['Очки'], 'Вибухові кошенята':['Карти в руці'], 'Вижити: втеча з острова':['Врятовані фігурки','Очки'], 'Лови 7':['Очки'], 'Маскарад':['Монети'], 'Цербер':['Врятовані гравці'], 'Червоний Світанок':['Очки'], 'Пекельний острів':['Очки']
+};
+let kitGame='', kitState=null;
+function kitFields(name){return libraryKitPresets[name] || ['Очки'];}
+function kitSave(){try{localStorage.setItem('styloteka_kit_v1:'+kitGame,JSON.stringify(kitState));}catch(e){}}
+function kitOpen(name){kitGame=String(name||'Гра');const fields=kitFields(kitGame);kitState={fields:[...fields],players:[{name:'Гравець 1',values:fields.map(()=>0)},{name:'Гравець 2',values:fields.map(()=>0)}]};try{const s=JSON.parse(localStorage.getItem('styloteka_kit_v1:'+kitGame));if(s&&Array.isArray(s.fields)&&s.fields.length&&s.fields.length<=8&&Array.isArray(s.players)&&s.players.length<=16&&s.players.every(p=>Array.isArray(p.values)&&p.values.length===s.fields.length&&p.values.every(Number.isFinite)))kitState=s;}catch(e){}document.getElementById('kitTitle').textContent=kitGame;document.getElementById('kitModal').classList.add('open');kitRender();}
+function kitRender(){const root=document.getElementById('kitPlayers');root.replaceChildren();kitState.players.forEach((p,i)=>{const card=document.createElement('section');card.className='kit-card';const name=document.createElement('input');name.value=p.name;name.maxLength=60;name.setAttribute('aria-label','Ім’я гравця');name.onchange=()=>{p.name=name.value;kitSave()};card.append(name);kitState.fields.forEach((f,j)=>{const row=document.createElement('div');row.className='kit-row';const label=document.createElement('span');label.textContent=f;const val=document.createElement('input');val.type='number';val.value=p.values[j];val.setAttribute('aria-label',f);val.onchange=()=>{p.values[j]=Math.max(-999999,Math.min(999999,Math.trunc(Number(val.value)||0)));val.value=p.values[j];kitSave()};const btn=(t,d)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.setAttribute('aria-label',f+' '+t);b.onclick=()=>{p.values[j]=Math.max(-999999,Math.min(999999,p.values[j]+d));val.value=p.values[j];kitSave()};return b};row.append(label,btn('−',-1),val,btn('+',1));card.append(row)});const del=document.createElement('button');del.textContent='Видалити гравця';del.onclick=()=>{if(kitState.players.length>1){kitState.players.splice(i,1);kitSave();kitRender()}};card.append(del);root.append(card)});}
+function kitAdd(){if(kitState.players.length>=16)return;kitState.players.push({name:'Гравець '+(kitState.players.length+1),values:kitState.fields.map(()=>0)});kitSave();kitRender()}
+function kitAddField(){const f=document.getElementById('kitField');const v=f.value.trim();if(!v||kitState.fields.includes(v)||kitState.fields.length>=8)return;kitState.fields.push(v);kitState.players.forEach(p=>p.values.push(0));f.value='';kitSave();kitRender()}
+function kitReset(){if(!confirm('Обнулити всі лічильники цієї гри?'))return;kitState.players.forEach(p=>p.values.fill(0));kitSave();kitRender()}
+function kitChoose(){const select=document.getElementById('kitSelect');select.replaceChildren();(typeof allGames!=='undefined'?allGames:[]).forEach(g=>{const o=document.createElement('option');o.value=g.name;o.textContent=g.name;select.append(o)});document.getElementById('kitChooseModal').classList.add('open');if(!select.options.length)loadGames().then(()=>{if(document.getElementById('kitChooseModal').classList.contains('open')){(allGames||[]).forEach(g=>{const o=document.createElement('option');o.value=g.name;o.textContent=g.name;select.append(o)})}}).catch(()=>{});}
+</script></body>
 </html>
