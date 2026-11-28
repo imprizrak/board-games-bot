@@ -11633,7 +11633,7 @@ function renderEvents(events) {
       `<span class="participant-chip ${!historyMode && r.status === 'waitlist' ? 'waitlist' : ''}">
         ${escapeHtml(r.display_name || r.username)}
         ${!historyMode && r.status === 'waitlist' ? '<span class="wait-tag">черга</span>' : ''}
-        ${!historyMode && isAdmin ? `<button class="pc-remove" data-event="${ev.id}" data-username="${escapeHtml(r.username)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
+        ${!historyMode && isAdmin ? `<button type="button" aria-label="Видалити учасника" class="pc-remove" data-event="${ev.id}" data-username="${escapeHtml(r.username)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
       </span>`
     ).join('') || `<div class="ev-no-participants">${historyMode ? 'Учасників не було' : 'Поки ніхто не записався'}</div>`;
 
@@ -15920,5 +15920,10 @@ function kitAdd(){if(kitState.players.length>=16)return;kitState.players.push({n
 function kitAddField(){const f=document.getElementById('kitField');const v=f.value.trim();if(!v||kitState.fields.includes(v)||kitState.fields.length>=8)return;kitState.fields.push(v);kitState.players.forEach(p=>p.values.push(0));f.value='';kitSave();kitRender()}
 function kitReset(){if(!confirm('Обнулити всі лічильники цієї гри?'))return;kitState.players.forEach(p=>p.values.fill(0));kitSave();kitRender()}
 function kitChoose(){const select=document.getElementById('kitSelect');select.replaceChildren();(typeof allGames!=='undefined'?allGames:[]).forEach(g=>{const o=document.createElement('option');o.value=g.name;o.textContent=g.name;select.append(o)});document.getElementById('kitChooseModal').classList.add('open');if(!select.options.length)loadGames().then(()=>{if(document.getElementById('kitChooseModal').classList.contains('open')){(allGames||[]).forEach(g=>{const o=document.createElement('option');o.value=g.name;o.textContent=g.name;select.append(o)})}}).catch(()=>{});}
-</script></body>
+</script><style id="participant-fix-552">
+html:root:root:root:root:root:root:root:root:root:root body .event-card .participant-chip {display:inline-flex!important;align-items:center!important;gap:6px!important;max-width:100%!important;box-sizing:border-box!important;min-height:44px!important;height:auto!important;padding:4px 8px 4px 12px!important;overflow-wrap:anywhere!important;}
+html:root:root:root:root:root:root:root:root:root:root body .event-card .participant-chip > button.pc-remove {appearance:none!important;position:relative!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;align-self:center!important;flex:0 0 32px!important;width:32px!important;min-width:32px!important;max-width:32px!important;height:32px!important;min-height:32px!important;max-height:32px!important;aspect-ratio:1!important;padding:0!important;margin:0!important;box-sizing:border-box!important;border-radius:50%!important;background:rgba(255,255,255,.09)!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;color:inherit!important;overflow:hidden!important;}
+html:root:root:root:root:root:root:root:root:root:root body .event-card .participant-chip > button.pc-remove::before,html:root:root:root:root:root:root:root:root:root:root body .event-card .participant-chip > button.pc-remove::after {content:none!important;display:none!important;}
+html:root:root:root:root:root:root:root:root:root:root body .event-card .participant-chip > button.pc-remove svg {display:block!important;width:16px!important;height:16px!important;min-width:16px!important;min-height:16px!important;flex:none!important;pointer-events:none!important;}
+</style></body>
 </html>
